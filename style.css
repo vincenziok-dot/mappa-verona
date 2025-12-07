@@ -1,6 +1,3 @@
-body { margin:0; padding:0; background:#000; color:#fff; font-family:Arial;}
-#map { position:absolute; top:0; bottom:0; width:calc(100% - 260px); left:260px; }
-#sidebar { position:absolute; left:0; top:0; bottom:0; width:260px; background:#111; padding:10px; overflow:auto; border-right:2px solid #444; }
-.marker { display:inline-block; width:12px; height:12px; border-radius:50%; }
-.c1 { background:#00ffea; }
-.c2 { background:#ffcc00; }
+body{margin:0;background:#000;color:white}
+#sidebar{position:absolute;left:0;top:0;bottom:0;width:260px;background:#0b0b0b;border-right:2px solid #00ff9c;padding:10px}
+#map{position:absolute;left:260px;right:0;top:0;bottom:0}
