@@ -15,7 +15,7 @@ L.tileLayer(
 ).addTo(map);
 
 // CARICAMENTO COMUNI
-fetch('data/comuni_verona.geojson')
+fetch('data/comuni_verona_metropolitana.geojson')
   .then(r => r.json())
   .then(data => {
 
