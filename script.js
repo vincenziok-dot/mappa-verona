@@ -1,53 +1,47 @@
-const map = new maplibregl.Map({
-  container: 'map',
-  style: 'https://tiles.basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-
-  // CENTRO SU VERONA
-  center: [10.9916, 45.4384],
-  zoom: 10,
-  pitch: 45,
-  bearing: -15,
-
-  // BLOCCA LA MAPPA SU VERONA (niente giro per l’Europa)
-  maxBounds: [
-    [10.85, 45.33], // sud-ovest
-    [11.15, 45.55]  // nord-est
-  ]
+const map = L.map('map', {
+  center: [45.4384, 10.9916],
+  zoom: 11,
+  zoomControl: true
 });
 
-map.on('load', () => {
-  map.addSource('comuni', {
-    type: 'geojson',
-    data: 'data/comuni_verona_metropolitana.geojson'
-  });
+// BASEMAP NERO REALE
+L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  {
+    attribution: '© OpenStreetMap, © CARTO',
+    subdomains: 'abcd',
+    maxZoom: 19
+  }
+).addTo(map);
 
-  // RIEMPIMENTO (futuristico, leggero)
-  map.addLayer({
-    id: 'comuni-fill',
-    type: 'fill-extrusion',
-    source: 'comuni',
-    paint: {
-      'fill-extrusion-color': '#004433',
-      'fill-extrusion-height': 1500,
-      'fill-extrusion-opacity': 0.35
-    }
-  });
+// CARICAMENTO COMUNI
+fetch('data/comuni_verona.geojson')
+  .then(r => r.json())
+  .then(data => {
 
-  // CONTORNI VERDI COME DA UMAPP
-  map.addLayer({
-    id: 'comuni-line',
-    type: 'line',
-    source: 'comuni',
-    paint: {
-      'line-color': '#00ff9c',
-      'line-width': 1.5
-    }
-  });
+    const comuniLayer = L.geoJSON(data, {
+      style: {
+        color: '#00ff9c',
+        weight: 1.5,
+        fillColor: '#003322',
+        fillOpacity: 0.35
+      },
+      onEachFeature: (feature, layer) => {
+        const nome = feature.properties.name || feature.properties.nome || 'Comune';
 
-  // 👉 ZOOM AUTOMATICO SUI COMUNI
-  const bounds = new maplibregl.LngLatBounds();
-  comuni.features.forEach(f => {
-    f.geometry.coordinates[0].forEach(c => bounds.extend(c));
+        layer.bindTooltip(nome, {
+          permanent: true,
+          direction: 'center',
+          className: 'comune-label'
+        });
+
+        layer.on('click', () => {
+          map.fitBounds(layer.getBounds(), {
+            padding: [40, 40]
+          });
+        });
+      }
+    }).addTo(map);
+
+    map.fitBounds(comuniLayer.getBounds());
   });
-  map.fitBounds(bounds, { padding: 40, duration: 1000 });
-});
