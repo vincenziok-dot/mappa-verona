@@ -12,3 +12,14 @@ L.tileLayer(
     maxZoom: 19
   }
 ).addTo(map);
+L.rectangle(
+  [
+    [45.40, 10.90],
+    [45.48, 11.08]
+  ],
+  {
+    color: '#ff0000',
+    weight: 4,
+    fillOpacity: 0
+  }
+).addTo(map);
