@@ -1,6 +1,6 @@
 const map = new maplibregl.Map({
   container: 'map',
-  style: 'https://demotiles.maplibre.org/style.json',
+  style: 'https://tiles.basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
 
   // CENTRO SU VERONA
   center: [10.9916, 45.4384],
