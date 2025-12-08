@@ -10,7 +10,7 @@ const map = new maplibregl.Map({
 map.on('load', () => {
   map.addSource('comuni', {
     type: 'geojson',
-    data: 'data/comuni_verona.geojson'
+    data: 'data/comuni_verona_metropolitana.geojson'
   });
 
   map.addLayer({
