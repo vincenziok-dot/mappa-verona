@@ -30,8 +30,9 @@
   const map = L.map('map').setView([45.4384, 10.9916], 11);
 
 L.tileLayer(
-  'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+  'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
   {
+    subdomains: 'abc',
     maxZoom: 19
   }
 ).addTo(map);
