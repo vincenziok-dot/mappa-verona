@@ -4,58 +4,39 @@
   <meta charset="utf-8">
   <title>Mappa Verona – Demo</title>
 
-  <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
-
-  <style>
-    html, body {
-      margin: 0;
-      height: 100%;
-      background: #000;
-      font-family: system-ui, sans-serif;
-    }
-
-    #map {
-      height: 100%;
-      width: 100%;
-      background: #0b0b0b;
-    }
-
-    /* Etichette stile "videogioco" */
-    .label {
-      color: #e6e6e6;
-      font-size: 16px;
-      font-weight: 600;
-      letter-spacing: 2px;
-      text-shadow: 0 0 6px rgba(0,0,0,0.9);
-      pointer-events: none;
-    }
-  </style>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
 
 <div id="map"></div>
 
+<!-- HUD stile gioco -->
+<div id="hud">
+  <div class="hud-title">VERONA</div>
+  <div class="hud-sub">Comune selezionato</div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  // MAPPA BASE SENZA TILE ESTERNE (100% LOCALE)
+  // MAPPA BASE – NO TILE ESTERNE
   const map = L.map('map', {
     zoomControl: true,
     attributionControl: false,
     crs: L.CRS.Simple
   });
 
-  // Spazio di gioco
   const bounds = [[0,0],[1000,1000]];
   map.fitBounds(bounds);
 
-  // Sfondo scuro
+  // Sfondo
   L.rectangle(bounds, {
     fillColor: '#0b0b0b',
     fillOpacity: 1,
     stroke: false
   }).addTo(map);
 
-  // Contorno semplificato del Comune di Verona
+  // Confine semplificato (Verona)
   const verona = [
     [350, 620],
     [380, 680],
@@ -71,28 +52,6 @@
     [370, 580]
   ];
 
-  const areaVerona = L.polygon(verona, {
-    color: '#00ff9c',
-    weight: 3,
-    fillOpacity: 0.05
-  }).addTo(map);
-
-  // CLICK SUL COMUNE
-  areaVerona.on('click', () => {
-    alert('Comune: Verona');
-  });
-
-  // ETICHETTA (NON CLICCABILE)
-  L.tooltip({
-    permanent: true,
-    direction: 'center',
-    className: 'label'
-  })
-  .setContent('VERONA')
-  .setLatLng([520, 600])
-  .addTo(map);
-
-</script>
-</body>
-</html>
-
+  // Ombra (pseudo-3D)
+  L.polygon(
+    verona
