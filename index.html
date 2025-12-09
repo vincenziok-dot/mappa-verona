@@ -2,9 +2,11 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
+
 <title>Mappa Verona</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
 html, body {
@@ -26,9 +28,11 @@ html, body {
   background: rgba(10,10,10,.94);
   border-left: 4px solid #00ff9c;
 }
-.hud-title { font-size:18px; font-weight:650; color:#fff; }
-.hud-sub { margin-top:4px; font-size:12px; color:#bbb; }
 
+.hud-title { font-size:18px; font-weight:650; color:#fff; }
+.hud-sub   { margin-top:4px; font-size:12px; color:#bbb; }
+
+/* ===== STATS ===== */
 #stats {
   margin-top:12px;
   display:grid;
@@ -40,31 +44,48 @@ html, body {
 .ok strong { color:#00ff9c; }
 .warn strong { color:#ffaa00; }
 
+/* ===== BADGE ===== */
 .badge {
   margin-top:10px;
   padding:4px 8px;
   font-size:11px;
   display:inline-block;
 }
-.badge-ok { background:rgba(0,255,156,.15); color:#bfffe8; }
+.badge-ok   { background:rgba(0,255,156,.15); color:#bfffe8; }
 .badge-warn { background:rgba(255,170,0,.2); color:#ffd699; }
 
-/* ===== ACTION BUTTON ===== */
-#action {
-  margin-top:12px;
+/* ===== ACTION BUTTONS ===== */
+.action {
+  margin-top:10px;
   padding:8px;
   text-align:center;
   font-size:13px;
   font-weight:600;
-  cursor:pointer;
   border-radius:4px;
+  cursor:pointer;
   background:#00ff9c;
   color:#000;
+}
+.action.secondary {
+  background:#222;
+  color:#eee;
+}
+.action:hover { filter:brightness(1.1); }
+
+/* ===== LISTA REFERENTI ===== */
+#referentiBox {
+  margin-top:10px;
+  padding:8px;
+  font-size:13px;
+  background:#111;
   display:none;
 }
-#action:hover { background:#33ffad; }
+#referentiBox ul {
+  margin:0;
+  padding-left:18px;
+}
 
-/* ===== MAP ===== */
+/* ===== MAP STYLES ===== */
 .label-comune {
   color:rgba(240,240,240,.9);
   font-size:11px;
@@ -110,47 +131,70 @@ html, body {
   </div>
 
   <div id="badge" class="badge badge-warn">Seleziona un comune</div>
-  <div id="action" onclick="aggiungiReferente()">➕ Diventa referente</div>
+
+  <div id="addBtn" class="action" style="display:none"
+       onclick="aggiungiReferente()">➕ Diventa referente</div>
+
+  <div id="listBtn" class="action secondary" style="display:none"
+       onclick="toggleLista()">👤 Vedi referenti</div>
+
+  <div id="referentiBox"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-/* ===== MOCK DB (PROVVISORI) ===== */
-const referenti = { "Verona": ["Anna R.", "Luca M."] };
+/* ===== MOCK DB ===== */
+const referenti = {
+  "Verona": ["Anna R.", "Luca M."]
+};
 const farmacie = [
   { nome:"Farmacia Centrale", comune:"Verona" },
   { nome:"Farmacia San Zeno", comune:"Verona" }
 ];
 
-/* ===== UTILS ===== */
-function nomeComune(p){
-  return p.nome || p.DENOM_COM || p.name || p.COMUNE;
-}
-function hasReferenti(c){
-  return referenti[c] && referenti[c].length>0;
-}
-
-/* ===== ACTION ===== */
+/* ===== STATE ===== */
 let comuneAttivo = null;
-function aggiungiReferente(){
-  if(!comuneAttivo) return;
-  const nome = prompt("Inserisci il tuo nome");
-  if(!nome) return;
+let showList = false;
 
+/* ===== UTILS ===== */
+const nomeComune = p => p.nome || p.DENOM_COM || p.name || p.COMUNE;
+const hasReferenti = c => referenti[c] && referenti[c].length>0;
+
+/* ===== REFERENTI UI ===== */
+function renderReferenti(){
+  const box=document.getElementById('referentiBox');
+  box.innerHTML='';
+  if(!referenti[comuneAttivo]) {
+    box.innerHTML='<em>Nessun referente</em>';
+    return;
+  }
+  const ul=document.createElement('ul');
+  referenti[comuneAttivo].forEach(r=>{
+    const li=document.createElement('li');
+    li.textContent=r;
+    ul.appendChild(li);
+  });
+  box.appendChild(ul);
+}
+
+function toggleLista(){
+  showList=!showList;
+  const box=document.getElementById('referentiBox');
+  box.style.display=showList?'block':'none';
+  if(showList) renderReferenti();
+}
+
+function aggiungiReferente(){
+  const nome=prompt("Inserisci il tuo nome");
+  if(!nome) return;
   if(!referenti[comuneAttivo]) referenti[comuneAttivo]=[];
   referenti[comuneAttivo].push(nome);
-
-  // aggiornamento badge
-  document.getElementById('badge').className='badge badge-ok';
-  document.getElementById('badge').innerText='Comune coperto';
-
-  document.getElementById('action').innerText='➕ Aggiungi un altro referente';
-
+  renderReferenti();
   aggiornaStats();
 }
 
 /* ===== MAPPA ===== */
-const map = L.map('map',{ attributionControl:false })
+const map=L.map('map',{attributionControl:false})
   .setView([45.43,10.99],11);
 
 L.tileLayer(
@@ -163,62 +207,45 @@ let labels=[], comuniNomi=[], selected=null;
 fetch('data/comuni_verona.json')
 .then(r=>r.json())
 .then(data=>{
-
   L.geoJSON(data,{style:{color:'#000',weight:4,opacity:.3}}).addTo(map);
 
   const layer=L.geoJSON(data,{
     style:f=>{
       const n=nomeComune(f.properties);
       comuniNomi.push(n);
-      return {
-        color:hasReferenti(n)?'#00ff9c':'#ffaa00',
-        weight:1,
-        fillOpacity:0
-      };
+      return { color:hasReferenti(n)?'#00ff9c':'#ffaa00', weight:1 };
     },
     onEachFeature:(f,l)=>{
       const nome=nomeComune(f.properties);
-      const orfano=!hasReferenti(nome);
-
       const c=l.getBounds().getCenter();
+
       const lab=L.marker(c,{
-        icon:L.divIcon({
-          className:'label-comune',
-          html:nome,
-          iconSize:[130,16]
-        }),
+        icon:L.divIcon({className:'label-comune',html:nome,iconSize:[120,14]}),
         interactive:false
       }).addTo(map);
       labels.push(lab);
 
-      if(orfano) setTimeout(()=>l._path.classList.add('orfano'),50);
+      if(!hasReferenti(nome))
+        setTimeout(()=>l._path.classList.add('orfano'),50);
 
       l.on('click',()=>{
-        if(selected){
-          const pn=nomeComune(selected.feature.properties);
-          selected.setStyle({
-            weight:1,
-            color:hasReferenti(pn)?'#00ff9c':'#ffaa00'
-          });
-        }
         selected=l;
         comuneAttivo=nome;
-
-        l.setStyle({weight:3,color:'#fff'});
-        l._path.classList.add('pulse');
-
-        map.fitBounds(l.getBounds(),{padding:[40,40]});
+        showList=false;
 
         document.getElementById('badge').className=
-          'badge '+(orfano?'badge-warn':'badge-ok');
+          'badge '+(hasReferenti(nome)?'badge-ok':'badge-warn');
         document.getElementById('badge').innerText=
-          orfano?'⚠ Comune orfano':'Comune coperto';
+          hasReferenti(nome)?'Comune coperto':'⚠ Comune orfano';
 
-        const action=document.getElementById('action');
-        action.style.display='block';
-        action.innerText=orfano?
-          '➕ Diventa referente di questo comune':
-          '➕ Aggiungi un altro referente';
+        document.getElementById('addBtn').style.display='block';
+        document.getElementById('addBtn').innerText=
+          hasReferenti(nome)?'➕ Aggiungi refernte':'➕ Diventa referente';
+
+        document.getElementById('listBtn').style.display=
+          hasReferenti(nome)?'block':'none';
+
+        document.getElementById('referentiBox').style.display='none';
       });
     }
   }).addTo(map);
