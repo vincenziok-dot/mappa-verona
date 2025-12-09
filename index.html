@@ -63,44 +63,41 @@ html, body {
 .stat-ok .stat-value { color:#00ff9c; }
 .stat-warn .stat-value { color:#ffaa00; }
 
-/* FARMACIE */
+/* farmacie */
 #farm-box {
   margin-top: 14px;
-  padding-top: 12px;
+  padding-top: 10px;
   border-top: 1px solid #222;
 }
 #farm-box h4 {
-  margin: 0 0 8px;
-  font-size: 12px;
+  margin: 0 0 6px;
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: .14em;
+  letter-spacing: .12em;
   color: #9ef5d9;
 }
 #farm-count {
-  font-size: 13px;
-  line-height: 1.45;
-  margin-bottom: 10px;
+  font-size: 12px;
+  margin-bottom: 6px;
 }
 
-/* LEGENDA */
-.legend {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 8px 10px;
+/* legenda */
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 12px;
 }
-.legend span { color:#e6e6e6; }
-
 .dot {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
 }
 .triangle {
   width: 0; height: 0;
-  border-left: 9px solid transparent;
-  border-right: 9px solid transparent;
-  border-bottom: 16px solid;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 14px solid;
 }
 
 /* colori stato */
@@ -108,36 +105,6 @@ html, body {
 .in_trattativa { background:#4da6ff; border-bottom-color:#4da6ff; }
 .da_contattare { background:#ffaa00; border-bottom-color:#ffaa00; }
 .rifiuta { background:#ff4d4d; border-bottom-color:#ff4d4d; }
-
-/* REFERENTI */
-.hud-buttons {
-  margin-top: 14px;
-  display: flex;
-  gap: 8px;
-}
-.hud-btn {
-  border:1px solid #00ff9c;
-  background:#041812;
-  color:#eafff7;
-  font-size:12px;
-  padding:6px 10px;
-  cursor:pointer;
-}
-.hud-btn:hover {
-  background:#00ff9c;
-  color:#00110b;
-}
-
-.hud-section {
-  margin-top: 10px;
-  border-top: 1px solid #222;
-  padding-top: 8px;
-  display: none;
-}
-.hud-section li {
-  font-size: 13px;
-  color: #fff;
-}
 
 /* label comuni */
 .label-comune {
@@ -174,21 +141,10 @@ html, body {
     <h4>Farmacie (comune selezionato)</h4>
     <div id="farm-count">—</div>
 
-    <div class="legend">
-      <div class="dot accetta"></div><span>Privata – accetta (materiale esposto)</span>
-      <div class="dot in_trattativa"></div><span>Privata – in trattativa</span>
-      <div class="triangle accetta"></div><span>Comunale – accetta</span>
-      <div class="triangle da_contattare"></div><span>Comunale – da contattare</span>
-    </div>
-  </div>
-
-  <div class="hud-buttons">
-    <button class="hud-btn" id="btnAdd">Aggiungi referente</button>
-    <button class="hud-btn" id="btnToggle">Vedi referenti</button>
-  </div>
-
-  <div class="hud-section" id="refPanel">
-    <ul id="refList"></ul>
+    <div class="legend-row"><span class="dot accetta"></span> Privata – accetta</div>
+    <div class="legend-row"><span class="dot in_trattativa"></span> Privata – in trattativa</div>
+    <div class="legend-row"><span class="triangle accetta"></span> Comunale – accetta</div>
+    <div class="legend-row"><span class="triangle da_contattare"></span> Comunale – da contattare</div>
   </div>
 </div>
 
@@ -204,22 +160,148 @@ L.tileLayer(
 ).addTo(map);
 
 /* DATI */
+const driveMateriali = "https://drive.google.com/drive/folders/1f9JTPwuquc1epCO6rpsONh2fFes8yabm";
+
 const referenti = { "Verona": ["Vincenzo R."] };
 
 const farmacie = [
-  { nome:"Farmacia Centrale", comune:"Verona", lat:45.4387, lng:10.9921, tipo:"privata", stato:"accetta", indirizzo:"Via Roma 3, Verona", telefono:"+39 045 8000001", email:"" },
-  { nome:"Farmacia San Zeno", comune:"Verona", lat:45.4431, lng:10.9802, tipo:"comunale", stato:"in_trattativa", indirizzo:"Via San Zeno 15, Verona", telefono:"+39 045 8000002", email:"" },
-  { nome:"Farmacia Borgo Roma", comune:"Verona", lat:45.3898, lng:10.9825, tipo:"privata", stato:"da_contattare", indirizzo:"Via Centro 21, Verona", telefono:"+39 045 8000003", email:"" },
-  { nome:"Farmacia Borgo Trento", comune:"Verona", lat:45.4506, lng:10.9808, tipo:"privata", stato:"accetta", indirizzo:"Via Mameli 98, Verona", telefono:"+39 045 8000004", email:"" },
-  { nome:"Farmacia Chievo", comune:"Verona", lat:45.4523, lng:10.9336, tipo:"privata", stato:"accetta", indirizzo:"Piazza Chievo 7, Verona", telefono:"+39 045 8000005", email:"" },
-  { nome:"Farmacia Borgo Venezia", comune:"Verona", lat:45.4349, lng:11.0174, tipo:"privata", stato:"in_trattativa", indirizzo:"Via Betteloni 52, Verona", telefono:"+39 045 8000006", email:"" },
-  { nome:"Farmacia Montorio", comune:"Verona", lat:45.4567, lng:11.0618, tipo:"privata", stato:"da_contattare", indirizzo:"Via Montorio 33, Verona", telefono:"+39 045 8000007", email:"" },
-  { nome:"Farmacia San Michele", comune:"Verona", lat:45.4562, lng:11.0671, tipo:"privata", stato:"rifiuta", indirizzo:"Via Unità d’Italia 91, Verona", telefono:"+39 045 8000008", email:"" }
+  {
+    nome:"Farmacia Centrale",
+    comune:"Verona",
+    lat:45.4387, lng:10.9921,
+    tipo:"privata",
+    stato:"accetta",
+    indirizzo:"Via Roma 3, Verona",
+    telefono:"+39 045 8000001"
+  },
+  {
+    nome:"Farmacia San Zeno",
+    comune:"Verona",
+    lat:45.4431, lng:10.9802,
+    tipo:"comunale",
+    stato:"in_trattativa",
+    indirizzo:"Via San Zeno 15, Verona",
+    telefono:"+39 045 8000002"
+  }
 ];
 
-/* --- QUI SOTTO IL CODICE RESTA IDENTICO A ver1.0 --- */
+let labels=[], comuni=[], selectedLayer=null;
+let farmLayer=L.layerGroup().addTo(map);
 
-/* ... (continua identico: comuni, selezione, referenti, farmacie) ... */
+const nomeComune=p=>p.nome||p.DENOM_COM||p.name||'Comune';
+const hasRef=n=>referenti[n] && referenti[n].length>0;
+
+/* COMUNI */
+fetch('data/comuni_verona.json')
+.then(r=>r.json())
+.then(data=>{
+  const layer=L.geoJSON(data,{
+    style:f=>{
+      const n=nomeComune(f.properties);
+      comuni.push(n);
+      return {
+        color: hasRef(n) ? '#00ff9c' : '#ffaa00',
+        weight:1,
+        fillOpacity:0
+      };
+    },
+    onEachFeature:(f,l)=>{
+      const nome=nomeComune(f.properties);
+      const lab=L.marker(l.getBounds().getCenter(),{
+        icon:L.divIcon({className:'label-comune',html:nome}),
+        interactive:false
+      }).addTo(map);
+      labels.push(lab);
+      l.on('click',()=>selezionaComune(l,nome));
+    }
+  }).addTo(map);
+
+  map.fitBounds(layer.getBounds());
+  aggiornaContatori();
+  map.on('zoomend',gestioneZoom);
+  gestioneZoom();
+});
+
+/* ZOOM */
+function gestioneZoom(){
+  const z=map.getZoom();
+  if(z<=10 && selectedLayer){
+    const nome=nomeComune(selectedLayer.feature.properties);
+    selectedLayer.setStyle({
+      color: hasRef(nome) ? '#00ff9c' : '#ffaa00',
+      weight:1
+    });
+    selectedLayer=null;
+    hudTitle.innerText='Provincia di Verona';
+    hudSub.innerText='Vista generale';
+    farmLayer.clearLayers();
+    document.getElementById('farm-count').innerText='—';
+  }
+  labels.forEach(l=>{
+    if(!selectedLayer && z<=12) map.addLayer(l);
+    else map.removeLayer(l);
+  });
+}
+
+/* SELEZIONE COMUNE */
+function selezionaComune(layer,nome){
+  if(selectedLayer){
+    const prev=nomeComune(selectedLayer.feature.properties);
+    selectedLayer.setStyle({
+      color: hasRef(prev) ? '#00ff9c' : '#ffaa00',
+      weight:1
+    });
+  }
+  selectedLayer=layer;
+  layer.setStyle({ color:'#ffffff', weight:3 });
+  map.fitBounds(layer.getBounds(),{ padding:[40,40] });
+
+  hudTitle.innerText='Comune di '+nome;
+  hudSub.innerText=hasRef(nome)
+    ?'Referenti presenti'
+    :'⚠ Comune orfano';
+
+  labels.forEach(l=>map.removeLayer(l));
+  mostraFarmacie(nome);
+}
+
+/* FARMACIE */
+function mostraFarmacie(comune){
+  farmLayer.clearLayers();
+  const vis=farmacie.filter(f=>f.comune===comune);
+  document.getElementById('farm-count').innerText=vis.length+' farmacie';
+
+  vis.forEach(f=>{
+    const html=f.tipo==="privata"
+      ? `<div class="dot ${f.stato}"></div>`
+      : `<div class="triangle ${f.stato}"></div>`;
+
+    const popup = `
+      <strong>${f.nome}</strong><br>
+      ${f.indirizzo}<br>
+      ${f.telefono || ''}<br><br>
+      <a href="${driveMateriali}" target="_blank">
+        📁 Materiali di campagna (Drive)
+      </a><br>
+      <a href="https://maps.google.com/?q=${f.lat},${f.lng}" target="_blank">
+        🧭 Apri su Maps
+      </a>
+    `;
+
+    const m=L.marker([f.lat,f.lng],{
+      icon:L.divIcon({html:html,iconSize:[16,16]})
+    }).bindPopup(popup);
+
+    farmLayer.addLayer(m);
+  });
+}
+
+/* CONTATORI */
+function aggiornaContatori(){
+  const ok=comuni.filter(n=>hasRef(n)).length;
+  document.getElementById('cntOk').innerText=ok;
+  document.getElementById('cntOrfani').innerText=comuni.length-ok;
+}
 </script>
 
 </body>
