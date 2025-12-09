@@ -114,18 +114,33 @@
     fillOpacity: 0.18
   }).addTo(map);
 
-  // INTERAZIONI
-  areaVerona
-    .on('mouseover', () => {
-      areaVerona.setStyle({ fillOpacity: 0.32 });
-    })
-    .on('mouseout', () => {
+ let selected = false;
+
+areaVerona
+  .on('mouseover', () => {
+    if (!selected) {
+      areaVerona.setStyle({ fillOpacity: 0.30 });
+    }
+  })
+  .on('mouseout', () => {
+    if (!selected) {
       areaVerona.setStyle({ fillOpacity: 0.18 });
-    })
-    .on('click', () => {
-      document.querySelector('.hud-title').innerText = 'VERONA';
-      document.querySelector('.hud-sub').innerText = 'Comune selezionato';
+    }
+  })
+  .on('click', () => {
+    selected = true;
+
+    // evidenziazione netta
+    areaVerona.setStyle({
+      fillOpacity: 0.45,
+      weight: 3
     });
+
+    // aggiorna HUD
+    document.querySelector('.hud-title').innerText = 'VERONA';
+    document.querySelector('.hud-sub').innerText = 'COMUNE SELEZIONATO';
+  });
+
 </script>
 
 </body>
