@@ -2,11 +2,9 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-
 <title>Mappa Verona</title>
 
-<link rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
 html, body {
@@ -28,9 +26,8 @@ html, body {
   background: rgba(10,10,10,.94);
   border-left: 4px solid #00ff9c;
 }
-
 .hud-title { font-size:18px; font-weight:650; color:#fff; }
-.hud-sub   { margin-top:4px; font-size:12px; color:#bbb; }
+.hud-sub { margin-top:4px; font-size:12px; color:#bbb; }
 
 /* ===== STATS ===== */
 #stats {
@@ -51,8 +48,8 @@ html, body {
   font-size:11px;
   display:inline-block;
 }
-.badge-ok   { background:rgba(0,255,156,.15); color:#bfffe8; }
-.badge-warn { background:rgba(255,170,0,.2); color:#ffd699; }
+.badge-ok { background:rgba(0,255,156,.15); color:#bfffe8; }
+.badge-warn { background:rgba(255,170,0,.25); color:#ffd699; }
 
 /* ===== ACTION BUTTONS ===== */
 .action {
@@ -67,22 +64,35 @@ html, body {
   color:#000;
 }
 .action.secondary {
-  background:#222;
-  color:#eee;
+  background:#1b1b1b;
+  color:#fff;
+  border:1px solid #333;
 }
 .action:hover { filter:brightness(1.1); }
 
 /* ===== LISTA REFERENTI ===== */
 #referentiBox {
   margin-top:10px;
-  padding:8px;
-  font-size:13px;
+  padding:10px;
   background:#111;
+  color:#fff;
+  font-size:13px;
+  border-left:3px solid #00ff9c;
   display:none;
+}
+#referentiBox h4 {
+  margin:0 0 6px 0;
+  font-size:12px;
+  color:#9ef5d9;
+  text-transform:uppercase;
+  letter-spacing:1px;
 }
 #referentiBox ul {
   margin:0;
   padding-left:18px;
+}
+#referentiBox li {
+  margin-bottom:4px;
 }
 
 /* ===== MAP STYLES ===== */
@@ -133,7 +143,7 @@ html, body {
   <div id="badge" class="badge badge-warn">Seleziona un comune</div>
 
   <div id="addBtn" class="action" style="display:none"
-       onclick="aggiungiReferente()">➕ Diventa referente</div>
+       onclick="aggiungiReferente()">➕ Aggiungiti come referente</div>
 
   <div id="listBtn" class="action secondary" style="display:none"
        onclick="toggleLista()">👤 Vedi referenti</div>
@@ -143,7 +153,7 @@ html, body {
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-/* ===== MOCK DB ===== */
+/* ===== MOCK DB (TEMPORANEO) ===== */
 const referenti = {
   "Verona": ["Anna R.", "Luca M."]
 };
@@ -154,7 +164,7 @@ const farmacie = [
 
 /* ===== STATE ===== */
 let comuneAttivo = null;
-let showList = false;
+let listaVisibile = false;
 
 /* ===== UTILS ===== */
 const nomeComune = p => p.nome || p.DENOM_COM || p.name || p.COMUNE;
@@ -162,39 +172,49 @@ const hasReferenti = c => referenti[c] && referenti[c].length>0;
 
 /* ===== REFERENTI UI ===== */
 function renderReferenti(){
-  const box=document.getElementById('referentiBox');
-  box.innerHTML='';
-  if(!referenti[comuneAttivo]) {
-    box.innerHTML='<em>Nessun referente</em>';
+  const box = document.getElementById('referentiBox');
+  box.innerHTML = '<h4>Referenti</h4>';
+
+  if(!referenti[comuneAttivo] || referenti[comuneAttivo].length===0){
+    box.innerHTML += '<em>Nessun referente assegnato</em>';
     return;
   }
-  const ul=document.createElement('ul');
+
+  const ul = document.createElement('ul');
   referenti[comuneAttivo].forEach(r=>{
     const li=document.createElement('li');
-    li.textContent=r;
+    li.textContent = r;
     ul.appendChild(li);
   });
   box.appendChild(ul);
 }
 
 function toggleLista(){
-  showList=!showList;
-  const box=document.getElementById('referentiBox');
-  box.style.display=showList?'block':'none';
-  if(showList) renderReferenti();
+  listaVisibile = !listaVisibile;
+  const box = document.getElementById('referentiBox');
+  box.style.display = listaVisibile ? 'block' : 'none';
+  if(listaVisibile) renderReferenti();
 }
 
 function aggiungiReferente(){
-  const nome=prompt("Inserisci il tuo nome");
+  if(!comuneAttivo) return;
+  const nome = prompt("Inserisci il tuo nome");
   if(!nome) return;
-  if(!referenti[comuneAttivo]) referenti[comuneAttivo]=[];
+
+  if(!referenti[comuneAttivo]) referenti[comuneAttivo] = [];
   referenti[comuneAttivo].push(nome);
+
+  document.getElementById('badge').className = 'badge badge-ok';
+  document.getElementById('badge').innerText = 'Comune coperto';
+
+  document.getElementById('listBtn').style.display = 'block';
+
   renderReferenti();
   aggiornaStats();
 }
 
 /* ===== MAPPA ===== */
-const map=L.map('map',{attributionControl:false})
+const map = L.map('map',{ attributionControl:false })
   .setView([45.43,10.99],11);
 
 L.tileLayer(
@@ -220,7 +240,11 @@ fetch('data/comuni_verona.json')
       const c=l.getBounds().getCenter();
 
       const lab=L.marker(c,{
-        icon:L.divIcon({className:'label-comune',html:nome,iconSize:[120,14]}),
+        icon:L.divIcon({
+          className:'label-comune',
+          html:nome,
+          iconSize:[120,14]
+        }),
         interactive:false
       }).addTo(map);
       labels.push(lab);
@@ -229,23 +253,19 @@ fetch('data/comuni_verona.json')
         setTimeout(()=>l._path.classList.add('orfano'),50);
 
       l.on('click',()=>{
-        selected=l;
-        comuneAttivo=nome;
-        showList=false;
-
-        document.getElementById('badge').className=
-          'badge '+(hasReferenti(nome)?'badge-ok':'badge-warn');
-        document.getElementById('badge').innerText=
-          hasReferenti(nome)?'Comune coperto':'⚠ Comune orfano';
-
-        document.getElementById('addBtn').style.display='block';
-        document.getElementById('addBtn').innerText=
-          hasReferenti(nome)?'➕ Aggiungi refernte':'➕ Diventa referente';
-
-        document.getElementById('listBtn').style.display=
-          hasReferenti(nome)?'block':'none';
+        comuneAttivo = nome;
+        listaVisibile = false;
 
         document.getElementById('referentiBox').style.display='none';
+        document.getElementById('listBtn').style.display =
+          hasReferenti(nome) ? 'block' : 'none';
+
+        document.getElementById('addBtn').style.display='block';
+
+        document.getElementById('badge').className =
+          'badge '+(hasReferenti(nome)?'badge-ok':'badge-warn');
+        document.getElementById('badge').innerText =
+          hasReferenti(nome)?'Comune coperto':'⚠ Comune orfano';
       });
     }
   }).addTo(map);
@@ -259,10 +279,10 @@ fetch('data/comuni_verona.json')
 });
 
 function aggiornaStats(){
-  const cop=comuniNomi.filter(c=>hasReferenti(c)).length;
-  document.getElementById('coperti').innerText=cop;
-  document.getElementById('orfani').innerText=comuniNomi.length-cop;
-  document.getElementById('farmacie').innerText=farmacie.length;
+  const cop = comuniNomi.filter(c=>hasReferenti(c)).length;
+  document.getElementById('coperti').innerText = cop;
+  document.getElementById('orfani').innerText = comuniNomi.length - cop;
+  document.getElementById('farmacie').innerText = farmacie.length;
 }
 </script>
 
