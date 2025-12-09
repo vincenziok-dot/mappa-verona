@@ -11,13 +11,10 @@ html, body {
   margin: 0;
   height: 100%;
   background: #000;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: system-ui, sans-serif;
 }
 
-#map {
-  position: absolute;
-  inset: 0;
-}
+#map { position:absolute; inset:0; }
 
 /* ================= HUD ================= */
 #hud {
@@ -25,72 +22,86 @@ html, body {
   top: 18px;
   left: 18px;
   z-index: 9999;
-  width: 300px;
+  width: 320px;
   padding: 16px;
-  background: rgba(10,10,10,.92);
+  background: rgba(10,10,10,.94);
   border-left: 4px solid #00ff9c;
-  box-shadow: 0 0 14px rgba(0,0,0,.6);
-  pointer-events: none;
+  box-shadow: 0 0 18px rgba(0,0,0,.6);
 }
 
 .hud-title {
   font-size: 18px;
   font-weight: 650;
   color: #fff;
-  letter-spacing: .5px;
 }
 
 .hud-sub {
-  margin-top: 6px;
+  margin-top: 4px;
   font-size: 12px;
   color: #bdbdbd;
 }
 
-.hud-badge {
+/* ===== CONTATORI ===== */
+#stats {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.stat {
+  padding: 8px 10px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  font-size: 12px;
+}
+
+.stat strong {
+  font-size: 18px;
+  display: block;
+}
+
+.stat.ok strong { color:#00ff9c; }
+.stat.warn strong { color:#ffaa00; }
+
+/* ===== BADGE ===== */
+.badge {
   margin-top: 10px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  display: inline-block;
   padding: 4px 8px;
+  font-size: 11px;
   border-radius: 999px;
-  text-transform: uppercase;
-  letter-spacing: .5px;
 }
+.badge-ok { background: rgba(0,255,156,.15); color:#bfffe8; }
+.badge-warn { background: rgba(255,170,0,.18); color:#ffd699; }
 
-.badge-ok {
-  color: #bfffe8;
-  border: 1px solid rgba(0,255,156,.6);
-  background: rgba(0,255,156,.08);
-}
-
-.badge-warn {
-  color: #ffd699;
-  border: 1px solid rgba(255,170,0,.7);
-  background: rgba(255,170,0,.1);
-}
-
-/* =============== MAP LABELS =============== */
+/* ===== LABEL MAPPA ===== */
 .label-comune {
   color: rgba(240,240,240,.9);
   font-size: 11px;
-  white-space: nowrap;
   text-shadow: 0 0 4px #000;
   pointer-events: none;
 }
 
-/* =============== ANIMAZIONI =============== */
+/* ===== ANIMAZIONI ===== */
 .pulse {
-  animation: pulse 1.4s ease-out;
+  animation: pulse .8s ease-out;
 }
-
 @keyframes pulse {
-  0% { stroke-opacity: .3 }
-  50% { stroke-opacity: 1 }
-  100% { stroke-opacity: .3 }
+  0%{stroke-opacity:.3}
+  50%{stroke-opacity:1}
+  100%{stroke-opacity:.3}
 }
 
-.leaflet-interactive { cursor: pointer; }
+.orfano {
+  animation: glow 2.5s infinite;
+}
+@keyframes glow {
+  0%,100% { stroke-opacity:.5 }
+  50% { stroke-opacity:1 }
+}
+
+.leaflet-interactive { cursor:pointer }
 </style>
 </head>
 
@@ -100,122 +111,112 @@ html, body {
 
 <div id="hud">
   <div class="hud-title">Provincia di Verona</div>
-  <div class="hud-sub">Seleziona un comune</div>
-  <div id="hud-badge" class="hud-badge badge-warn">
-    Comune non selezionato
+  <div class="hud-sub">Situazione territoriale</div>
+
+  <div id="stats">
+    <div class="stat ok">
+      <strong id="coperti">0</strong>
+      comuni coperti
+    </div>
+    <div class="stat warn">
+      <strong id="orfani">0</strong>
+      comuni orfani
+    </div>
+    <div class="stat">
+      <strong id="farmacie">0</strong>
+      farmacie (mock)
+    </div>
+    <div class="stat">
+      <strong>–</strong>
+      medici/studi
+    </div>
+  </div>
+
+  <div id="badge" class="badge badge-warn">
+    Seleziona un comune
   </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-/* ========== MOCK REFERENTI (TEMP) ========== */
-const referentiPerComune = {
+/* ========= MOCK DATABASE (PROVVISORI) ========= */
+
+// Referenti (provvisorio)
+const referenti = {
   "Verona": ["Anna R.", "Luca M."]
 };
 
-/* ============== MAPPA ============== */
-const map = L.map('map', {
-  attributionControl: false
-}).setView([45.43,10.99], 11);
+// Farmacie MOCK (struttura definitiva)
+const farmacie = [
+  { nome:"Farmacia Centrale", comune:"Verona", stato:"da_contattare" },
+  { nome:"Farmacia San Zeno", comune:"Verona", stato:"in_attesa" }
+];
 
-L.tileLayer(
-  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-  { maxZoom: 19 }
-).addTo(map);
+/* ========= FUNZIONI ========= */
+const hasReferenti = c => referenti[c] && referenti[c].length>0;
 
-let selectedLayer = null;
-let labels = [];
-
-function hasReferenti(nome) {
-  return referentiPerComune[nome] && referentiPerComune[nome].length > 0;
+function aggiornaStats(comuni){
+  const tot = comuni.length;
+  const cop = comuni.filter(c=>hasReferenti(c)).length;
+  document.getElementById('coperti').innerText = cop;
+  document.getElementById('orfani').innerText = tot-cop;
+  document.getElementById('farmacie').innerText = farmacie.length;
 }
 
-/* ============ COMUNI ============ */
+/* ========= MAPPA ========= */
+const map = L.map('map',{ attributionControl:false }).setView([45.43,10.99],11);
+L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  { maxZoom:19 }
+).addTo(map);
+
+let labels=[];
+let comuniNomi=[];
+
 fetch('data/comuni_verona.json')
-.then(r => r.json())
-.then(data => {
+.then(r=>r.json())
+.then(data=>{
+  L.geoJSON(data,{style:{color:'#000',weight:4,opacity:.3}}).addTo(map);
 
-  // Ombra
-  L.geoJSON(data, {
-    style: { color:'#000', weight:4, opacity:.3 }
-  }).addTo(map);
-
-  const comuni = L.geoJSON(data, {
-    style: f => {
-      const nome = f.properties.nome || f.properties.DENOM_COM;
+  const layer = L.geoJSON(data,{
+    style:f=>{
+      const n=f.properties.nome||f.properties.DENOM_COM;
+      comuniNomi.push(n);
       return {
-        color: hasReferenti(nome) ? '#00ff9c' : '#ffaa00',
-        weight: 1,
-        fillOpacity: 0
-      };
+        color:hasReferenti(n)?'#00ff9c':'#ffaa00',
+        weight:1,
+        fillOpacity:0
+      }
     },
-    onEachFeature: (f, layer) => {
-      const nome = f.properties.nome || f.properties.DENOM_COM;
+    onEachFeature:(f,l)=>{
+      const nome=f.properties.nome||f.properties.DENOM_COM;
+      const orfano=!hasReferenti(nome);
+      if(orfano) setTimeout(()=>l._path.classList.add('orfano'),100);
 
-      // Label comunale
-      const c = layer.getBounds().getCenter();
-      const label = L.marker(c, {
-        icon: L.divIcon({
-          className: 'label-comune',
-          html: nome,
-          iconSize: [120,14]
-        }),
-        interactive: false
+      // label
+      const c=l.getBounds().getCenter();
+      const lab=L.marker(c,{
+        icon:L.divIcon({className:'label-comune',html:nome,iconSize:[120,14]}),
+        interactive:false
       }).addTo(map);
-      labels.push(label);
+      labels.push(lab);
 
-      layer.on('mouseover', () => {
-        if (layer !== selectedLayer)
-          layer.setStyle({ weight:2, color:'#fff' });
-      });
-
-      layer.on('mouseout', () => {
-        if (layer !== selectedLayer)
-          layer.setStyle({
-            weight:1,
-            color: hasReferenti(nome) ? '#00ff9c' : '#ffaa00'
-          });
-      });
-
-      layer.on('click', () => {
-        if (selectedLayer) {
-          const p = selectedLayer.feature.properties;
-          selectedLayer.setStyle({
-            weight:1,
-            color: hasReferenti(p.nome||p.DENOM_COM) ? '#00ff9c' : '#ffaa00'
-          });
-        }
-
-        selectedLayer = layer;
-        layer.setStyle({ weight:3, color:'#fff' });
-        layer._path.classList.add('pulse');
-
-        map.fitBounds(layer.getBounds(), { padding:[40,40] });
-
-        document.querySelector('.hud-title').innerText =
-          'Comune di ' + nome;
-
-        const badge = document.getElementById('hud-badge');
-        if (hasReferenti(nome)) {
-          badge.className = 'hud-badge badge-ok';
-          badge.innerText = 'Comune coperto';
-        } else {
-          badge.className = 'hud-badge badge-warn';
-          badge.innerText = '⚠ Comune orfano';
-        }
+      l.on('click',()=>{
+        l._path.classList.add('pulse');
+        document.getElementById('badge').className=
+          'badge '+(orfano?'badge-warn':'badge-ok');
+        document.getElementById('badge').innerText=
+          orfano?'⚠ Comune orfano':'Comune coperto';
       });
     }
   }).addTo(map);
 
-  map.fitBounds(comuni.getBounds());
+  map.fitBounds(layer.getBounds());
+  aggiornaStats(comuniNomi);
 
-  // Mostra / nasconde etichette
-  function updateLabels() {
-    const z = map.getZoom();
-    labels.forEach(l => z <= 11 ? l.addTo(map) : map.removeLayer(l));
-  }
-  map.on('zoomend', updateLabels);
-  updateLabels();
+  map.on('zoomend',()=>{
+    labels.forEach(l=>map.getZoom()<=11?l.addTo(map):map.removeLayer(l));
+  });
 });
 </script>
 
