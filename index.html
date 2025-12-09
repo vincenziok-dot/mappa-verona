@@ -15,23 +15,25 @@ html, body {
 }
 #map { position:absolute; inset:0; background:#050505; }
 
-/* HUD */
+/* ===== HUD ===== */
 #hud {
   position: fixed;
-  top: 20px;
-  left: 20px;
+  top: 18px;
+  left: 18px;
   z-index: 9999;
   padding: 14px 16px;
   background: rgba(5,5,5,.94);
   border-left: 4px solid #00ff9c;
   min-width: 300px;
-  box-shadow: 0 0 20px rgba(0,0,0,.8);
+  box-shadow: 0 0 20px rgba(0,0,0,.85);
 }
+
 .hud-title {
   font-size: 18px;
-  text-transform: uppercase;
-  color: #fff;
   font-weight: 650;
+  color: #fff;
+  letter-spacing: .08em;
+  text-transform: uppercase;
 }
 .hud-sub { margin-top:6px; font-size:13px; color:#bdbdbd; }
 
@@ -53,6 +55,28 @@ html, body {
 .ok strong { color:#00ff9c; }
 .warn strong { color:#ffaa00; }
 
+/* ===== LEGENDA ===== */
+#legend {
+  margin-top:10px;
+  font-size:11px;
+  background:#0c0c0c;
+  padding:8px;
+}
+.legend-row {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:4px;
+}
+.legend-dot {
+  width:10px;
+  height:10px;
+  border-radius:50%;
+}
+.legend-ok { background:#00ff9c; }
+.legend-warn { background:#ffaa00; }
+
+/* ===== BOTTONI ===== */
 .hud-buttons {
   margin-top:10px;
   display:flex;
@@ -68,6 +92,7 @@ html, body {
 }
 .hud-btn:hover { background:#00ff9c; color:#00110b; }
 
+/* ===== REFERENTI ===== */
 .hud-section {
   margin-top:10px;
   border-top:1px solid #222;
@@ -84,17 +109,14 @@ html, body {
   color:#fff;
 }
 
-/* Etichette comuni */
+/* ===== LABEL COMUNI ===== */
 .label-comune {
-  color:#f0f0f0;
+  color:#ffffff;
   font-size:11px;
-  text-shadow:0 0 6px #000;
+  font-weight:500;
+  text-shadow:0 0 6px rgba(0,0,0,.9);
   pointer-events:none;
 }
-
-/* colori stato */
-.comune-ok { color:#00ff9c; }
-.comune-orfano { color:#ffaa00; }
 
 .leaflet-interactive { cursor:pointer; }
 </style>
@@ -111,6 +133,17 @@ html, body {
   <div id="stats">
     <div class="stat ok"><strong id="cntOk">0</strong>con referente</div>
     <div class="stat warn"><strong id="cntOrfani">0</strong>orfani</div>
+  </div>
+
+  <div id="legend">
+    <div class="legend-row">
+      <span class="legend-dot legend-ok"></span>
+      Comune con referente
+    </div>
+    <div class="legend-row">
+      <span class="legend-dot legend-warn"></span>
+      Comune orfano
+    </div>
   </div>
 
   <div class="hud-buttons">
@@ -133,14 +166,14 @@ L.tileLayer(
   {maxZoom:18}
 ).addTo(map);
 
-/* ===== REFERENTI (mock) ===== */
+/* ===== DATI ===== */
 const referenti={
   "Verona":["Vincenzo R.","Anna R."]
 };
 
-let selectedLayer=null;
 let labels=[];
 let comuniNomi=[];
+let selectedLayer=null;
 let refVisibili=false;
 
 /* ===== HUD ===== */
@@ -162,7 +195,7 @@ fetch('data/comuni_verona.json')
       const n=nomeComune(f.properties);
       comuniNomi.push(n);
       return {
-        color: hasRef(n) ? '#00ff9c' : '#ffaa00',
+        color:hasRef(n)?'#00ff9c':'#ffaa00',
         weight:1,
         fillOpacity:0
       };
@@ -173,17 +206,13 @@ fetch('data/comuni_verona.json')
       const center=l.getBounds().getCenter();
       const lab=L.marker(center,{
         icon:L.divIcon({
-          className:'label-comune '+(hasRef(nome)?'comune-ok':'comune-orfano'),
+          className:'label-comune',
           html:nome,
           iconSize:[120,16]
         }),
         interactive:false
       }).addTo(map);
       labels.push(lab);
-
-      l.on('click',()=>{
-        selezionaComune(l,nome);
-      });
 
       l.on('mouseover',()=>{
         if(l!==selectedLayer) l.setStyle({color:'#fff',weight:2});
@@ -192,22 +221,38 @@ fetch('data/comuni_verona.json')
         if(l!==selectedLayer)
           l.setStyle({color:hasRef(nome)?'#00ff9c':'#ffaa00',weight:1});
       });
+
+      l.on('click',()=>{
+        selezionaComune(l,nome);
+      });
     }
   }).addTo(map);
 
   map.fitBounds(layer.getBounds());
   aggiornaContatori();
-
   map.on('zoomend',aggiornaLabelVisibilita);
   aggiornaLabelVisibilita();
 });
 
+/* ===== LABEL VISIBILITÀ ===== */
+function aggiornaLabelVisibilita(){
+  if(selectedLayer) {
+    labels.forEach(l=>map.removeLayer(l));
+    return;
+  }
+  const z=map.getZoom();
+  labels.forEach(l=>{
+    if(z<=12) l.addTo(map);
+    else map.removeLayer(l);
+  });
+}
+
 /* ===== SELEZIONE COMUNE ===== */
 function selezionaComune(layer,nome){
   if(selectedLayer){
-    const pn=nomeComune(selectedLayer.feature.properties);
+    const prev=nomeComune(selectedLayer.feature.properties);
     selectedLayer.setStyle({
-      color:hasRef(pn)?'#00ff9c':'#ffaa00',
+      color:hasRef(prev)?'#00ff9c':'#ffaa00',
       weight:1
     });
   }
@@ -217,24 +262,12 @@ function selezionaComune(layer,nome){
   map.fitBounds(layer.getBounds(),{padding:[40,40]});
 
   hudTitle.innerText='Comune di '+nome;
-  hudSub.innerText=hasRef(nome)?
-    'Referenti presenti: '+referenti[nome].length:
-    '⚠ Comune orfano';
+  hudSub.innerText=hasRef(nome)
+    ?'Referenti presenti: '+referenti[nome].length
+    :'⚠ Comune orfano';
 
-  // nascondi label quando un comune è selezionato
   labels.forEach(l=>map.removeLayer(l));
-
   if(refVisibili) mostraReferenti(nome);
-}
-
-/* ===== LABEL VISIBILITA ===== */
-function aggiornaLabelVisibilita(){
-  if(selectedLayer) return; // se lavoro su un comune, niente label
-  const z=map.getZoom();
-  labels.forEach(l=>{
-    if(z<=12) l.addTo(map);
-    else map.removeLayer(l);
-  });
 }
 
 /* ===== REFERENTI ===== */
@@ -267,7 +300,6 @@ document.getElementById('btnAdd').onclick=()=>{
 
   hudSub.innerText='Referenti presenti: '+referenti[nome].length;
   aggiornaContatori();
-
   if(refVisibili) mostraReferenti(nome);
 };
 
