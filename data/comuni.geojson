@@ -1,0 +1,29 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "nome": "Verona" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[10.95,45.38],[11.10,45.38],[11.10,45.47],[10.95,45.47],[10.95,45.38]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "nome": "San Giovanni Lupatoto" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[11.02,45.35],[11.12,45.35],[11.12,45.41],[11.02,45.41],[11.02,45.35]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "nome": "Villafranca di Verona" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[10.78,45.34],[10.90,45.34],[10.90,45.42],[10.78,45.42],[10.78,45.34]]]
+      }
+    }
+  ]
+}
