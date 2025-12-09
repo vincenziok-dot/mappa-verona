@@ -74,8 +74,21 @@ const verona = [
     alert('Comune: Verona');
   });
 
-  L.marker([500,500]).addTo(map)
-    .bindTooltip('VERONA', { permanent:true, className:'label' });
+// click sul poligono (non sul testo)
+area.on('click', () => {
+  alert('Comune: Verona');
+});
+
+// etichetta pulita, NON cliccabile
+L.tooltip({
+  permanent: true,
+  direction: 'center',
+  className: 'label'
+})
+.setContent('VERONA')
+.setLatLng([520, 600])
+.addTo(map);
+
 
 </script>
 </body>
