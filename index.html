@@ -3,50 +3,124 @@
 <head>
 <meta charset="utf-8">
 <title>Mappa Verona – SpG</title>
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-html,body{margin:0;height:100%;background:#000;font-family:system-ui}
+html,body{
+  margin:0;height:100%;
+  background:#000;
+  font-family:system-ui,sans-serif
+}
 #map{position:absolute;inset:0}
 
 /* HUD */
 #hud{
- position:fixed;top:16px;left:16px;z-index:999;
- width:360px;padding:14px;
- background:rgba(5,5,5,.94);
- border-left:4px solid #00ff9c;
- box-shadow:0 0 25px #000
+  position:fixed;
+  top:16px;
+  left:16px;
+  z-index:9999;
+  width:360px;
+  padding:14px 16px;
+  background:rgba(5,5,5,.94);
+  border-left:4px solid #00ff9c;
+  box-shadow:0 0 25px rgba(0,0,0,.9)
 }
-h3{margin:0;color:#fff;font-size:18px}
-.sub{color:#aaa;font-size:13px;margin-bottom:8px}
+.hud-title{
+  color:#fff;
+  font-size:18px;
+  font-weight:650;
+  text-transform:uppercase
+}
+.hud-sub{
+  color:#bdbdbd;
+  font-size:13px;
+  margin-top:4px
+}
 
-/* collapsible */
-.section{border-top:1px solid #222;margin-top:10px;padding-top:8px}
-.toggle{cursor:pointer;color:#9ef5d9;font-size:12px}
-.content{display:none;font-size:12px;color:#ddd;margin-top:6px}
+/* STATI */
+#stats{
+  margin-top:12px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px
+}
+.stat{
+  background:#0e0e0e;
+  padding:8px
+}
+.stat-title{
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  color:#aaa
+}
+.stat-value{
+  font-size:26px;
+  font-weight:700
+}
+.ok{color:#00ff9c}
+.warn{color:#ffaa00}
 
-/* legend */
-.legend-row{display:flex;gap:6px;align-items:center;font-size:11px}
-.dot{width:12px;height:12px;border-radius:50%}
+/* LEGGENDA */
+#legend{
+  margin-top:14px;
+  padding-top:10px;
+  border-top:1px solid #222;
+  font-size:11px
+}
+.legend-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin:4px 0;
+  color:#e0e0e0
+}
+.swatch{
+  width:14px;height:14px;border-radius:2px
+}
+.border-ok{border:2px solid #00ff9c}
+.border-warn{border:2px solid #ffaa00}
+.dot{border-radius:50%}
 .triangle{
- width:0;height:0;
- border-left:7px solid transparent;
- border-right:7px solid transparent;
- border-bottom:12px solid #00ff9c
+  width:0;height:0;
+  border-left:7px solid transparent;
+  border-right:7px solid transparent;
+  border-bottom:12px solid #00ff9c
 }
 
-/* buttons */
+/* BUTTONS */
+.buttons{
+  margin-top:12px;
+  display:flex;
+  gap:6px
+}
 button{
- background:#041812;border:1px solid #00ff9c;
- color:#eafff7;font-size:11px;
- padding:4px 8px;cursor:pointer
+  background:#041812;
+  border:1px solid #00ff9c;
+  color:#eafff7;
+  font-size:11px;
+  padding:4px 8px;
+  cursor:pointer
 }
-button:hover{background:#00ff9c;color:#000}
+button:hover{background:#00ff9c;color:#00110b}
 
-.label-comune{
- color:#fff;font-size:11px;
- text-shadow:0 0 6px #000
+/* REFERENTI */
+#refPanel{
+  display:none;
+  margin-top:8px;
+  font-size:12px;
+  color:#fff
 }
+
+/* LABEL COMUNI */
+.label-comune{
+  color:#ffffff;
+  font-size:11px;
+  text-shadow:0 0 6px rgba(0,0,0,.9);
+  pointer-events:none
+}
+.leaflet-interactive{cursor:pointer}
 </style>
 </head>
 
@@ -54,114 +128,156 @@ button:hover{background:#00ff9c;color:#000}
 <div id="map"></div>
 
 <div id="hud">
-  <h3 id="hudTitle">Provincia di Verona</h3>
-  <div class="sub" id="hudSub">Vista generale</div>
+  <div class="hud-title" id="hudTitle">Provincia di Verona</div>
+  <div class="hud-sub" id="hudSub">Vista generale</div>
 
-  <button id="btnAdd">Aggiungi referente</button>
-  <button id="btnToggle">Vedi referenti</button>
-
-  <ul id="refList" style="display:none;margin:6px 0 0"></ul>
-
-  <div class="section">
-    <div class="toggle" onclick="toggleBox('provBox')">▸ Provincia (overview)</div>
-    <div class="content" id="provBox">
-      Grafici provincia (farmacie / MMG) – prossimo step
+  <div id="stats">
+    <div class="stat">
+      <div class="stat-title">Comuni coperti</div>
+      <div class="stat-value ok" id="cntOk">0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-title">Comuni orfani</div>
+      <div class="stat-value warn" id="cntOrfani">0</div>
     </div>
   </div>
 
-  <div class="section">
-    <div class="toggle" onclick="toggleBox('comBox')">▸ Comune selezionato</div>
-    <div class="content" id="comBox">
-      Grafici comune – prossimo step
-    </div>
+  <div class="buttons">
+    <button id="btnAdd">Aggiungi referente</button>
+    <button id="btnToggle">Vedi referenti</button>
   </div>
 
-  <div class="section">
-    <div class="legend-row"><span class="dot" style="background:#00ff9c"></span> Comune coperto</div>
-    <div class="legend-row"><span class="dot" style="background:#ffaa00"></span> Comune orfano</div>
-    <div class="legend-row"><span class="dot" style="background:#00ff9c"></span> Farmacia privata</div>
-    <div class="legend-row"><span class="triangle"></span> Farmacia comunale</div>
+  <div id="refPanel"><ul id="refList"></ul></div>
+
+  <div id="legend">
+    <div class="legend-row">
+      <div class="swatch border-ok"></div> Comune con referenti
+    </div>
+    <div class="legend-row">
+      <div class="swatch border-warn"></div> Comune orfano
+    </div>
+    <div class="legend-row">
+      <div class="swatch dot" style="background:#00ff9c"></div> Farmacia privata
+    </div>
+    <div class="legend-row">
+      <div class="triangle"></div> Farmacia comunale
+    </div>
   </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const map=L.map('map',{attributionControl:false}).setView([45.43,10.99],10)
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map)
+/* MAPPA */
+const map=L.map('map',{attributionControl:false})
+  .setView([45.43,10.99],10)
 
-const stato={}, layers={}, farmLayer=L.layerGroup().addTo(map)
-let selected=null, showRefs=false
+L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  {maxZoom:18}
+).addTo(map)
 
-/* FARMACIE – RIPRISTINATE */
+/* DATI */
+const referenti={"Verona":["Vincenzo R."]}
 const farmacie=[
  {nome:"Farmacia Centrale",comune:"Verona",lat:45.438,lng:10.992,tipo:"privata"},
- {nome:"Farmacia San Zeno",comune:"Verona",lat:45.443,lng:10.980,tipo:"comunale"},
+ {nome:"Farmacia San Zeno",comune:"Verona",lat:45.443,lng:10.98,tipo:"comunale"},
  {nome:"Farmacia Borgo Roma",comune:"Verona",lat:45.389,lng:10.982,tipo:"privata"}
 ]
 
-function mostraFarmacie(com){
- farmLayer.clearLayers()
- farmacie.filter(f=>f.comune===com).forEach(f=>{
-  const icon=f.tipo==="privata"
-   ?'<div class="dot" style="background:#00ff9c"></div>'
-   :'<div class="triangle"></div>'
-  L.marker([f.lat,f.lng],{
-    icon:L.divIcon({html:icon,iconSize:[16,16]})
-  }).bindPopup(`
-   <strong>${f.nome}</strong><br>
-   ${f.tipo}<br>
-   <a target=_blank href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(f.nome+' Verona')}">Apri Maps</a><br>
-   <a target=_blank href="https://drive.google.com/drive/folders/1f9JTPwuquc1epCO6rpsONh2fFes8yabm">Materiali</a>
-  `).addTo(farmLayer)
+let layers={},labels=[],selected=null
+const farmLayer=L.layerGroup().addTo(map)
+
+const hudTitle=document.getElementById('hudTitle')
+const hudSub=document.getElementById('hudSub')
+const cntOk=document.getElementById('cntOk')
+const cntOrfani=document.getElementById('cntOrfani')
+const refPanel=document.getElementById('refPanel')
+const refList=document.getElementById('refList')
+
+const nomeComune=p=>p.nome||p.DENOM_COM||p.name||'Comune'
+const hasRef=n=>referenti[n]&&referenti[n].length>0
+
+function aggiornaContatori(){
+ const comuni=Object.keys(layers)
+ const ok=comuni.filter(hasRef).length
+ cntOk.textContent=ok
+ cntOrfani.textContent=comuni.length-ok
+}
+
+function aggiornaStili(){
+ Object.keys(layers).forEach(n=>{
+  layers[n].setStyle({
+    color:hasRef(n)?'#00ff9c':'#ffaa00',
+    fillOpacity:hasRef(n)?0.12:0
+  })
  })
 }
 
 /* COMUNI */
-fetch('data/comuni_verona.json').then(r=>r.json()).then(data=>{
- L.geoJSON(data,{
+fetch('data/comuni_verona.json')
+.then(r=>r.json())
+.then(data=>{
+ const geo=L.geoJSON(data,{
   style:f=>{
-   const n=f.properties.nome||f.properties.DENOM_COM
-   stato[n]={refs:[]};return{color:'#ffaa00',weight:1}
+   const n=nomeComune(f.properties)
+   return{color:hasRef(n)?'#00ff9c':'#ffaa00',weight:1,fillOpacity:0}
   },
   onEachFeature:(f,l)=>{
-   const n=f.properties.nome||f.properties.DENOM_COM
+   const n=nomeComune(f.properties)
    layers[n]=l
-   const lbl=L.marker(l.getBounds().getCenter(),{
-     icon:L.divIcon({className:'label-comune',html:n})
+
+   const lab=L.marker(l.getBounds().getCenter(),{
+    icon:L.divIcon({className:'label-comune',html:n})
    }).addTo(map)
+   labels.push(lab)
+
    l.on('click',()=>{
-     selected=n
-     hudTitle.innerText='Comune di '+n
-     hudSub.innerText=stato[n].refs.length?'Coperto':'Comune orfano'
-     mostraFarmacie(n)
-     l.setStyle({color:'#00ff9c',weight:3})
+    selected=n
+    hudTitle.textContent='Comune di '+n
+    hudSub.textContent=hasRef(n)?'Referenti presenti: '+referenti[n].length:'⚠ Comune orfano'
+    labels.forEach(x=>map.removeLayer(x))
+    mostraFarmacie(n)
    })
   }
  }).addTo(map)
+
+ map.fitBounds(geo.getBounds())
+ aggiornaContatori()
 })
+
+function mostraFarmacie(n){
+ farmLayer.clearLayers()
+ farmacie.filter(f=>f.comune===n).forEach(f=>{
+  const icon=f.tipo==="privata"
+   ?'<div style="width:12px;height:12px;border-radius:50%;background:#00ff9c"></div>'
+   :'<div style="width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:12px solid #00ff9c"></div>'
+  L.marker([f.lat,f.lng],{
+    icon:L.divIcon({html:icon,iconSize:[14,14]})
+  }).bindPopup(`<b>${f.nome}</b>`).addTo(farmLayer)
+ })
+}
 
 btnAdd.onclick=()=>{
  if(!selected) return alert('Seleziona un comune')
  const n=prompt('Nome referente')
  if(!n) return
- stato[selected].refs.push(n)
- hudSub.innerText='Referenti: '+stato[selected].refs.length
+ if(!referenti[selected]) referenti[selected]=[]
+ referenti[selected].push(n)
+ aggiornaStili()
+ aggiornaContatori()
+ hudSub.textContent='Referenti presenti: '+referenti[selected].length
 }
 
 btnToggle.onclick=()=>{
  if(!selected) return
- showRefs=!showRefs
+ refPanel.style.display=
+ refPanel.style.display==='block'?'none':'block'
  refList.innerHTML=''
- stato[selected].refs.forEach(r=>{
-  const li=document.createElement('li');li.textContent=r
+ referenti[selected].forEach(r=>{
+  const li=document.createElement('li')
+  li.textContent=r
   refList.appendChild(li)
  })
- refList.style.display=showRefs?'block':'none'
-}
-
-function toggleBox(id){
- const el=document.getElementById(id)
- el.style.display=el.style.display==='block'?'none':'block'
 }
 </script>
 </body>
