@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="utf-8">
-  <title>Mappa Verona</title>
+  <title>Mappa Verona – Demo</title>
 
   <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
 
@@ -11,16 +11,23 @@
       margin: 0;
       height: 100%;
       background: #000;
+      font-family: system-ui, sans-serif;
     }
+
     #map {
       height: 100%;
       width: 100%;
       background: #0b0b0b;
     }
+
+    /* Etichette stile "videogioco" */
     .label {
-      color: #00ff9c;
-      font-weight: bold;
-      font-size: 14px;
+      color: #e6e6e6;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-shadow: 0 0 6px rgba(0,0,0,0.9);
+      pointer-events: none;
     }
   </style>
 </head>
@@ -30,66 +37,62 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+  // MAPPA BASE SENZA TILE ESTERNE (100% LOCALE)
   const map = L.map('map', {
     zoomControl: true,
     attributionControl: false,
     crs: L.CRS.Simple
   });
 
-  // spazio di gioco (tipo videogioco)
+  // Spazio di gioco
   const bounds = [[0,0],[1000,1000]];
   map.fitBounds(bounds);
 
-  // sfondo black
+  // Sfondo scuro
   L.rectangle(bounds, {
     fillColor: '#0b0b0b',
     fillOpacity: 1,
     stroke: false
   }).addTo(map);
 
-// contorno reale semplificato Comune di Verona
-const verona = [
-  [350, 620],
-  [380, 680],
-  [440, 720],
-  [510, 710],
-  [560, 660],
-  [590, 610],
-  [580, 560],
-  [540, 520],
-  [500, 500],
-  [450, 505],
-  [410, 540],
-  [370, 580]
-];
+  // Contorno semplificato del Comune di Verona
+  const verona = [
+    [350, 620],
+    [380, 680],
+    [440, 720],
+    [510, 710],
+    [560, 660],
+    [590, 610],
+    [580, 560],
+    [540, 520],
+    [500, 500],
+    [450, 505],
+    [410, 540],
+    [370, 580]
+  ];
 
-
-  const area = L.polygon(verona, {
+  const areaVerona = L.polygon(verona, {
     color: '#00ff9c',
     weight: 3,
     fillOpacity: 0.05
   }).addTo(map);
 
-  area.on('click', () => {
+  // CLICK SUL COMUNE
+  areaVerona.on('click', () => {
     alert('Comune: Verona');
   });
 
-// click sul poligono (non sul testo)
-area.on('click', () => {
-  alert('Comune: Verona');
-});
-
-// etichetta pulita, NON cliccabile
-L.tooltip({
-  permanent: true,
-  direction: 'center',
-  className: 'label'
-})
-.setContent('VERONA')
-.setLatLng([520, 600])
-.addTo(map);
-
+  // ETICHETTA (NON CLICCABILE)
+  L.tooltip({
+    permanent: true,
+    direction: 'center',
+    className: 'label'
+  })
+  .setContent('VERONA')
+  .setLatLng([520, 600])
+  .addTo(map);
 
 </script>
 </body>
 </html>
+
