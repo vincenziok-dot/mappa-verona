@@ -13,10 +13,9 @@ html, body {
   background: #000;
   font-family: system-ui, sans-serif;
 }
-
 #map { position:absolute; inset:0; }
 
-/* ================= HUD ================= */
+/* ===== HUD ===== */
 #hud {
   position: fixed;
   top: 18px;
@@ -26,82 +25,49 @@ html, body {
   padding: 16px;
   background: rgba(10,10,10,.94);
   border-left: 4px solid #00ff9c;
-  box-shadow: 0 0 18px rgba(0,0,0,.6);
 }
+.hud-title { font-size:18px; font-weight:650; color:#fff; }
+.hud-sub { margin-top:4px; font-size:12px; color:#bbb; }
 
-.hud-title {
-  font-size: 18px;
-  font-weight: 650;
-  color: #fff;
-}
-
-.hud-sub {
-  margin-top: 4px;
-  font-size: 12px;
-  color: #bdbdbd;
-}
-
-/* ===== CONTATORI ===== */
 #stats {
-  margin-top: 12px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  margin-top:12px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
 }
+.stat { font-size:12px; background:#111; padding:8px; }
+.stat strong { font-size:18px; display:block; }
+.ok strong { color:#00ff9c; }
+.warn strong { color:#ffaa00; }
 
-.stat {
-  padding: 8px 10px;
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.08);
-  font-size: 12px;
-}
-
-.stat strong {
-  font-size: 18px;
-  display: block;
-}
-
-.stat.ok strong { color:#00ff9c; }
-.stat.warn strong { color:#ffaa00; }
-
-/* ===== BADGE ===== */
 .badge {
-  margin-top: 10px;
-  display: inline-block;
-  padding: 4px 8px;
-  font-size: 11px;
-  border-radius: 999px;
+  margin-top:10px;
+  padding:4px 8px;
+  font-size:11px;
+  display:inline-block;
 }
-.badge-ok { background: rgba(0,255,156,.15); color:#bfffe8; }
-.badge-warn { background: rgba(255,170,0,.18); color:#ffd699; }
+.badge-ok { background:rgba(0,255,156,.15); color:#bfffe8; }
+.badge-warn { background:rgba(255,170,0,.2); color:#ffd699; }
 
-/* ===== LABEL MAPPA ===== */
+/* ===== MAP ===== */
 .label-comune {
-  color: rgba(240,240,240,.9);
-  font-size: 11px;
-  text-shadow: 0 0 4px #000;
-  pointer-events: none;
+  color:rgba(240,240,240,.9);
+  font-size:11px;
+  text-shadow:0 0 4px #000;
+  pointer-events:none;
 }
-
-/* ===== ANIMAZIONI ===== */
-.pulse {
-  animation: pulse .8s ease-out;
-}
+.pulse { animation:pulse .8s ease-out; }
 @keyframes pulse {
   0%{stroke-opacity:.3}
   50%{stroke-opacity:1}
   100%{stroke-opacity:.3}
 }
-
-.orfano {
-  animation: glow 2.5s infinite;
-}
+.orfano { animation:glow 2.5s infinite; }
 @keyframes glow {
-  0%,100% { stroke-opacity:.5 }
-  50% { stroke-opacity:1 }
+  0%,100%{stroke-opacity:.5}
+  50%{stroke-opacity:1}
 }
-
-.leaflet-interactive { cursor:pointer }
+.leaflet-interactive{cursor:pointer}
 </style>
 </head>
 
@@ -115,94 +81,100 @@ html, body {
 
   <div id="stats">
     <div class="stat ok">
-      <strong id="coperti">0</strong>
-      comuni coperti
+      <strong id="coperti">0</strong>comuni coperti
     </div>
     <div class="stat warn">
-      <strong id="orfani">0</strong>
-      comuni orfani
+      <strong id="orfani">0</strong>comuni orfani
     </div>
     <div class="stat">
-      <strong id="farmacie">0</strong>
-      farmacie (mock)
+      <strong id="farmacie">0</strong>farmacie
     </div>
     <div class="stat">
-      <strong>–</strong>
-      medici/studi
+      <strong>–</strong>medici/studi
     </div>
   </div>
 
-  <div id="badge" class="badge badge-warn">
-    Seleziona un comune
-  </div>
+  <div id="badge" class="badge badge-warn">Seleziona un comune</div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-/* ========= MOCK DATABASE (PROVVISORI) ========= */
-
-// Referenti (provvisorio)
-const referenti = {
-  "Verona": ["Anna R.", "Luca M."]
-};
-
-// Farmacie MOCK (struttura definitiva)
+/* ===== MOCK DB (PROVVISORI) ===== */
+const referenti = { "Verona": ["Anna R.", "Luca M."] };
 const farmacie = [
-  { nome:"Farmacia Centrale", comune:"Verona", stato:"da_contattare" },
-  { nome:"Farmacia San Zeno", comune:"Verona", stato:"in_attesa" }
+  { nome:"Farmacia Centrale", comune:"Verona" },
+  { nome:"Farmacia San Zeno", comune:"Verona" }
 ];
 
-/* ========= FUNZIONI ========= */
-const hasReferenti = c => referenti[c] && referenti[c].length>0;
-
-function aggiornaStats(comuni){
-  const tot = comuni.length;
-  const cop = comuni.filter(c=>hasReferenti(c)).length;
-  document.getElementById('coperti').innerText = cop;
-  document.getElementById('orfani').innerText = tot-cop;
-  document.getElementById('farmacie').innerText = farmacie.length;
+/* ===== UTILS ===== */
+function nomeComune(p){
+  return p.nome || p.DENOM_COM || p.name || p.COMUNE;
+}
+function hasReferenti(c){
+  return referenti[c] && referenti[c].length>0;
 }
 
-/* ========= MAPPA ========= */
-const map = L.map('map',{ attributionControl:false }).setView([45.43,10.99],11);
+/* ===== MAPPA ===== */
+const map = L.map('map',{ attributionControl:false })
+  .setView([45.43,10.99],11);
+
 L.tileLayer(
-  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-  { maxZoom:19 }
+ 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+ {maxZoom:19}
 ).addTo(map);
 
-let labels=[];
-let comuniNomi=[];
+let labels=[], comuniNomi=[], selected=null;
 
 fetch('data/comuni_verona.json')
 .then(r=>r.json())
 .then(data=>{
-  L.geoJSON(data,{style:{color:'#000',weight:4,opacity:.3}}).addTo(map);
 
-  const layer = L.geoJSON(data,{
+  // Ombra
+  L.geoJSON(data,{style:{color:'#000',weight:4,opacity:.3}})
+    .addTo(map);
+
+  const layer=L.geoJSON(data,{
     style:f=>{
-      const n=f.properties.nome||f.properties.DENOM_COM;
+      const n=nomeComune(f.properties);
       comuniNomi.push(n);
       return {
         color:hasReferenti(n)?'#00ff9c':'#ffaa00',
         weight:1,
         fillOpacity:0
-      }
+      };
     },
     onEachFeature:(f,l)=>{
-      const nome=f.properties.nome||f.properties.DENOM_COM;
+      const nome=nomeComune(f.properties);
       const orfano=!hasReferenti(nome);
-      if(orfano) setTimeout(()=>l._path.classList.add('orfano'),100);
 
-      // label
+      // Label
       const c=l.getBounds().getCenter();
       const lab=L.marker(c,{
-        icon:L.divIcon({className:'label-comune',html:nome,iconSize:[120,14]}),
+        icon:L.divIcon({
+          className:'label-comune',
+          html:nome,
+          iconSize:[130,16]
+        }),
         interactive:false
       }).addTo(map);
       labels.push(lab);
 
+      if(orfano) setTimeout(()=>l._path.classList.add('orfano'),50);
+
       l.on('click',()=>{
+        if(selected){
+          const pn=nomeComune(selected.feature.properties);
+          selected.setStyle({
+            weight:1,
+            color:hasReferenti(pn)?'#00ff9c':'#ffaa00'
+          });
+        }
+        selected=l;
+        l.setStyle({weight:3,color:'#fff'});
         l._path.classList.add('pulse');
+
+        map.fitBounds(l.getBounds(),{padding:[40,40]});
+
         document.getElementById('badge').className=
           'badge '+(orfano?'badge-warn':'badge-ok');
         document.getElementById('badge').innerText=
@@ -212,7 +184,12 @@ fetch('data/comuni_verona.json')
   }).addTo(map);
 
   map.fitBounds(layer.getBounds());
-  aggiornaStats(comuniNomi);
+
+  // Stats
+  const cop=comuniNomi.filter(c=>hasReferenti(c)).length;
+  document.getElementById('coperti').innerText=cop;
+  document.getElementById('orfani').innerText=comuniNomi.length-cop;
+  document.getElementById('farmacie').innerText=farmacie.length;
 
   map.on('zoomend',()=>{
     labels.forEach(l=>map.getZoom()<=11?l.addTo(map):map.removeLayer(l));
