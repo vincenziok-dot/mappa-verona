@@ -24,7 +24,7 @@ html, body {
   padding: 14px 16px;
   background: rgba(5,5,5,.94);
   border-left: 4px solid #00ff9c;
-  min-width: 340px;
+  min-width: 360px;
   box-shadow: 0 0 20px rgba(0,0,0,.85);
 }
 
@@ -63,42 +63,44 @@ html, body {
 .stat-ok .stat-value { color:#00ff9c; }
 .stat-warn .stat-value { color:#ffaa00; }
 
-/* farmacie */
+/* FARMACIE */
 #farm-box {
   margin-top: 14px;
-  padding-top: 10px;
+  padding-top: 12px;
   border-top: 1px solid #222;
 }
 #farm-box h4 {
-  margin: 0 0 6px;
-  font-size: 11px;
+  margin: 0 0 8px;
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: .12em;
+  letter-spacing: .14em;
   color: #9ef5d9;
 }
 #farm-count {
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.45;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
 }
 
-/* legenda */
-.legend-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
+/* LEGENDA MIGLIORATA */
+.legend {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 10px;
+  font-size: 12px;
 }
+.legend span { color:#e6e6e6; }
+
 .dot {
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
 }
 .triangle {
   width: 0; height: 0;
-  border-left: 7px solid transparent;
-  border-right: 7px solid transparent;
-  border-bottom: 12px solid;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-bottom: 16px solid;
 }
 
 /* colori stato */
@@ -107,19 +109,34 @@ html, body {
 .da_contattare { background:#ffaa00; border-bottom-color:#ffaa00; }
 .rifiuta { background:#ff4d4d; border-bottom-color:#ff4d4d; }
 
-/* referenti */
+/* REFERENTI */
 .hud-buttons {
-  margin-top: 12px;
+  margin-top: 14px;
   display: flex;
-  gap: 6px;
+  gap: 8px;
 }
 .hud-btn {
   border:1px solid #00ff9c;
   background:#041812;
   color:#eafff7;
-  font-size:11px;
-  padding:4px 8px;
+  font-size:12px;
+  padding:6px 10px;
   cursor:pointer;
+}
+.hud-btn:hover {
+  background:#00ff9c;
+  color:#00110b;
+}
+
+.hud-section {
+  margin-top: 10px;
+  border-top: 1px solid #222;
+  padding-top: 8px;
+  display: none;
+}
+.hud-section li {
+  font-size: 13px;
+  color: #fff;
 }
 
 /* label comuni */
@@ -157,10 +174,21 @@ html, body {
     <h4>Farmacie (comune selezionato)</h4>
     <div id="farm-count">—</div>
 
-    <div class="legend-row"><span class="dot accetta"></span> Privata – accetta</div>
-    <div class="legend-row"><span class="dot in_trattativa"></span> Privata – in trattativa</div>
-    <div class="legend-row"><span class="triangle accetta"></span> Comunale – accetta</div>
-    <div class="legend-row"><span class="triangle da_contattare"></span> Comunale – da contattare</div>
+    <div class="legend">
+      <div class="dot accetta"></div><span>Privata – accetta (materiale esposto)</span>
+      <div class="dot in_trattativa"></div><span>Privata – in trattativa</span>
+      <div class="triangle accetta"></div><span>Comunale – accetta</span>
+      <div class="triangle da_contattare"></div><span>Comunale – da contattare</span>
+    </div>
+  </div>
+
+  <div class="hud-buttons">
+    <button class="hud-btn" id="btnAdd">Aggiungi referente</button>
+    <button class="hud-btn" id="btnToggle">Vedi referenti</button>
+  </div>
+
+  <div class="hud-section" id="refPanel">
+    <ul id="refList"></ul>
   </div>
 </div>
 
@@ -179,33 +207,20 @@ L.tileLayer(
 const referenti = { "Verona": ["Vincenzo R."] };
 
 const farmacie = [
-  {
-    nome:"Farmacia Centrale",
-    comune:"Verona",
-    lat:45.438, lng:10.992,
-    tipo:"privata",
-    stato:"accetta",
-    indirizzo:"Via Roma 1, Verona",
-    telefono:"+39 045 000000",
-    email:"info@farmaciacentrale.it"
-  },
-  {
-    nome:"Farmacia San Zeno",
-    comune:"Verona",
-    lat:45.443, lng:10.980,
-    tipo:"comunale",
-    stato:"in_trattativa",
-    indirizzo:"Via San Zeno 10, Verona",
-    telefono:"+39 045 111111"
-  }
+  {nome:"Farmacia Centrale", comune:"Verona", lat:45.438, lng:10.992, tipo:"privata", stato:"accetta"},
+  {nome:"Farmacia San Zeno", comune:"Verona", lat:45.443, lng:10.980, tipo:"comunale", stato:"in_trattativa"},
+  {nome:"Farmacia Borgo Roma", comune:"Verona", lat:45.389, lng:10.982, tipo:"privata", stato:"da_contattare"}
 ];
 
 let labels=[], comuni=[], selectedLayer=null;
+let refVisibili=false;
 let farmLayer=L.layerGroup().addTo(map);
 
 /* HUD */
 const hudTitle=document.getElementById('hudTitle');
 const hudSub=document.getElementById('hudSub');
+const refPanel=document.getElementById('refPanel');
+const refList=document.getElementById('refList');
 
 const nomeComune=p=>p.nome||p.DENOM_COM||p.name||'Comune';
 const hasRef=n=>referenti[n] && referenti[n].length>0;
@@ -287,8 +302,7 @@ function selezionaComune(layer,nome){
 /* FARMACIE */
 function mostraFarmacie(comune){
   farmLayer.clearLayers();
-  const vis = farmacie.filter(f => f.comune === comune);
-
+  const vis=farmacie.filter(f=>f.comune===comune);
   if(!vis.length){
     document.getElementById('farm-count').innerText='Nessuna farmacia';
     return;
@@ -303,32 +317,22 @@ function mostraFarmacie(comune){
     else if(f.stato==="rifiuta") rif++;
   });
 
-  const conquista = Math.round(((acc+trat)/vis.length)*100);
+  const conquista=Math.round(((acc+trat)/vis.length)*100);
 
-  document.getElementById('farm-count').innerHTML =
+  document.getElementById('farm-count').innerHTML=
     `<strong>${vis.length}</strong> farmacie<br>
      Private: ${priv} · Comunali: ${comu}<br>
      ✅ ${acc} · 🔵 ${trat} · 🟡 ${cont} · ❌ ${rif}<br>
-     <strong>Conquista: ${conquista}%</strong>`;
+     <strong>Conquista territorio: ${conquista}%</strong>`;
 
   vis.forEach(f=>{
     const html=f.tipo==="privata"
       ? `<div class="dot ${f.stato}"></div>`
       : `<div class="triangle ${f.stato}"></div>`;
 
-    const popup = `
-      <strong>${f.nome}</strong><br>
-      ${f.indirizzo}<br>
-      ${f.telefono||''}<br>
-      ${f.email||''}<br>
-      <a href="https://maps.google.com/?q=${f.lat},${f.lng}" target="_blank">
-        Apri su Maps
-      </a>
-    `;
-
     const m=L.marker([f.lat,f.lng],{
       icon:L.divIcon({html:html,iconSize:[16,16]})
-    }).bindPopup(popup);
+    }).bindPopup(`<strong>${f.nome}</strong>`);
 
     farmLayer.addLayer(m);
   });
@@ -339,6 +343,40 @@ function aggiornaContatori(){
   const ok=comuni.filter(n=>hasRef(n)).length;
   document.getElementById('cntOk').innerText=ok;
   document.getElementById('cntOrfani').innerText=comuni.length-ok;
+}
+
+/* REFERENTI */
+document.getElementById('btnAdd').onclick=()=>{
+  if(!selectedLayer) return alert('Seleziona un comune');
+  const nome=hudTitle.innerText.replace('Comune di ','');
+  const n=prompt('Inserisci il tuo nome');
+  if(!n) return;
+  if(!referenti[nome]) referenti[nome]=[];
+  referenti[nome].push(n);
+  hudSub.innerText='Referenti presenti: '+referenti[nome].length;
+  aggiornaContatori();
+  if(refVisibili) mostraReferenti(nome);
+};
+
+document.getElementById('btnToggle').onclick=()=>{
+  refVisibili=!refVisibili;
+  document.getElementById('btnToggle').innerText=
+    refVisibili?'Nascondi referenti':'Vedi referenti';
+  if(refVisibili && selectedLayer){
+    mostraReferenti(hudTitle.innerText.replace('Comune di ',''));
+  } else {
+    refPanel.style.display='none';
+  }
+};
+
+function mostraReferenti(nome){
+  refList.innerHTML='';
+  (referenti[nome]||[]).forEach(r=>{
+    const li=document.createElement('li');
+    li.textContent=r;
+    refList.appendChild(li);
+  });
+  refPanel.style.display='block';
 }
 </script>
 
