@@ -24,79 +24,39 @@ html, body {
   padding: 14px 16px;
   background: rgba(5,5,5,.94);
   border-left: 4px solid #00ff9c;
-  min-width: 340px;
-  box-shadow: 0 0 20px rgba(0,0,0,.85);
+  min-width: 350px;
+  box-shadow: 0 0 25px rgba(0,0,0,.9);
 }
 
-.hud-title {
-  font-size: 18px;
-  font-weight: 650;
-  color: #fff;
-  text-transform: uppercase;
-}
-.hud-sub {
-  margin-top: 6px;
-  font-size: 13px;
-  color: #bdbdbd;
-}
+.hud-title { font-size:18px; font-weight:650; color:#fff }
+.hud-sub  { font-size:13px; color:#bdbdbd }
 
-/* contatori */
-#stats {
-  margin-top: 12px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+/* BLOCCO GENERALE */
+#globalBox {
+  margin-top:10px;
+  padding:8px;
+  background:#0e0e0e;
+  border-left:3px solid #4da6ff;
 }
-.stat {
-  background: #0e0e0e;
-  padding: 8px;
+#globalBox h4 {
+  margin:0 0 6px;
+  font-size:11px;
+  letter-spacing:.12em;
+  color:#9ef5d9;
 }
-.stat-title {
-  font-size: 10px;
-  text-transform: uppercase;
+.stat-row {
+  display:flex;
+  justify-content:space-between;
+  font-size:13px;
 }
-.stat-value {
-  font-size: 26px;
-  font-weight: 700;
-}
-.stat-ok .stat-value { color:#00ff9c; }
-.stat-warn .stat-value { color:#ffaa00; }
+.green { color:#00ff9c }
+.orange { color:#ffaa00 }
 
-/* legenda */
-#legend {
-  margin-top: 14px;
-  border-top: 1px solid #222;
-  padding-top: 8px;
-  font-size: 11px;
-}
-.legend-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-.triangle {
-  width: 0;
-  height: 0;
-  border-left: 7px solid transparent;
-  border-right: 7px solid transparent;
-  border-bottom: 12px solid;
-}
-
-.green { background:#00ff9c; border-bottom-color:#00ff9c; }
-.orange { background:#ffaa00; border-bottom-color:#ffaa00; }
-.blue { background:#4da6ff; border-bottom-color:#4da6ff; }
-.red { background:#ff4d4d; border-bottom-color:#ff4d4d; }
-
-/* buttons */
+/* BOTTONI */
 .hud-buttons {
-  margin-top: 10px;
-  display: flex;
-  gap: 6px;
+  margin-top:8px;
+  display:flex;
+  gap:6px;
 }
 .hud-btn {
   border:1px solid #00ff9c;
@@ -107,18 +67,42 @@ html, body {
   cursor:pointer;
 }
 
-/* referenti */
+/* REFERENTI */
 #refPanel {
-  margin-top: 8px;
-  padding-top: 6px;
-  border-top: 1px solid #222;
+  margin-top:8px;
+  border-top:1px solid #222;
+  padding-top:6px;
 }
-#refPanel li {
-  font-size: 12px;
-  color: #fff;
+#refPanel li { font-size:12px; color:#fff }
+
+/* LEGENDA FISSA */
+#legend {
+  margin-top:12px;
+  padding-top:8px;
+  border-top:1px solid #222;
+  font-size:11px;
+}
+.legend-row {
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.dot {
+  width:12px;
+  height:12px;
+  border-radius:50%;
+}
+.flag {
+  font-size:14px;
+}
+.triangle {
+  width:0;height:0;
+  border-left:7px solid transparent;
+  border-right:7px solid transparent;
+  border-bottom:12px solid #00ff9c;
 }
 
-/* label comuni */
+/* LABEL COMUNI */
 .label-comune {
   color:#fff;
   font-size:11px;
@@ -135,29 +119,31 @@ html, body {
   <div class="hud-title" id="hudTitle">Provincia di Verona</div>
   <div class="hud-sub" id="hudSub">Vista generale</div>
 
-  <div id="stats">
-    <div class="stat stat-ok">
-      <div class="stat-title">Coperti</div>
-      <div class="stat-value" id="cntOk">0</div>
+  <!-- STATO GENERALE -->
+  <div id="globalBox">
+    <h4>Stato generale – provincia</h4>
+    <div class="stat-row">
+      <span>Comuni coperti</span><span class="green" id="cntOk">0</span>
     </div>
-    <div class="stat stat-warn">
-      <div class="stat-title">Orfani</div>
-      <div class="stat-value" id="cntNo">0</div>
+    <div class="stat-row">
+      <span>Comuni orfani</span><span class="orange" id="cntNo">0</span>
     </div>
   </div>
 
   <div class="hud-buttons">
     <button class="hud-btn" id="btnAdd">Aggiungi referente</button>
-    <button class="hud-btn" id="btnToggle">Vedi/Nascondi referenti</button>
+    <button class="hud-btn" id="btnToggle">Vedi / Nascondi referenti</button>
   </div>
 
   <ul id="refPanel" style="display:none"></ul>
 
+  <!-- LEGENDA -->
   <div id="legend">
     <div class="legend-row"><span class="dot green"></span> Comune con referenti</div>
     <div class="legend-row"><span class="dot orange"></span> Comune orfano</div>
+    <div class="legend-row"><span class="flag">🚩</span> Stato avanzamento sul territorio</div>
     <div class="legend-row"><span class="dot green"></span> Farmacia privata</div>
-    <div class="legend-row"><span class="triangle green"></span> Farmacia comunale</div>
+    <div class="legend-row"><span class="triangle"></span> Farmacia comunale</div>
   </div>
 </div>
 
@@ -170,51 +156,68 @@ L.tileLayer(
 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
 ).addTo(map);
 
-/* STATO CENTRALE */
-const statoComuni = {};   // nomeComune -> { referenti: [] }
-const layerComuni = {};  // nomeComune -> layer
-let selectedComune = null;
-let showRefs = false;
+/* STATO */
+const statoComuni = {};
+const layerComuni = {};
+const flagLayer = L.layerGroup().addTo(map);
+let selectedComune=null;
+let showRefs=false;
 
-/* UTIL */
-const nomeComune = p => p.nome || p.DENOM_COM || p.name;
+const nomeComune = p=>p.nome||p.DENOM_COM||p.name;
 
 /* CONTATORI */
 function aggiornaContatori(){
-  const tot = Object.keys(statoComuni).length;
-  const coperti = Object.values(statoComuni).filter(c=>c.referenti.length>0).length;
-  document.getElementById('cntOk').innerText = coperti;
-  document.getElementById('cntNo').innerText = tot - coperti;
+  const tot=Object.keys(statoComuni).length;
+  const ok=Object.values(statoComuni).filter(c=>c.referenti.length>0).length;
+  cntOk.innerText=ok;
+  cntNo.innerText=tot-ok;
 }
 
-/* STILE */
+/* STILE COMUNI */
 function aggiornaStile(nome){
-  const layer = layerComuni[nome];
-  const ok = statoComuni[nome].referenti.length>0;
-  layer.setStyle({ color: ok ? '#00ff9c':'#ffaa00', weight:1 });
+  const layer=layerComuni[nome];
+  const attivo=statoComuni[nome].referenti.length>0;
+  layer.setStyle({
+    color: attivo ? '#00ff9c' : '#ffaa00',
+    weight: attivo ? 2 : 1,
+    fillOpacity: attivo ? 0.15 : 0
+  });
+}
+
+/* BANDIERE */
+function aggiornaBandiere(){
+  flagLayer.clearLayers();
+  if(selectedComune) return;
+
+  Object.entries(statoComuni).forEach(([nome, dati])=>{
+    const layer = layerComuni[nome];
+    const center = layer.getBounds().getCenter();
+    const icon = L.divIcon({
+      html: dati.referenti.length>0 ? '🚩' : '🏳️',
+      className:'',
+      iconSize:[20,20]
+    });
+    L.marker(center,{icon}).addTo(flagLayer);
+  });
 }
 
 /* HUD */
 function renderHUD(nome){
-  const dati = statoComuni[nome];
-  document.getElementById('hudTitle').innerText = "Comune di "+nome;
-  document.getElementById('hudSub').innerText =
-    dati.referenti.length>0
-    ? "Referenti: "+dati.referenti.length
-    : "⚠ Comune orfano";
+  const d=statoComuni[nome];
+  hudTitle.innerText='Comune di '+nome;
+  hudSub.innerText=d.referenti.length
+    ? 'Referenti presenti: '+d.referenti.length
+    : '⚠ Comune orfano';
 
-  const panel = document.getElementById('refPanel');
-  panel.innerHTML='';
+  refPanel.innerHTML='';
   if(showRefs){
-    dati.referenti.forEach(n=>{
+    d.referenti.forEach(r=>{
       const li=document.createElement('li');
-      li.textContent=n;
-      panel.appendChild(li);
+      li.textContent=r;
+      refPanel.appendChild(li);
     });
-    panel.style.display='block';
-  } else {
-    panel.style.display='none';
-  }
+    refPanel.style.display='block';
+  } else refPanel.style.display='none';
 }
 
 /* COMUNI */
@@ -223,12 +226,12 @@ fetch('data/comuni_verona.json')
 .then(data=>{
   L.geoJSON(data,{
     style:f=>{
-      const n = nomeComune(f.properties);
+      const n=nomeComune(f.properties);
       statoComuni[n]={referenti:[]};
-      return {color:'#ffaa00', weight:1, fillOpacity:0};
+      return {color:'#ffaa00',weight:1,fillOpacity:0};
     },
     onEachFeature:(f,l)=>{
-      const n = nomeComune(f.properties);
+      const n=nomeComune(f.properties);
       layerComuni[n]=l;
 
       const label=L.marker(l.getBounds().getCenter(),{
@@ -238,27 +241,29 @@ fetch('data/comuni_verona.json')
       l.on('click',()=>{
         if(selectedComune) aggiornaStile(selectedComune);
         selectedComune=n;
-        l.setStyle({color:'#fff', weight:3});
+        flagLayer.clearLayers();
+        l.setStyle({color:'#fff',weight:3});
         map.fitBounds(l.getBounds(),{padding:[40,40]});
         renderHUD(n);
       });
     }
   }).addTo(map);
   aggiornaContatori();
+  aggiornaBandiere();
 });
 
 /* BOTTONI */
-document.getElementById('btnAdd').onclick=()=>{
-  if(!selectedComune) return alert("Seleziona un comune");
-  const nome=prompt("Nome referente");
-  if(!nome) return;
-  statoComuni[selectedComune].referenti.push(nome);
+btnAdd.onclick=()=>{
+  if(!selectedComune) return alert('Seleziona un comune');
+  const n=prompt('Nome referente');
+  if(!n) return;
+  statoComuni[selectedComune].referenti.push(n);
   aggiornaStile(selectedComune);
   aggiornaContatori();
   renderHUD(selectedComune);
 };
 
-document.getElementById('btnToggle').onclick=()=>{
+btnToggle.onclick=()=>{
   if(!selectedComune) return;
   showRefs=!showRefs;
   renderHUD(selectedComune);
