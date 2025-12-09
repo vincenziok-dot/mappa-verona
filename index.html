@@ -12,15 +12,15 @@ html,body{margin:0;height:100%;background:#000;font-family:system-ui}
 /* HUD */
 #hud{
  position:fixed;top:16px;left:16px;z-index:9999;
- width:360px;padding:14px;
+ width:380px;padding:14px;
  background:rgba(5,5,5,.94);
  border-left:4px solid #00ff9c;
- box-shadow:0 0 25px #000
+ box-shadow:0 0 25px rgba(0,0,0,.85)
 }
 .hud-title{color:#fff;font-size:18px;font-weight:650;text-transform:uppercase}
 .hud-sub{color:#bbb;font-size:13px}
 
-/* buttons */
+/* bottoni */
 .buttons{margin-top:10px;display:flex;gap:6px}
 button{
  background:#041812;border:1px solid #00ff9c;
@@ -32,34 +32,65 @@ button:hover{background:#00ff9c;color:#00110b}
 /* referenti */
 #refPanel{display:none;margin-top:6px;font-size:12px;color:#fff}
 
-/* sezioni future */
+/* sezioni */
 .section{margin-top:12px;border-top:1px solid #222;padding-top:8px}
-.toggle{cursor:pointer;color:#9ef5d9;font-size:12px}
-.content{display:none;font-size:12px;color:#ccc;margin-top:6px}
 
-/* legenda */
-.legend-row{display:flex;gap:6px;align-items:center;font-size:11px;color:#eee}
-.swatch{width:14px;height:14px;border:2px solid}
-.border-ok{border-color:#00ff9c}
-.border-warn{border-color:#ffaa00}
-.dot{border-radius:50%;background:#00ff9c}
-.triangle{
- width:0;height:0;border-left:7px solid transparent;
- border-right:7px solid transparent;border-bottom:12px solid #00ff9c
+/* LEGENDA */
+.legend h4{
+ margin:4px 0 6px;
+ font-size:11px;
+ text-transform:uppercase;
+ letter-spacing:.12em;
+ color:#9ef5d9
 }
+.legend-row{
+ display:flex;
+ align-items:center;
+ gap:8px;
+ font-size:11px;
+ margin:4px 0;
+ color:#e6e6e6
+}
+
+/* simboli */
+.dot{width:12px;height:12px;border-radius:50%}
+.triangle{
+ width:0;height:0;
+ border-left:7px solid transparent;
+ border-right:7px solid transparent;
+ border-bottom:12px solid
+}
+.cross{
+ font-weight:900;
+ font-size:14px;
+ line-height:12px
+}
+
+/* colori stato */
+.partecipa{background:#00ff9c;border-bottom-color:#00ff9c;color:#00ff9c}
+.trattativa{background:#4da6ff;border-bottom-color:#4da6ff;color:#4da6ff}
+.contattare{background:#ffaa00;border-bottom-color:#ffaa00;color:#ffaa00}
+.rifiuta{background:#ff4d4d;border-bottom-color:#ff4d4d;color:#ff4d4d}
 
 /* label comuni */
 .label-comune{
- color:#fff;font-size:11px;
- text-shadow:0 0 6px rgba(0,0,0,.9);pointer-events:none
+ color:#fff;
+ font-size:11px;
+ text-shadow:0 0 6px rgba(0,0,0,.9);
+ pointer-events:none
 }
 
-/* banner freccia */
+/* banner */
 #banner{
- position:fixed;top:0;left:50%;transform:translateX(-50%);
+ position:fixed;
+ top:0;left:50%;
+ transform:translateX(-50%);
  background:rgba(0,0,0,.85);
- padding:10px 20px;border-bottom:3px solid #00ff9c;
- display:none;z-index:9999;color:#fff;font-size:14px
+ padding:10px 20px;
+ border-bottom:3px solid #00ff9c;
+ color:#fff;
+ display:none;
+ z-index:9999
 }
 
 .leaflet-interactive{cursor:pointer}
@@ -67,7 +98,6 @@ button:hover{background:#00ff9c;color:#00110b}
 </head>
 
 <body>
-
 <div id="map"></div>
 <div id="banner"></div>
 
@@ -79,55 +109,71 @@ button:hover{background:#00ff9c;color:#00110b}
     <button id="btnAdd">Aggiungi referente</button>
     <button id="btnToggle">Vedi referenti</button>
   </div>
-
   <div id="refPanel"><ul id="refList"></ul></div>
 
-  <div class="section">
-    <div class="toggle" onclick="toggleBox('provBox')">▸ Provincia (overview)</div>
-    <div class="content" id="provBox">Statistiche globali – step successivo</div>
-  </div>
+  <!-- LEGENDA -->
+  <div class="section legend">
+    <h4>Legenda – Stato</h4>
+    <div class="legend-row"><span class="dot partecipa"></span> Partecipa</div>
+    <div class="legend-row"><span class="dot trattativa"></span> In trattativa</div>
+    <div class="legend-row"><span class="dot contattare"></span> Da contattare</div>
+    <div class="legend-row"><span class="dot rifiuta"></span> Rifiuta</div>
 
-  <div class="section">
-    <div class="toggle" onclick="toggleBox('comBox')">▸ Comune selezionato</div>
-    <div class="content" id="comBox">Statistiche comune – step successivo</div>
-  </div>
-
-  <div class="section">
-    <div class="legend-row"><div class="swatch border-ok"></div> Comune con referenti</div>
-    <div class="legend-row"><div class="swatch border-warn"></div> Comune orfano</div>
-    <div class="legend-row"><div class="dot swatch"></div> Farmacia privata</div>
-    <div class="legend-row"><div class="triangle"></div> Farmacia comunale</div>
+    <h4>Legenda – Tipologia</h4>
+    <div class="legend-row"><span class="dot partecipa"></span> Farmacia privata</div>
+    <div class="legend-row"><span class="triangle partecipa"></span> Farmacia comunale</div>
+    <div class="legend-row"><span class="cross partecipa">✚</span> MMG / Studio associato</div>
   </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const map=L.map('map',{attributionControl:false}).setView([45.43,10.99],10)
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map)
+/* MAPPA */
+const map=L.map('map',{attributionControl:false})
+  .setView([45.43,10.99],10)
 
-/* dati */
+L.tileLayer(
+ 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+ {maxZoom:18}
+).addTo(map)
+
+/* DATI */
 const referenti={"Verona":["Vincenzo R."]}
+
 const farmacie=[
- {nome:"Farmacia Centrale",comune:"Verona",lat:45.438,lng:10.992,tipo:"privata"},
- {nome:"Farmacia San Zeno",comune:"Verona",lat:45.443,lng:10.98,tipo:"comunale"}
+ {
+  nome:"Farmacia Centrale",
+  comune:"Verona",
+  lat:45.438,
+  lng:10.992,
+  tipo:"privata",
+  stato:"partecipa",
+  indirizzo:"Via Roma 1",
+  maps:"https://www.google.com/maps/search/?api=1&query=Farmacia+Centrale+Verona"
+ },
+ {
+  nome:"Farmacia San Zeno",
+  comune:"Verona",
+  lat:45.443,
+  lng:10.98,
+  tipo:"comunale",
+  stato:"trattativa",
+  indirizzo:"Piazza Corrubbio",
+  maps:"https://www.google.com/maps/search/?api=1&query=Farmacia+San+Zeno+Verona"
+ }
 ]
 
 let layers={},labels=[],selected=null
 const farmLayer=L.layerGroup().addTo(map)
 
-const banner=document.getElementById('banner')
 const hudTitle=document.getElementById('hudTitle')
 const hudSub=document.getElementById('hudSub')
+const banner=document.getElementById('banner')
 const refPanel=document.getElementById('refPanel')
 const refList=document.getElementById('refList')
 
 const nomeComune=p=>p.nome||p.DENOM_COM||p.name||'Comune'
 const hasRef=n=>referenti[n]&&referenti[n].length>0
-
-function toggleBox(id){
- const el=document.getElementById(id)
- el.style.display=el.style.display==='block'?'none':'block'
-}
 
 /* COMUNI */
 fetch('data/comuni_verona.json')
@@ -137,31 +183,35 @@ fetch('data/comuni_verona.json')
   style:f=>{
    const n=nomeComune(f.properties)
    return{
-     color:hasRef(n)?'#00ff9c':'#ffaa00',
-     weight:1,
-     fillOpacity:hasRef(n)?0.12:0
+    color:hasRef(n)?'#00ff9c':'#ffaa00',
+    fillOpacity:hasRef(n)?0.12:0,
+    weight:1
    }
   },
   onEachFeature:(f,l)=>{
    const n=nomeComune(f.properties)
    layers[n]=l
 
-   const lbl=L.marker(l.getBounds().getCenter(),{
-     icon:L.divIcon({className:'label-comune',html:n})
+   const lab=L.marker(l.getBounds().getCenter(),{
+    icon:L.divIcon({className:'label-comune',html:n})
    }).addTo(map)
-   labels.push(lbl)
+   labels.push(lab)
 
    l.on('click',()=>{
-     selected=n
-     map.fitBounds(l.getBounds(),{padding:[50,50]})
-     labels.forEach(x=>map.removeLayer(x))
+    selected=n
+    map.fitBounds(l.getBounds(),{padding:[50,50]})
+    labels.forEach(x=>map.removeLayer(x))
 
-     banner.style.display='block'
-     banner.innerHTML='↑ Comune di <b>'+n+'</b> – Referenti: '+(referenti[n]?.length||0)
+    hudTitle.textContent='Comune di '+n
+    hudSub.textContent=hasRef(n)
+      ?'Referenti: '+referenti[n].length
+      :'⚠ Comune orfano'
 
-     hudTitle.textContent='Comune di '+n
-     hudSub.textContent=hasRef(n)?'Referenti: '+referenti[n].length:'⚠ Comune orfano'
-     mostraFarmacie(n)
+    banner.style.display='block'
+    banner.innerHTML='↑ Comune di <b>'+n+
+      '</b> – Referenti: '+(referenti[n]?.length||0)
+
+    mostraFarmacie(n)
    })
   }
  }).addTo(map)
@@ -180,18 +230,33 @@ fetch('data/comuni_verona.json')
  })
 })
 
-function mostraFarmacie(n){
- farmLayer.clearLayers()
- farmacie.filter(f=>f.comune===n).forEach(f=>{
-  const icon=f.tipo==="privata"
-    ?'<div class="dot" style="width:12px;height:12px"></div>'
-    :'<div class="triangle"></div>'
-  L.marker([f.lat,f.lng],{
-    icon:L.divIcon({html:icon,iconSize:[14,14]})
-  }).bindPopup(`<b>${f.nome}</b>`).addTo(farmLayer)
+/* FARMACIE */
+function simboloFarmacia(f){
+ if(f.tipo==="privata"){
+  return `<div class="dot ${f.stato}"></div>`
  }
-)}
+ return `<div class="triangle ${f.stato}"></div>`
+}
 
+function mostraFarmacie(comune){
+ farmLayer.clearLayers()
+ farmacie.filter(f=>f.comune===comune).forEach(f=>{
+  const popup=`
+   <strong>${f.nome}</strong><br>
+   ${f.tipo}<br>
+   ${f.indirizzo}<br>
+   <a href="${f.maps}" target="_blank">Apri in Google Maps</a><br>
+   <a href="https://drive.google.com/drive/folders/1f9JTPwuquc1epCO6rpsONh2fFes8yabm" target="_blank">
+    Materiali campagna
+   </a>
+  `
+  L.marker([f.lat,f.lng],{
+   icon:L.divIcon({html:simboloFarmacia(f),iconSize:[14,14]})
+  }).bindPopup(popup).addTo(farmLayer)
+ })
+}
+
+/* REFERENTI */
 btnAdd.onclick=()=>{
  if(!selected)return alert('Seleziona un comune')
  const n=prompt('Nome referente')
@@ -200,19 +265,21 @@ btnAdd.onclick=()=>{
  referenti[selected].push(n)
  layers[selected].setStyle({color:'#00ff9c',fillOpacity:0.12})
  hudSub.textContent='Referenti: '+referenti[selected].length
- banner.innerHTML='↑ Comune di <b>'+selected+'</b> – Referenti: '+referenti[selected].length
+ banner.innerHTML='↑ Comune di <b>'+selected+
+  '</b> – Referenti: '+referenti[selected].length
 }
 
 btnToggle.onclick=()=>{
  if(!selected)return
- refPanel.style.display=refPanel.style.display==='block'?'none':'block'
+ refPanel.style.display=
+  refPanel.style.display==='block'?'none':'block'
  refList.innerHTML=''
  referenti[selected].forEach(r=>{
-  const li=document.createElement('li');li.textContent=r
+  const li=document.createElement('li')
+  li.textContent=r
   refList.appendChild(li)
  })
 }
 </script>
-
 </body>
 </html>
