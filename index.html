@@ -1,8 +1,9 @@
+
 <!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="utf-8">
-  <title>Mappa Verona – Demo</title>
+  <title>Mappa Verona</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -11,32 +12,36 @@
       margin: 0;
       height: 100%;
       background: #000;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: system-ui, sans-serif;
     }
 
     #map {
-      height: 100%;
-      width: 100%;
+      position: absolute;
+      top: 0; left: 0;
+      right: 0; bottom: 0;
       background: #0b0b0b;
+      z-index: 1;
     }
 
-    /* HUD stile videogioco */
+    /* HUD sempre sopra */
     #hud {
-      position: absolute;
-      top: 24px;
-      left: 24px;
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 9999;
       padding: 14px 18px;
-      background: rgba(12,12,12,0.85);
-      border-left: 3px solid #00ff9c;
-      min-width: 240px;
+      background: rgba(12,12,12,0.9);
+      border-left: 4px solid #00ff9c;
+      min-width: 260px;
+      max-width: 280px;
       pointer-events: none;
     }
 
     .hud-title {
       font-size: 20px;
-      letter-spacing: 2px;
       font-weight: 600;
-      color: #e6e6e6;
+      letter-spacing: 2px;
+      color: #ffffff;
     }
 
     .hud-sub {
@@ -46,10 +51,16 @@
       text-transform: uppercase;
     }
 
-    /* manina */
-    .leaflet-interactive {
-      cursor: pointer;
+    /* ETICHETTE COMUNI */
+    .label-comune {
+      color: rgba(230,230,230,0.8);
+      font-size: 11px;
+      white-space: nowrap;
+      text-shadow: 0 0 4px rgba(0,0,0,0.9);
+      pointer-events: none;
     }
+
+    .leaflet-interactive { cursor: pointer; }
   </style>
 </head>
 <body>
@@ -58,7 +69,7 @@
 
 <div id="hud">
   <div class="hud-title">Provincia di Verona</div>
-  <div class="hud-sub">Seleziona un comune</div>
+  <div class="hud-sub">Zoom out: visione generale</div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -66,9 +77,9 @@
   const map = L.map('map', {
     zoomControl: true,
     attributionControl: false
-  }).setView([45.43, 10.99], 10);
+  }).setView([45.43, 10.99], 9.5);
 
-  /* sfondo nero */
+  // sfondo nero
   L.rectangle([[45.1,10.6],[45.7,11.4]], {
     fillColor: '#0b0b0b',
     fillOpacity: 1,
@@ -76,21 +87,22 @@
   }).addTo(map);
 
   let selectedLayer = null;
+  let labels = [];
 
   fetch('data/comuni_verona.json')
     .then(r => r.json())
     .then(data => {
 
-      /* OMBRA – simil 3D */
+      // OMBRA (profondità)
       L.geoJSON(data, {
         style: {
           color: '#000',
           weight: 4,
-          opacity: 0.35
+          opacity: 0.3
         }
       }).addTo(map);
 
-      /* COMUNI */
+      // COMUNI
       const comuniLayer = L.geoJSON(data, {
         style: {
           color: '#00ff9c',
@@ -100,45 +112,71 @@
         },
         onEachFeature: (feature, layer) => {
 
+          const nome =
+            feature.properties.nome ||
+            feature.properties.name ||
+            feature.properties.DENOM_COM ||
+            'Comune';
+
+          // ETICHETTA (solo zoom OUT)
+          const c = layer.getBounds().getCenter();
+          const label = L.marker(c, {
+            interactive: false,
+            icon: L.divIcon({
+              className: 'label-comune',
+              html: nome,
+              iconSize: [120, 14]
+            })
+          });
+          labels.push(label);
+          label.addTo(map);
+
+          // INTERAZIONI
           layer.on('mouseover', () => {
-            if (layer !== selectedLayer) {
-              layer.setStyle({ color: '#ffffff', weight: 2 });
-            }
+            if (layer !== selectedLayer)
+              layer.setStyle({ color:'#ffffff', weight:2 });
           });
 
           layer.on('mouseout', () => {
-            if (layer !== selectedLayer) {
-              layer.setStyle({ color: '#00ff9c', weight: 1 });
-            }
+            if (layer !== selectedLayer)
+              layer.setStyle({ color:'#00ff9c', weight:1 });
           });
 
           layer.on('click', () => {
-
             if (selectedLayer) {
-              selectedLayer.setStyle({
-                color: '#00ff9c',
-                weight: 1
-              });
+              selectedLayer.setStyle({ color:'#00ff9c', weight:1 });
             }
 
             selectedLayer = layer;
+            layer.setStyle({ color:'#ffffff', weight:3 });
 
-            layer.setStyle({
-              color: '#ffffff',
-              weight: 3
-            });
+            map.fitBounds(layer.getBounds(), { padding:[40,40] });
 
-            map.fitBounds(layer.getBounds(), { padding: [40,40] });
-
-            const nome = feature.properties.nome || feature.properties.name || 'Comune';
+            // HUD
             document.querySelector('.hud-title').innerText = nome;
-            document.querySelector('.hud-sub').innerText = 'Comune selezionato';
+            document.querySelector('.hud-sub').innerText =
+              'Referenti territoriali: —';
+
           });
         }
       }).addTo(map);
 
       map.fitBounds(comuniLayer.getBounds());
 
+      // CONTROLLO VISIBILITÀ NOMI
+      function updateLabels() {
+        const z = map.getZoom();
+        labels.forEach(l => {
+          if (z <= 10) {
+            l.addTo(map);
+          } else {
+            map.removeLayer(l);
+          }
+        });
+      }
+
+      map.on('zoomend', updateLabels);
+      updateLabels();
     });
 </script>
 
