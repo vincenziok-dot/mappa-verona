@@ -1,560 +1,293 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="utf-8">
-  <title>Mappa Verona – Comuni + Farmacie</title>
+<meta charset="utf-8">
+<title>Mappa Verona – SpG</title>
 
-  <link rel="stylesheet"
-        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
-  <style>
-    html, body {
-      margin: 0;
-      height: 100%;
-      background: #000;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont,
-                   "Segoe UI", sans-serif;
-    }
+<style>
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #000;
+  font-family: system-ui, sans-serif;
+}
+#map { position:absolute; inset:0; background:#050505; }
 
-    #map {
-      position: absolute;
-      inset: 0;
-      background: #050505;
-      z-index: 1;
-    }
+/* HUD */
+#hud {
+  position: fixed;
+  top: 18px;
+  left: 18px;
+  z-index: 9999;
+  padding: 14px 16px;
+  background: rgba(8,8,8,.94);
+  border-left: 4px solid #00ff9c;
+  min-width: 330px;
+  box-shadow: 0 0 18px rgba(0,0,0,.85);
+}
 
-    /* PANNELLO SINISTRA (HUD) */
-    #hud {
-      position: fixed;
-      top: 16px;
-      left: 16px;
-      z-index: 9999;
-      padding: 14px 16px 12px;
-      background: rgba(10, 10, 10, 0.95);
-      border-left: 4px solid #00ff9c;
-      min-width: 260px;
-      max-width: 320px;
-      pointer-events: auto;
-      box-shadow: 0 0 18px rgba(0,0,0,0.7);
-    }
+.hud-title {
+  font-size: 18px;
+  font-weight: 650;
+  color: #fff;
+  text-transform: uppercase;
+}
+.hud-sub {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #bdbdbd;
+}
 
-    .hud-title {
-      font-size: 18px;
-      font-weight: 650;
-      letter-spacing: 0.5px;
-      color: #ffffff;
-      line-height: 1.25;
-      margin-bottom: 4px;
-    }
+/* contatori comuni */
+#stats {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.stat {
+  background: #111;
+  padding: 8px;
+}
+.stat-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+}
+.stat-value {
+  font-size: 26px;
+  font-weight: 700;
+}
+.stat-ok .stat-value { color:#00ff9c; }
+.stat-warn .stat-value { color:#ffaa00; }
 
-    .hud-sub {
-      font-size: 12px;
-      color: #b3b3b3;
-      line-height: 1.4;
-      margin-bottom: 8px;
-    }
+/* farmacie panel */
+#farm-box {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid #222;
+}
+#farm-box h4 {
+  margin: 0 0 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: #9ef5d9;
+}
+#farm-summary {
+  font-size: 12px;
+  color: #dcdcdc;
+  margin-bottom: 6px;
+}
 
-    .hud-stat {
-      font-size: 11px;
-      color: #d0d0d0;
-      margin-bottom: 3px;
-    }
+/* legenda farmacie */
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
 
-    .hud-stat span {
-      font-weight: 600;
-      color: #00ff9c;
-    }
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+.triangle {
+  width: 0; height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 12px solid;
+}
 
-    .hud-divider {
-      margin: 8px 0;
-      border-top: 1px solid #262626;
-    }
+/* colori stato */
+.accetta { background:#00ff9c; border-bottom-color:#00ff9c; }
+.in_trattativa { background:#4da6ff; border-bottom-color:#4da6ff; }
+.rifiuta { background:#ff4d4d; border-bottom-color:#ff4d4d; }
 
-    /* BLOCCO FARMACIE NEL COMUNE SELEZIONATO */
-    #farmacie-panel-title {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: #f0f0f0;
-      margin-bottom: 2px;
-    }
+/* label comuni */
+.label-comune {
+  color: #ffffff;
+  font-size: 11px;
+  text-shadow: 0 0 6px rgba(0,0,0,.9);
+  pointer-events: none;
+}
 
-    #farmacie-summary {
-      font-size: 11px;
-      color: #cfcfcf;
-      margin-bottom: 4px;
-    }
-
-    #farmacie-list {
-      max-height: 180px;
-      overflow-y: auto;
-      margin: 0;
-      padding-left: 14px;
-      font-size: 11px;
-      color: #e8e8e8;
-    }
-
-    #farmacie-list li {
-      margin-bottom: 4px;
-      cursor: pointer;
-    }
-
-    #farmacie-list li:hover {
-      text-decoration: underline;
-    }
-
-    /* LEGENDA */
-    #legend {
-      margin-top: 6px;
-      font-size: 11px;
-      color: #cfcfcf;
-    }
-
-    .legend-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-bottom: 2px;
-    }
-
-    .legend-symbol {
-      width: 14px;
-      height: 14px;
-      position: relative;
-    }
-
-    /* PALLINO (farmacia privata) */
-    .sym-privata {
-      border-radius: 50%;
-      background: #999;
-    }
-
-    /* TRIANGOLO (farmacia comunale) */
-    .sym-comunale {
-      width: 0;
-      height: 0;
-      border-left: 7px solid transparent;
-      border-right: 7px solid transparent;
-      border-bottom: 14px solid #999;
-    }
-
-    .sym-accetta { background: #00ff9c; border-bottom-color: #00ff9c; }
-    .sym-trattativa { background: #f1c40f; border-bottom-color: #f1c40f; }
-    .sym-rifiuta { background: #e74c3c; border-bottom-color: #e74c3c; }
-
-    /* Nomi dei comuni sulla mappa */
-    .label-comune {
-      color: rgba(235,235,235,0.9);
-      font-size: 11px;
-      white-space: nowrap;
-      text-shadow: 0 0 5px rgba(0,0,0,0.95);
-      pointer-events: none;
-    }
-
-    .leaflet-interactive {
-      cursor: pointer;
-    }
-
-    /* Marker farmacia (icona div) */
-    .icon-farmacia {
-      width: 14px;
-      height: 14px;
-    }
-
-    .icon-farmacia.privata {
-      border-radius: 50%;
-      box-shadow: 0 0 6px rgba(0,0,0,0.8);
-    }
-
-    .icon-farmacia.comunale {
-      width: 0;
-      height: 0;
-      border-left: 7px solid transparent;
-      border-right: 7px solid transparent;
-      border-bottom: 14px solid #999;
-    }
-
-    .stato-accetta {
-      background: #00ff9c !important;
-      border-bottom-color: #00ff9c !important;
-    }
-    .stato-in_trattativa {
-      background: #f1c40f !important;
-      border-bottom-color: #f1c40f !important;
-    }
-    .stato-rifiuta {
-      background: #e74c3c !important;
-      border-bottom-color: #e74c3c !important;
-    }
-  </style>
+.leaflet-interactive { cursor:pointer }
+</style>
 </head>
+
 <body>
 
 <div id="map"></div>
 
 <div id="hud">
-  <div class="hud-title" id="hud-title">
-    Provincia di Verona
+  <div class="hud-title" id="hudTitle">Provincia di Verona</div>
+  <div class="hud-sub" id="hudSub">Vista generale</div>
+
+  <div id="stats">
+    <div class="stat stat-ok">
+      <div class="stat-title">Comuni coperti</div>
+      <div class="stat-value" id="cntOk">0</div>
+    </div>
+    <div class="stat stat-warn">
+      <div class="stat-title">Comuni orfani</div>
+      <div class="stat-value" id="cntOrfani">0</div>
+    </div>
   </div>
-  <div class="hud-sub" id="hud-sub">
-    Vista generale — seleziona un comune
-  </div>
 
-  <div class="hud-stat">
-    Comuni con referente: <span id="count-con-ref">0</span>
-  </div>
-  <div class="hud-stat">
-    Comuni orfani: <span id="count-senza-ref">0</span>
-  </div>
+  <div id="farm-box">
+    <h4>Farmacie (comune selezionato)</h4>
+    <div id="farm-summary">—</div>
 
-  <div class="hud-divider"></div>
-
-  <div id="farmacie-panel-title">Farmacie nel comune selezionato</div>
-  <div id="farmacie-summary">Nessun comune selezionato.</div>
-  <ul id="farmacie-list"></ul>
-
-  <div class="hud-divider"></div>
-
-  <div id="legend">
-    <div style="font-size:11px; margin-bottom:2px;">Legenda farmacie</div>
-
-    <div class="legend-row">
-      <div class="legend-symbol sym-privata sym-accetta"></div>
-      <span>Privata – accetta</span>
-    </div>
-    <div class="legend-row">
-      <div class="legend-symbol sym-privata sym-trattativa"></div>
-      <span>Privata – in trattativa</span>
-    </div>
-    <div class="legend-row">
-      <div class="legend-symbol sym-privata sym-rifiuta"></div>
-      <span>Privata – rifiuta</span>
-    </div>
-
-    <div class="legend-row" style="margin-top:2px;">
-      <div class="legend-symbol sym-comunale sym-accetta"></div>
-      <span>Comunale – accetta</span>
-    </div>
-    <div class="legend-row">
-      <div class="legend-symbol sym-comunale sym-trattativa"></div>
-      <span>Comunale – in trattativa</span>
-    </div>
-    <div class="legend-row">
-      <div class="legend-symbol sym-comunale sym-rifiuta"></div>
-      <span>Comunale – rifiuta</span>
-    </div>
+    <div class="legend-row"><span class="dot accetta"></span> Privata – accetta</div>
+    <div class="legend-row"><span class="dot in_trattativa"></span> Privata – in trattativa</div>
+    <div class="legend-row"><span class="triangle accetta"></span> Comunale – accetta</div>
+    <div class="legend-row"><span class="triangle rifiuta"></span> Comunale – rifiuta</div>
   </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  // ------------------ MAPPA BASE ------------------
-  const map = L.map('map', {
-    zoomControl: true,
-    attributionControl: false
-  }).setView([45.43, 10.99], 10); // zoom un po' più vicino
+/* MAP */
+const map = L.map('map',{ attributionControl:false })
+  .setView([45.43,10.99],10);
 
-  // Tile OSM scurito
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 18,
-    minZoom: 8,
-    opacity: 0.55
-  }).addTo(map);
+L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  { maxZoom:18 }
+).addTo(map);
 
-  // Rettangolo nero sotto i tile → look più "videogioco"
-  L.rectangle([[45.1, 10.6], [45.7, 11.4]], {
-    fillColor: '#050505',
-    fillOpacity: 1,
-    stroke: false
-  }).addTo(map);
+/* DATI */
+const referenti = { "Verona": ["Vincenzo R."] };
 
-  let selectedLayer = null;
-  let labels = [];
-  let farmacie = [];          // tutte le farmacie caricate
-  let markersFarmacie = [];   // marker Leaflet
-  let farmacieByComune = {};  // indicizzazione per comune
+let labels=[], comuni=[], selectedLayer=null;
+let farmLayer=L.layerGroup().addTo(map);
 
-  const hudTitle = document.getElementById('hud-title');
-  const hudSub   = document.getElementById('hud-sub');
-  const elRef    = document.getElementById('count-con-ref');
-  const elOrf    = document.getElementById('count-senza-ref');
-  const elFSum   = document.getElementById('farmacie-summary');
-  const elFList  = document.getElementById('farmacie-list');
+/* HUD */
+const hudTitle=document.getElementById('hudTitle');
+const hudSub=document.getElementById('hudSub');
 
-  // ------------------ REFERENTI (placeholder) ------------------
-  // Qui puoi aggiungere i referenti reali per comune
-  const referentiByComune = {
-    'Verona': ['Vincenzo Russo (SpG)'],
-    // Aggiungi altri quando li hai
-    // 'San Giovanni Lupatoto': ['Nome Cognome']
-  };
+/* UTILS */
+const nomeComune=p=>p.nome||p.DENOM_COM||p.name||'Comune';
+const hasRef=n=>referenti[n] && referenti[n].length>0;
 
-  // ------------------ CARICA COMUNI ------------------
-  fetch('data/comuni_verona.json')
-    .then(r => r.json())
-    .then(data => {
-
-      // Ombra profonda sotto i confini
-      L.geoJSON(data, {
-        style: {
-          color: '#000',
-          weight: 6,
-          opacity: 0.35
-        }
-      }).addTo(map);
-
-      let comuniLayer = null;
-      let comuniConRef = 0;
-      let comuniSenzaRef = 0;
-
-      comuniLayer = L.geoJSON(data, {
-        style: feature => {
-          const nome =
-            feature.properties.nome ||
-            feature.properties.name ||
-            feature.properties.DENOM_COM ||
-            'Comune';
-
-          const hasRef = !!referentiByComune[nome];
-          if (hasRef) comuniConRef++;
-          else comuniSenzaRef++;
-
-          return {
-            color: hasRef ? '#00ff9c' : '#ff9f1c', // verde = con referente, arancio = orfano
-            weight: 1.2,
-            opacity: 0.9,
-            fillOpacity: 0
-          };
-        },
-        onEachFeature: (feature, layer) => {
-          const nome =
-            feature.properties.nome ||
-            feature.properties.name ||
-            feature.properties.DENOM_COM ||
-            'Comune';
-
-          const center = layer.getBounds().getCenter();
-          const label = L.marker(center, {
-            interactive: false,
-            icon: L.divIcon({
-              className: 'label-comune',
-              html: nome,
-              iconSize: [140, 16]
-            })
-          });
-          labels.push(label);
-          label.addTo(map);
-
-          layer.on('mouseover', () => {
-            if (layer !== selectedLayer) {
-              layer.setStyle({ weight: 2.2, opacity: 1 });
-            }
-          });
-
-          layer.on('mouseout', () => {
-            if (layer !== selectedLayer) {
-              const hasRef = !!referentiByComune[nome];
-              layer.setStyle({
-                color: hasRef ? '#00ff9c' : '#ff9f1c',
-                weight: 1.2,
-                opacity: 0.9
-              });
-            }
-          });
-
-          layer.on('click', () => {
-            // reset comune precedente
-            if (selectedLayer && selectedLayer !== layer) {
-              const prevNome =
-                selectedLayer.feature.properties.nome ||
-                selectedLayer.feature.properties.name ||
-                selectedLayer.feature.properties.DENOM_COM ||
-                'Comune';
-              const prevHasRef = !!referentiByComune[prevNome];
-              selectedLayer.setStyle({
-                color: prevHasRef ? '#00ff9c' : '#ff9f1c',
-                weight: 1.2,
-                opacity: 0.9
-              });
-            }
-
-            selectedLayer = layer;
-
-            // stile evidenziato
-            layer.setStyle({
-              color: '#ffffff',
-              weight: 2.8,
-              opacity: 1
-            });
-
-            // zoom sul comune
-            map.fitBounds(layer.getBounds(), { padding: [50, 50] });
-
-            // aggiorna HUD
-            const refs = referentiByComune[nome] || [];
-            hudTitle.innerText = 'Comune di ' + nome;
-            hudSub.innerText = refs.length
-              ? 'Referenti territoriali: ' + refs.join(', ')
-              : 'Comune orfano — nessun referente assegnato';
-
-            // aggiorna pannello farmacie
-            aggiornaPannelloFarmacie(nome);
-          });
-        }
-      }).addTo(map);
-
-      map.fitBounds(comuniLayer.getBounds());
-
-      // aggiorna contatori globali
-      elRef.innerText = comuniConRef;
-      elOrf.innerText = comuniSenzaRef;
-
-      // gestione visibilità etichette in base allo zoom
-      function updateLabels() {
-        const z = map.getZoom();
-        labels.forEach(l => {
-          if (!selectedLayer) {
-            // vista generale
-            if (z <= 11.3) {
-              l.addTo(map);
-            } else {
-              map.removeLayer(l);
-            }
-          } else {
-            // se un comune è selezionato, tolgo le etichette: focus
-            map.removeLayer(l);
-          }
-        });
-      }
-
-      map.on('zoomend', updateLabels);
-      updateLabels();
-    });
-
-  // ------------------ CARICA FARMACIE (se il file esiste) ------------------
-  // Formato atteso: data/farmacie_verona.json
-  // [
-  //   {
-  //     "nome": "Farmacia Centrale",
-  //     "indirizzo": "Via Roma 1",
-  //     "comune": "Verona",
-  //     "lat": 45.44,
-  //     "lng": 10.99,
-  //     "tipo": "privata",        // "privata" | "comunale"
-  //     "stato": "in_trattativa", // "accetta" | "in_trattativa" | "rifiuta"
-  //     "telefono": "...",
-  //     "email": "...",
-  //     "maps_url": "https://maps.google.com/?q=..."
-  //   },
-  //   ...
-  // ]
-
-  fetch('data/farmacie_verona.json')
-    .then(r => {
-      if (!r.ok) throw new Error('no file');
-      return r.json();
-    })
-    .then(data => {
-      farmacie = data;
-
-      // indicizzazione per comune
-      farmacie.forEach(f => {
-        const c = (f.comune || '').toUpperCase();
-        if (!farmacieByComune[c]) farmacieByComune[c] = [];
-        farmacieByComune[c].push(f);
-      });
-
-      // crea marker
-      farmacie.forEach(f => {
-        if (!f.lat || !f.lng) return;
-
-        const comuneKey = (f.comune || '').toUpperCase();
-        const stato = (f.stato || 'in_trattativa');
-        const tipo = (f.tipo || 'privata');
-
-        let html;
-        if (tipo === 'comunale') {
-          html = `<div class="icon-farmacia comunale stato-${stato}"></div>`;
-        } else {
-          html = `<div class="icon-farmacia privata stato-${stato}"></div>`;
-        }
-
-        const icon = L.divIcon({
-          className: '',
-          html,
-          iconSize: [16, 16],
-          iconAnchor: [8, 8]
-        });
-
-        const m = L.marker([f.lat, f.lng], { icon }).addTo(map);
-
-        const popupHtml = `
-          <div style="font-size:12px;">
-            <div style="font-weight:600;margin-bottom:2px;">${f.nome || 'Farmacia'}</div>
-            <div>${f.indirizzo || ''}</div>
-            <div>${f.telefono ? 'Tel: ' + f.telefono : ''}</div>
-            <div>${f.email ? 'Email: ' + f.email : ''}</div>
-            ${f.maps_url ? `<div style="margin-top:4px;"><a href="${f.maps_url}" target="_blank">Apri in Maps</a></div>` : ''}
-          </div>
-        `;
-
-        m.bindPopup(popupHtml);
-        markersFarmacie.push(m);
-      });
-
-      // se ho già un comune selezionato, aggiorno pannello
-      // (in pratica: pronto per dopo)
-    })
-    .catch(() => {
-      // nessun file di farmacie: pannello resta “vuoto”
-      console.log('Nessun file farmacie_verona.json trovato: ok per ora (demo).');
-    });
-
-  // ------------------ FUNZIONE: AGGIORNA PANNELLO FARMACIE ------------------
-  function aggiornaPannelloFarmacie(nomeComune) {
-    const key = (nomeComune || '').toUpperCase();
-    const elenco = farmacieByComune[key] || [];
-
-    if (!elenco.length) {
-      elFSum.innerText = 'Nessuna farmacia caricata per questo comune (ancora).';
-      elFList.innerHTML = '';
-      return;
-    }
-
-    // contatori
-    let tot = elenco.length;
-    let priv = 0;
-    let comu = 0;
-    let acc = 0;
-    let trat = 0;
-    let rif = 0;
-
-    elenco.forEach(f => {
-      if ((f.tipo || 'privata') === 'comunale') comu++;
-      else priv++;
-
-      const s = f.stato || 'in_trattativa';
-      if (s === 'accetta') acc++;
-      else if (s === 'rifiuta') rif++;
-      else trat++;
-    });
-
-    elFSum.innerText =
-      `${tot} farmacie — ${priv} private, ${comu} comunali ` +
-      `(accetta: ${acc}, in trattativa: ${trat}, rifiuta: ${rif})`;
-
-    elFList.innerHTML = '';
-    elenco.forEach(f => {
-      const li = document.createElement('li');
-      li.textContent = `${f.nome || 'Farmacia'} — ${f.indirizzo || ''}`;
-      li.onclick = () => {
-        if (f.lat && f.lng) {
-          map.setView([f.lat, f.lng], 15);
-        }
+/* COMUNI */
+fetch('data/comuni_verona.json')
+.then(r=>r.json())
+.then(data=>{
+  const layer=L.geoJSON(data,{
+    style:f=>{
+      const n=nomeComune(f.properties);
+      comuni.push(n);
+      return {
+        color: hasRef(n) ? '#00ff9c' : '#ffaa00',
+        weight:1,
+        fillOpacity:0
       };
-      elFList.appendChild(li);
+    },
+    onEachFeature:(f,l)=>{
+      const nome=nomeComune(f.properties);
+
+      const lab=L.marker(l.getBounds().getCenter(),{
+        icon:L.divIcon({className:'label-comune',html:nome}),
+        interactive:false
+      }).addTo(map);
+      labels.push(lab);
+
+      l.on('click',()=>selezionaComune(l,nome));
+    }
+  }).addTo(map);
+
+  map.fitBounds(layer.getBounds());
+  aggiornaContatori();
+  map.on('zoomend',gestioneZoom);
+  gestioneZoom();
+});
+
+/* ZOOM */
+function gestioneZoom(){
+  const z=map.getZoom();
+  if(z<=10 && selectedLayer){
+    const nome=nomeComune(selectedLayer.feature.properties);
+    selectedLayer.setStyle({
+      color: hasRef(nome) ? '#00ff9c' : '#ffaa00',
+      weight:1
+    });
+    selectedLayer=null;
+    hudTitle.innerText='Provincia di Verona';
+    hudSub.innerText='Vista generale';
+    farmLayer.clearLayers();
+    document.getElementById('farm-summary').innerText='—';
+  }
+  labels.forEach(l=>{
+    if(!selectedLayer && z<=12) map.addLayer(l);
+    else map.removeLayer(l);
+  });
+}
+
+/* SELEZIONE COMUNE */
+function selezionaComune(layer,nome){
+  if(selectedLayer){
+    const prev=nomeComune(selectedLayer.feature.properties);
+    selectedLayer.setStyle({
+      color: hasRef(prev) ? '#00ff9c' : '#ffaa00',
+      weight:1
     });
   }
+  selectedLayer=layer;
+  layer.setStyle({ color:'#ffffff', weight:3 });
+
+  map.fitBounds(layer.getBounds(),{ padding:[40,40] });
+
+  hudTitle.innerText='Comune di '+nome;
+  hudSub.innerText=hasRef(nome)
+    ?'Referenti presenti: '+referenti[nome].length
+    :'⚠ Comune orfano';
+
+  labels.forEach(l=>map.removeLayer(l));
+  mostraFarmacie(nome);
+}
+
+/* FARMACIE */
+let farmacie=[];
+fetch('data/farmacie_verona.json')
+  .then(r=>r.ok?r.json():[])
+  .then(d=>farmacie=d);
+
+function mostraFarmacie(comune){
+  farmLayer.clearLayers();
+  const vis=farmacie.filter(f=>f.comune===comune);
+  document.getElementById('farm-summary').innerText=
+    vis.length+' farmacie';
+
+  vis.forEach(f=>{
+    const html=f.tipo==="privata"
+      ? `<div class="dot ${f.stato}"></div>`
+      : `<div class="triangle ${f.stato}"></div>`;
+
+    const m=L.marker([f.lat,f.lng],{
+      icon:L.divIcon({html:html,iconSize:[14,14]})
+    }).bindPopup(`
+      <strong>${f.nome}</strong><br>
+      ${f.indirizzo}<br>
+      ${f.telefono || ''}<br>
+      <a href="https://maps.google.com/?q=${f.lat},${f.lng}" target="_blank">
+        Apri su Maps
+      </a>
+    `);
+    farmLayer.addLayer(m);
+  });
+}
+
+/* CONTATORI */
+function aggiornaContatori(){
+  const ok=comuni.filter(n=>hasRef(n)).length;
+  document.getElementById('cntOk').innerText=ok;
+  document.getElementById('cntOrfani').innerText=comuni.length-ok;
+}
 </script>
 
 </body>
