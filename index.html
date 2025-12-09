@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -20,46 +19,37 @@ html, body {
   z-index:1;
 }
 
-/* OVERLAY SCURO "VIDEOGAME" */
+/* OVERLAY SCURO (più leggero) */
 #dark-overlay {
   position:absolute;
   inset:0;
   background: radial-gradient(
     circle at center,
-    rgba(0,0,0,0.35) 0%,
-    rgba(0,0,0,0.55) 60%,
-    rgba(0,0,0,0.75) 100%
+    rgba(0,0,0,0.15) 0%,
+    rgba(0,0,0,0.35) 55%,
+    rgba(0,0,0,0.55) 100%
   );
   pointer-events:none;
   z-index:2;
 }
 
-/* ===== HUD ===== */
+/* HUD */
 #hud {
   position: fixed;
   top: 16px;
   left: 16px;
   z-index: 9999;
-  width: 320px;
+  width: 330px;
   padding: 16px;
   background: rgba(8,8,8,.95);
   border-left: 4px solid #00ff9c;
   box-shadow: 0 0 22px rgba(0,0,0,.8);
-}
-
-.hud-title {
-  font-size:18px;
-  font-weight:650;
   color:#fff;
 }
 
-.hud-sub {
-  margin-top:6px;
-  font-size:13px;
-  color:#bfbfbf;
-}
+.hud-title { font-size:18px; font-weight:650; }
+.hud-sub { margin-top:6px; font-size:13px; color:#bfbfbf; }
 
-/* ===== CONTATORI ===== */
 #stats {
   margin-top:12px;
   display:grid;
@@ -69,57 +59,43 @@ html, body {
 .stat {
   font-size:12px;
   padding:8px;
-  background:rgba(255,255,255,.04);
+  background:rgba(255,255,255,.05);
 }
-.stat strong {
-  display:block;
-  font-size:18px;
-}
+.stat strong { display:block; font-size:18px; }
 .ok strong { color:#00ff9c; }
 .warn strong { color:#ffaa00; }
 
-/* ===== BADGE ===== */
+/* BADGE */
 .badge {
   margin-top:10px;
   padding:4px 8px;
   font-size:11px;
 }
-.badge-ok {
-  background:rgba(0,255,156,.15);
-  color:#bfffe8;
-}
-.badge-warn {
-  background:rgba(255,170,0,.25);
-  color:#ffd699;
-}
+.badge-ok { background:rgba(0,255,156,.15); color:#bfffe8; }
+.badge-warn { background:rgba(255,170,0,.25); color:#ffd699; }
 
-/* ===== AZIONI ===== */
+/* AZIONI */
 .action {
   margin-top:8px;
   padding:8px;
   text-align:center;
   font-size:13px;
   font-weight:600;
-  cursor:pointer;
   border-radius:4px;
+  cursor:pointer;
 }
-.action.primary {
-  background:#00ff9c;
-  color:#000;
-}
-.action.secondary {
+.primary { background:#00ff9c; color:#000; }
+.secondary {
   background:#1b1b1b;
   color:#fff;
   border:1px solid #333;
 }
 
-/* ===== REFERENTI ===== */
+/* REFERENTI */
 #referentiBox {
   margin-top:10px;
   padding:10px;
   background:#0f0f0f;
-  color:#fff;
-  font-size:13px;
   display:none;
   border-left:3px solid #00ff9c;
 }
@@ -128,19 +104,23 @@ html, body {
   padding-left:18px;
 }
 
+/* MARKER FARMACIE */
+.farmacia-marker {
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  border:2px solid #000;
+}
+.farmacia-da_contattare { background:#ffaa00; }
+.farmacia-in_trattativa { background:#4da6ff; }
+.farmacia-accetta { background:#00ff9c; }
+.farmacia-rifiuta { background:#ff4d4d; }
+
 .label-comune {
   color:rgba(240,240,240,.9);
   font-size:11px;
   text-shadow:0 0 6px #000;
   pointer-events:none;
-}
-
-.orfano {
-  animation: glow 2.5s infinite;
-}
-@keyframes glow {
-  0%,100% { stroke-opacity:.5 }
-  50% { stroke-opacity:1 }
 }
 
 .leaflet-interactive { cursor:pointer }
@@ -154,14 +134,24 @@ html, body {
 
 <div id="hud">
   <div class="hud-title" id="hud-title">Provincia di Verona</div>
-  <div class="hud-sub" id="hud-sub">Vista generale</div>
+  <div class="hud-sub" id="hud-sub">Seleziona un comune</div>
 
   <div id="stats">
-    <div class="stat ok"><strong id="coperti">0</strong>comuni coperti</div>
-    <div class="stat warn"><strong id="orfani">0</strong>comuni orfani</div>
+    <div class="stat ok">
+      <strong id="coperti">0</strong>comuni coperti
+    </div>
+    <div class="stat warn">
+      <strong id="orfani">0</strong>comuni orfani
+    </div>
+    <div class="stat">
+      <strong id="farmacieCount">0</strong>farmacie visibili
+    </div>
+    <div class="stat">
+      <strong>–</strong>medici/studi
+    </div>
   </div>
 
-  <div id="badge" class="badge badge-warn">Seleziona un comune</div>
+  <div id="badge" class="badge badge-warn">—</div>
 
   <div id="addBtn" class="action primary" style="display:none">
     ➕ Aggiungiti come referente
@@ -176,12 +166,19 @@ html, body {
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-/* ===== REFERENTI DI ESEMPIO ===== */
+/* ===== DATI ===== */
 const referenti = {
   "Verona": ["Vincenzo R.", "Anna R.", "Luca M."]
 };
 
-let comuneAttivo=null, mostraLista=false;
+const farmacie = [
+  { nome:"Farmacia Centrale", comune:"Verona", lat:45.438, lng:10.992, stato:"accetta" },
+  { nome:"Farmacia San Zeno", comune:"Verona", lat:45.443, lng:10.980, stato:"in_trattativa" },
+  { nome:"Farmacia Borgo Roma", comune:"Verona", lat:45.389, lng:10.982, stato:"da_contattare" }
+];
+
+let comuneAttivo=null;
+let farmacieLayer=L.layerGroup();
 
 /* ===== MAPPA ===== */
 const map=L.map('map',{attributionControl:false})
@@ -192,24 +189,30 @@ L.tileLayer(
  {maxZoom:19}
 ).addTo(map);
 
-let labels=[], comuni=[], selected=null;
+farmacieLayer.addTo(map);
 
-const nomeComune = p =>
-  p.nome||p.DENOM_COM||p.name||p.COMUNE||'Comune';
+/* ===== UTILS ===== */
+const nomeComune=p=>p.nome||p.DENOM_COM||p.name||p.COMUNE||'Comune';
+const hasRef=c=>referenti[c]&&referenti[c].length>0;
 
-const hasRef = c => referenti[c] && referenti[c].length>0;
-
-function renderRefs(){
-  const box=document.getElementById('referentiBox');
-  box.innerHTML='<strong>Referenti</strong>';
-  const ul=document.createElement('ul');
-  (referenti[comuneAttivo]||[]).forEach(r=>{
-    const li=document.createElement('li');
-    li.textContent=r;
-    ul.appendChild(li);
+/* ===== FARMACIE ===== */
+function mostraFarmacie(comune){
+  farmacieLayer.clearLayers();
+  const visibili=farmacie.filter(f=>f.comune===comune);
+  visibili.forEach(f=>{
+    const marker=L.marker([f.lat,f.lng],{
+      icon:L.divIcon({
+        className:`farmacia-marker farmacia-${f.stato}`,
+        iconSize:[14,14]
+      })
+    }).bindPopup(`<strong>${f.nome}</strong><br/>Stato: ${f.stato}`);
+    farmacieLayer.addLayer(marker);
   });
-  box.appendChild(ul);
+  document.getElementById('farmacieCount').innerText=visibili.length;
 }
+
+/* ===== COMUNI ===== */
+let labels=[], comuni=[], selected=null;
 
 fetch('data/comuni_verona.json')
 .then(r=>r.json())
@@ -226,19 +229,12 @@ fetch('data/comuni_verona.json')
     },
     onEachFeature:(f,l)=>{
       const nome=nomeComune(f.properties);
-
       const c=l.getBounds().getCenter();
       const lab=L.marker(c,{
-        icon:L.divIcon({
-          className:'label-comune',
-          html:nome,
-          iconSize:[120,14]
-        }), interactive:false
+        icon:L.divIcon({className:'label-comune',html:nome,iconSize:[120,14]}),
+        interactive:false
       }).addTo(map);
       labels.push(lab);
-
-      if(!hasRef(nome))
-        setTimeout(()=>l._path.classList.add('orfano'),50);
 
       l.on('click',()=>{
         if(selected){
@@ -250,8 +246,8 @@ fetch('data/comuni_verona.json')
         }
         selected=l;
         comuneAttivo=nome;
-
         l.setStyle({color:'#fff',weight:3});
+
         map.fitBounds(l.getBounds(),{padding:[40,40]});
 
         document.getElementById('hud-title').innerText='Comune di '+nome;
@@ -264,9 +260,7 @@ fetch('data/comuni_verona.json')
         document.getElementById('toggleBtn').style.display=
           hasRef(nome)?'block':'none';
 
-        mostraLista=false;
-        document.getElementById('referentiBox').style.display='none';
-        document.getElementById('toggleBtn').innerText='👤 Vedi referenti';
+        mostraFarmacie(nome);
       });
     }
   }).addTo(map);
@@ -276,30 +270,12 @@ fetch('data/comuni_verona.json')
   document.getElementById('coperti').innerText=
     comuni.filter(c=>hasRef(c)).length;
   document.getElementById('orfani').innerText=
-    comuni.length - comuni.filter(c=>hasRef(c)).length;
+    comuni.length-comuni.filter(c=>hasRef(c)).length;
 
   map.on('zoomend',()=>{
     labels.forEach(l=>map.getZoom()<=11?l.addTo(map):map.removeLayer(l));
   });
 });
-
-/* ===== BOTTONI ===== */
-document.getElementById('addBtn').onclick=()=>{
-  const nome=prompt('Inserisci il tuo nome');
-  if(!nome) return;
-  if(!referenti[comuneAttivo]) referenti[comuneAttivo]=[];
-  referenti[comuneAttivo].push(nome);
-  renderRefs();
-};
-
-document.getElementById('toggleBtn').onclick=()=>{
-  mostraLista=!mostraLista;
-  document.getElementById('toggleBtn').innerText=
-    mostraLista?'Nascondi referenti':'👤 Vedi referenti';
-  document.getElementById('referentiBox').style.display=
-    mostraLista?'block':'none';
-  if(mostraLista) renderRefs();
-};
 </script>
 
 </body>
