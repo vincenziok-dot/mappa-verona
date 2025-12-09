@@ -40,7 +40,7 @@ html, body {
   color: #bdbdbd;
 }
 
-/* contatori comuni */
+/* contatori comuni (GLOBALI) */
 #stats {
   margin-top: 12px;
   display: grid;
@@ -63,7 +63,7 @@ html, body {
 .stat-ok .stat-value { color:#00ff9c; }
 .stat-warn .stat-value { color:#ffaa00; }
 
-/* farmacie */
+/* sezione farmacie (per comune selezionato) */
 #farm-box {
   margin-top: 14px;
   padding-top: 10px;
@@ -81,13 +81,28 @@ html, body {
   margin-bottom: 6px;
 }
 
-/* legenda farmacie */
+/* legenda: comuni + strutture */
+#legend-box {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #222;
+}
+#legend-box h4 {
+  margin: 6px 0 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: #cccccc;
+}
+
 .legend-row {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 11px;
+  margin-bottom: 2px;
 }
+
 .dot {
   width: 12px;
   height: 12px;
@@ -99,14 +114,31 @@ html, body {
   border-right: 7px solid transparent;
   border-bottom: 12px solid;
 }
+.square {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
 
-/* colori stato */
+/* colori stato strutture */
 .accetta { background:#00ff9c; border-bottom-color:#00ff9c; }
 .in_trattativa { background:#4da6ff; border-bottom-color:#4da6ff; }
 .da_contattare { background:#ffaa00; border-bottom-color:#ffaa00; }
 .rifiuta { background:#ff4d4d; border-bottom-color:#ff4d4d; }
 
-/* buttons */
+/* colori legenda comuni */
+.leg-coperto { background:#00ff9c; }
+.leg-orfano { background:#ffaa00; }
+
+/* simbolo medici (usiamo quadrato diverso) */
+.med-simbolo {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  border: 2px solid #ffffff;
+}
+
+/* buttons referenti */
 .hud-buttons {
   margin-top: 12px;
   display: flex;
@@ -125,7 +157,7 @@ html, body {
   color:#00110b;
 }
 
-/* referenti */
+/* pannello referenti */
 .hud-section {
   margin-top: 10px;
   border-top: 1px solid #222;
@@ -157,6 +189,7 @@ html, body {
   <div class="hud-title" id="hudTitle">Provincia di Verona</div>
   <div class="hud-sub" id="hudSub">Vista generale</div>
 
+  <!-- CONTATORI GLOBALI -->
   <div id="stats">
     <div class="stat stat-ok">
       <div class="stat-title">Comuni coperti</div>
@@ -168,22 +201,70 @@ html, body {
     </div>
   </div>
 
-  <!-- FARMACIE -->
+  <!-- FARMACIE (COMUNE SELEZIONATO) -->
   <div id="farm-box">
     <h4>Farmacie (comune selezionato)</h4>
     <div id="farm-count">0 farmacie</div>
-
-    <div class="legend-row"><span class="dot accetta"></span> Privata – accetta</div>
-    <div class="legend-row"><span class="triangle accetta"></span> Comunale – accetta</div>
-    <div class="legend-row"><span class="dot in_trattativa"></span> Privata – in trattativa</div>
-    <div class="legend-row"><span class="triangle da_contattare"></span> Comunale – da contattare</div>
   </div>
 
+  <!-- LEGENDA COMPLETA -->
+  <div id="legend-box">
+    <h4>Legenda comuni</h4>
+    <div class="legend-row">
+      <span class="square leg-coperto"></span> Comune con referenti
+    </div>
+    <div class="legend-row">
+      <span class="square leg-orfano"></span> Comune orfano
+    </div>
+
+    <h4>Legenda farmacie</h4>
+    <div class="legend-row">
+      <span class="dot accetta"></span> Privata – favorevole
+    </div>
+    <div class="legend-row">
+      <span class="dot in_trattativa"></span> Privata – in trattativa
+    </div>
+    <div class="legend-row">
+      <span class="dot da_contattare"></span> Privata – da contattare
+    </div>
+    <div class="legend-row">
+      <span class="dot rifiuta"></span> Privata – contraria
+    </div>
+    <div class="legend-row">
+      <span class="triangle accetta"></span> Comunale – favorevole
+    </div>
+    <div class="legend-row">
+      <span class="triangle in_trattativa"></span> Comunale – in trattativa
+    </div>
+    <div class="legend-row">
+      <span class="triangle da_contattare"></span> Comunale – da contattare
+    </div>
+    <div class="legend-row">
+      <span class="triangle rifiuta"></span> Comunale – contraria
+    </div>
+
+    <h4>Legenda medici / studi</h4>
+    <div class="legend-row">
+      <span class="med-simbolo accetta"></span> Medico / studio – favorevole
+    </div>
+    <div class="legend-row">
+      <span class="med-simbolo in_trattativa"></span> Medico / studio – in trattativa
+    </div>
+    <div class="legend-row">
+      <span class="med-simbolo da_contattare"></span> Medico / studio – da contattare
+    </div>
+    <div class="legend-row">
+      <span class="med-simbolo rifiuta"></span> Medico / studio – contrario
+    </div>
+  </div>
+
+  <!-- PULSANTI REFERENTI -->
   <div class="hud-buttons">
     <button class="hud-btn" id="btnAdd">Aggiungi referente</button>
     <button class="hud-btn" id="btnToggle">Vedi referenti</button>
   </div>
 
+  <!-- LISTA REFERENTI COMUNE SELEZIONATO -->
   <div class="hud-section" id="refPanel">
     <ul id="refList"></ul>
   </div>
@@ -248,24 +329,34 @@ let refVisibili = false;
 let farmLayer = L.layerGroup().addTo(map);
 
 /* RIFERIMENTI HUD */
-const hudTitle   = document.getElementById('hudTitle');
-const hudSub     = document.getElementById('hudSub');
-const refPanel   = document.getElementById('refPanel');
-const refList    = document.getElementById('refList');
-const btnToggle  = document.getElementById('btnToggle');
-const farmCountEl= document.getElementById('farm-count');
+const hudTitle    = document.getElementById('hudTitle');
+const hudSub      = document.getElementById('hudSub');
+const refPanel    = document.getElementById('refPanel');
+const refList     = document.getElementById('refList');
+const btnToggle   = document.getElementById('btnToggle');
+const farmCountEl = document.getElementById('farm-count');
 
 const nomeComune = p => p.nome || p.DENOM_COM || p.name || 'Comune';
-const hasRef     = n => referenti[n] && referenti[n].length>0;
+const hasRef     = n => referenti[n] && referenti[n].length > 0;
 
 /* FUNZIONI UTILITARIE */
+function aggiornaContatori(){
+  // ricalcola sempre da zero, così è coerente anche se cambiano i referenti
+  const tutti = comuni;
+  const coperti = tutti.filter(n => hasRef(n)).length;
+  const orfani  = tutti.length - coperti;
+  document.getElementById('cntOk').innerText     = coperti;
+  document.getElementById('cntOrfani').innerText = orfani;
+}
+
 function resetSelezione(){
-  if(selectedLayer){
+  if (selectedLayer){
     const prevName = nomeComune(selectedLayer.feature.properties);
     selectedLayer.setStyle({
       color: hasRef(prevName) ? '#00ff9c' : '#ffaa00',
       weight: 1,
-      fillOpacity: 0
+      fillColor: hasRef(prevName) ? '#00ff9c' : '#000000',
+      fillOpacity: hasRef(prevName) ? 0.18 : 0
     });
   }
   selectedLayer = null;
@@ -276,13 +367,15 @@ function resetSelezione(){
   refPanel.style.display = 'none';
   refVisibili = false;
   btnToggle.innerText = 'Vedi referenti';
+  // quando torno alla vista generale, riabilito le label (se zoom adatto)
+  aggiornaLabels();
 }
 
 /* AGGIORNA LABELS IN BASE ALLO ZOOM E SELEZIONE */
 function aggiornaLabels(){
   const z = map.getZoom();
   labels.forEach(l => {
-    if(!selectedLayer && z >= 9 && z <= 13){
+    if(!selectedLayer && z >= 9 && z <= 12){
       if(!map.hasLayer(l)) map.addLayer(l);
     } else {
       if(map.hasLayer(l)) map.removeLayer(l);
@@ -299,10 +392,12 @@ fetch('data/comuni_verona.json')
       style: f => {
         const n = nomeComune(f.properties);
         if(!comuni.includes(n)) comuni.push(n);
+        const ref = hasRef(n);
         return {
-          color: hasRef(n) ? '#00ff9c' : '#ffaa00',
+          color: ref ? '#00ff9c' : '#ffaa00',
           weight: 1,
-          fillOpacity: 0
+          fillColor: ref ? '#00ff9c' : '#000000',
+          fillOpacity: ref ? 0.18 : 0
         };
       },
       onEachFeature:(f,layer) => {
@@ -330,9 +425,8 @@ fetch('data/comuni_verona.json')
 
     map.on('zoomend', () => {
       const z = map.getZoom();
-      // appena fai un po' di zoom-out dalla vista di dettaglio,
-      // esci dalla selezione e fai ricomparire i nomi
-      if(selectedLayer && z <= 12.3){
+      // se sto uscendo molto, torno alla vista generale
+      if(selectedLayer && z < 9.5){
         resetSelezione();
       }
       aggiornaLabels();
@@ -343,10 +437,12 @@ fetch('data/comuni_verona.json')
 function selezionaComune(layer,nome){
   if(selectedLayer){
     const prev = nomeComune(selectedLayer.feature.properties);
+    const refPrev = hasRef(prev);
     selectedLayer.setStyle({
-      color: hasRef(prev) ? '#00ff9c' : '#ffaa00',
-      weight:1,
-      fillOpacity:0
+      color: refPrev ? '#00ff9c' : '#ffaa00',
+      weight: 1,
+      fillColor: refPrev ? '#00ff9c' : '#000000',
+      fillOpacity: refPrev ? 0.18 : 0
     });
   }
 
@@ -354,7 +450,8 @@ function selezionaComune(layer,nome){
   layer.setStyle({
     color:'#ffffff',
     weight:3,
-    fillOpacity:0
+    fillColor:'#00ff9c',
+    fillOpacity:0.28
   });
 
   map.fitBounds(layer.getBounds(),{ padding:[40,40] });
@@ -399,12 +496,21 @@ function mostraFarmacie(comune){
   });
 }
 
-/* CONTATORI COMUNI */
-function aggiornaContatori(){
-  const ok     = comuni.filter(n => hasRef(n)).length;
-  const orfani = comuni.length - ok;
-  document.getElementById('cntOk').innerText     = ok;
-  document.getElementById('cntOrfani').innerText= orfani;
+/* REFERENTI: AGGIORNA CONTATORI SEMPRE DOPO CAMBIO */
+function ricalcolaStiliComuni(){
+  // dopo cambi ai referenti, potrei voler rinfrescare lo stile del comune selezionato
+  if(selectedLayer){
+    const nomeSel = nomeComune(selectedLayer.feature.properties);
+    selectedLayer.setStyle({
+      color:'#ffffff',
+      weight:3,
+      fillColor:'#00ff9c',
+      fillOpacity:0.28
+    });
+    hudSub.innerText = hasRef(nomeSel)
+      ? 'Referenti presenti: ' + referenti[nomeSel].length
+      : '⚠ Comune orfano';
+  }
 }
 
 /* REFERENTI: AGGIUNGI */
@@ -418,8 +524,10 @@ document.getElementById('btnAdd').onclick = () => {
   if(!n) return;
   if(!referenti[nomeComuneSel]) referenti[nomeComuneSel] = [];
   referenti[nomeComuneSel].push(n);
-  hudSub.innerText = 'Referenti presenti: ' + referenti[nomeComuneSel].length;
+
   aggiornaContatori();
+  ricalcolaStiliComuni();
+
   if(refVisibili) mostraReferenti(nomeComuneSel);
 };
 
