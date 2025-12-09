@@ -40,7 +40,7 @@ html, body {
   color: #bdbdbd;
 }
 
-/* contatori comuni */
+/* contatori */
 #stats {
   margin-top: 12px;
   display: grid;
@@ -54,7 +54,6 @@ html, body {
 .stat-title {
   font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: .12em;
 }
 .stat-value {
   font-size: 26px;
@@ -63,30 +62,17 @@ html, body {
 .stat-ok .stat-value { color:#00ff9c; }
 .stat-warn .stat-value { color:#ffaa00; }
 
-/* farmacie */
-#farm-box {
+/* legenda */
+#legend {
   margin-top: 14px;
-  padding-top: 10px;
   border-top: 1px solid #222;
-}
-#farm-box h4 {
-  margin: 0 0 6px;
+  padding-top: 8px;
   font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: .12em;
-  color: #9ef5d9;
 }
-#farm-count {
-  font-size: 12px;
-  margin-bottom: 6px;
-}
-
-/* legenda farmacie */
 .legend-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
 }
 .dot {
   width: 12px;
@@ -94,21 +80,21 @@ html, body {
   border-radius: 50%;
 }
 .triangle {
-  width: 0; height: 0;
+  width: 0;
+  height: 0;
   border-left: 7px solid transparent;
   border-right: 7px solid transparent;
   border-bottom: 12px solid;
 }
 
-/* colori stato */
-.accetta { background:#00ff9c; border-bottom-color:#00ff9c; }
-.in_trattativa { background:#4da6ff; border-bottom-color:#4da6ff; }
-.da_contattare { background:#ffaa00; border-bottom-color:#ffaa00; }
-.rifiuta { background:#ff4d4d; border-bottom-color:#ff4d4d; }
+.green { background:#00ff9c; border-bottom-color:#00ff9c; }
+.orange { background:#ffaa00; border-bottom-color:#ffaa00; }
+.blue { background:#4da6ff; border-bottom-color:#4da6ff; }
+.red { background:#ff4d4d; border-bottom-color:#ff4d4d; }
 
 /* buttons */
 .hud-buttons {
-  margin-top: 12px;
+  margin-top: 10px;
   display: flex;
   gap: 6px;
 }
@@ -120,37 +106,29 @@ html, body {
   padding:4px 8px;
   cursor:pointer;
 }
-.hud-btn:hover {
-  background:#00ff9c;
-  color:#00110b;
-}
 
 /* referenti */
-.hud-section {
-  margin-top: 10px;
-  border-top: 1px solid #222;
+#refPanel {
+  margin-top: 8px;
   padding-top: 6px;
-  display: none;
+  border-top: 1px solid #222;
 }
-.hud-section li {
+#refPanel li {
   font-size: 12px;
   color: #fff;
 }
 
 /* label comuni */
 .label-comune {
-  color: #ffffff;
-  font-size: 11px;
-  text-shadow: 0 0 6px rgba(0,0,0,.9);
-  pointer-events: none;
+  color:#fff;
+  font-size:11px;
+  text-shadow:0 0 6px #000;
+  pointer-events:none;
 }
-
-.leaflet-interactive { cursor:pointer }
 </style>
 </head>
 
 <body>
-
 <div id="map"></div>
 
 <div id="hud">
@@ -159,312 +137,132 @@ html, body {
 
   <div id="stats">
     <div class="stat stat-ok">
-      <div class="stat-title">Comuni coperti</div>
+      <div class="stat-title">Coperti</div>
       <div class="stat-value" id="cntOk">0</div>
     </div>
     <div class="stat stat-warn">
-      <div class="stat-title">Comuni orfani</div>
-      <div class="stat-value" id="cntOrfani">0</div>
+      <div class="stat-title">Orfani</div>
+      <div class="stat-value" id="cntNo">0</div>
     </div>
-  </div>
-
-  <!-- FARMACIE -->
-  <div id="farm-box">
-    <h4>Farmacie (comune selezionato)</h4>
-    <div id="farm-count">0 farmacie</div>
-
-    <div class="legend-row"><span class="dot accetta"></span> Privata – accetta</div>
-    <div class="legend-row"><span class="triangle accetta"></span> Comunale – accetta</div>
-    <div class="legend-row"><span class="dot in_trattativa"></span> Privata – in trattativa</div>
-    <div class="legend-row"><span class="triangle da_contattare"></span> Comunale – da contattare</div>
   </div>
 
   <div class="hud-buttons">
     <button class="hud-btn" id="btnAdd">Aggiungi referente</button>
-    <button class="hud-btn" id="btnToggle">Vedi referenti</button>
+    <button class="hud-btn" id="btnToggle">Vedi/Nascondi referenti</button>
   </div>
 
-  <div class="hud-section" id="refPanel">
-    <ul id="refList"></ul>
+  <ul id="refPanel" style="display:none"></ul>
+
+  <div id="legend">
+    <div class="legend-row"><span class="dot green"></span> Comune con referenti</div>
+    <div class="legend-row"><span class="dot orange"></span> Comune orfano</div>
+    <div class="legend-row"><span class="dot green"></span> Farmacia privata</div>
+    <div class="legend-row"><span class="triangle green"></span> Farmacia comunale</div>
   </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-/* MAPPA BASE */
 const map = L.map('map',{ attributionControl:false })
-  .setView([45.43,10.99],10);
+.setView([45.43,10.99],10);
 
 L.tileLayer(
-  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-  { maxZoom:18 }
+'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
 ).addTo(map);
 
-/* DATI IN MEMORIA (provvisori) */
-const referenti = {
-  "Verona": ["Vincenzo R."]
-};
+/* STATO CENTRALE */
+const statoComuni = {};   // nomeComune -> { referenti: [] }
+const layerComuni = {};  // nomeComune -> layer
+let selectedComune = null;
+let showRefs = false;
 
-const farmacie = [
-  {
-    nome:"Farmacia Centrale",
-    comune:"Verona",
-    lat:45.438,
-    lng:10.992,
-    tipo:"privata",
-    stato:"accetta",
-    indirizzo:"Via Roma 1",
-    tel:"045 0000001",
-    maps:"https://www.google.com/maps/search/?api=1&query=Farmacia+Centrale+Verona"
-  },
-  {
-    nome:"Farmacia San Zeno",
-    comune:"Verona",
-    lat:45.443,
-    lng:10.980,
-    tipo:"comunale",
-    stato:"in_trattativa",
-    indirizzo:"Piazza Corrubbio",
-    tel:"045 0000002",
-    maps:"https://www.google.com/maps/search/?api=1&query=Farmacia+San+Zeno+Verona"
-  },
-  {
-    nome:"Farmacia Borgo Roma",
-    comune:"Verona",
-    lat:45.389,
-    lng:10.982,
-    tipo:"privata",
-    stato:"da_contattare",
-    indirizzo:"Via Centro 12",
-    tel:"045 0000003",
-    maps:"https://www.google.com/maps/search/?api=1&query=Farmacia+Borgo+Roma+Verona"
-  }
-];
+/* UTIL */
+const nomeComune = p => p.nome || p.DENOM_COM || p.name;
 
-/* VARIABILI GLOBALI */
-let labels = [];
-let selectedLayer = null;
-let refVisibili = false;
-let farmLayer = L.layerGroup().addTo(map);
-let comuneLayers = {};   // nomeComune -> layer
-
-/* RIFERIMENTI HUD */
-const hudTitle    = document.getElementById('hudTitle');
-const hudSub      = document.getElementById('hudSub');
-const refPanel    = document.getElementById('refPanel');
-const refList     = document.getElementById('refList');
-const btnToggle   = document.getElementById('btnToggle');
-const farmCountEl = document.getElementById('farm-count');
-const cntOkEl     = document.getElementById('cntOk');
-const cntOrfaniEl = document.getElementById('cntOrfani');
-
-const nomeComune = p => p.nome || p.DENOM_COM || p.name || 'Comune';
-const hasRef     = n => referenti[n] && referenti[n].length>0;
-
-/* FUNZIONI STILE / CONTATORI */
-function updateComuneStyle(nome) {
-  const layer = comuneLayers[nome];
-  if (!layer) return;
-  layer.setStyle({
-    color: hasRef(nome) ? '#00ff9c' : '#ffaa00',
-    weight: 1,
-    fillOpacity: 0
-  });
-}
-
+/* CONTATORI */
 function aggiornaContatori(){
-  let tot = 0;
-  let ok  = 0;
-  for (const nome in comuneLayers) {
-    tot++;
-    if (hasRef(nome)) ok++;
-  }
-  cntOkEl.innerText     = ok;
-  cntOrfaniEl.innerText = tot - ok;
+  const tot = Object.keys(statoComuni).length;
+  const coperti = Object.values(statoComuni).filter(c=>c.referenti.length>0).length;
+  document.getElementById('cntOk').innerText = coperti;
+  document.getElementById('cntNo').innerText = tot - coperti;
 }
 
-/* RESET */
-function resetSelezione(){
-  if(selectedLayer){
-    const prevName = nomeComune(selectedLayer.feature.properties);
-    updateComuneStyle(prevName);
-  }
-  selectedLayer = null;
-  hudTitle.innerText = 'Provincia di Verona';
-  hudSub.innerText   = 'Vista generale';
-  farmLayer.clearLayers();
-  farmCountEl.innerText = '0 farmacie';
-  refPanel.style.display = 'none';
-  refVisibili = false;
-  btnToggle.innerText = 'Vedi referenti';
+/* STILE */
+function aggiornaStile(nome){
+  const layer = layerComuni[nome];
+  const ok = statoComuni[nome].referenti.length>0;
+  layer.setStyle({ color: ok ? '#00ff9c':'#ffaa00', weight:1 });
 }
 
-/* LABELS */
-function aggiornaLabels(){
-  const z = map.getZoom();
-  Object.values(comuneLayers).forEach(layer => {
-    const label = layer._labelMarker;
-    if (!label) return;
-    if(!selectedLayer && z >= 9 && z <= 12){
-      if(!map.hasLayer(label)) map.addLayer(label);
-    } else {
-      if(map.hasLayer(label)) map.removeLayer(label);
-    }
-  });
+/* HUD */
+function renderHUD(nome){
+  const dati = statoComuni[nome];
+  document.getElementById('hudTitle').innerText = "Comune di "+nome;
+  document.getElementById('hudSub').innerText =
+    dati.referenti.length>0
+    ? "Referenti: "+dati.referenti.length
+    : "⚠ Comune orfano";
+
+  const panel = document.getElementById('refPanel');
+  panel.innerHTML='';
+  if(showRefs){
+    dati.referenti.forEach(n=>{
+      const li=document.createElement('li');
+      li.textContent=n;
+      panel.appendChild(li);
+    });
+    panel.style.display='block';
+  } else {
+    panel.style.display='none';
+  }
 }
 
 /* COMUNI */
 fetch('data/comuni_verona.json')
-  .then(r => r.json())
-  .then(data => {
+.then(r=>r.json())
+.then(data=>{
+  L.geoJSON(data,{
+    style:f=>{
+      const n = nomeComune(f.properties);
+      statoComuni[n]={referenti:[]};
+      return {color:'#ffaa00', weight:1, fillOpacity:0};
+    },
+    onEachFeature:(f,l)=>{
+      const n = nomeComune(f.properties);
+      layerComuni[n]=l;
 
-    const layer = L.geoJSON(data,{
-      style: f => {
-        const n = nomeComune(f.properties);
-        return {
-          color: hasRef(n) ? '#00ff9c' : '#ffaa00',
-          weight: 1,
-          fillOpacity: 0
-        };
-      },
-      onEachFeature:(f,layer) => {
-        const nome = nomeComune(f.properties);
-        comuneLayers[nome] = layer;
+      const label=L.marker(l.getBounds().getCenter(),{
+        icon:L.divIcon({className:'label-comune',html:n})
+      }).addTo(map);
 
-        const center = layer.getBounds().getCenter();
-        const label = L.marker(center,{
-          icon: L.divIcon({
-            className:'label-comune',
-            html: nome,
-            iconSize:[120,16]
-          }),
-          interactive:false
-        }).addTo(map);
-
-        layer._labelMarker = label;
-
-        layer.on('click', () => selezionaComune(layer,nome));
-      }
-    }).addTo(map);
-
-    map.fitBounds(layer.getBounds());
-    aggiornaContatori();
-    aggiornaLabels();
-
-    map.on('zoomend', () => {
-      const z = map.getZoom();
-      if(selectedLayer && z < 9.5){
-        resetSelezione();
-      }
-      aggiornaLabels();
-    });
-  });
-
-/* SELEZIONE COMUNE */
-function selezionaComune(layer,nome){
-  if(selectedLayer){
-    const prev = nomeComune(selectedLayer.feature.properties);
-    updateComuneStyle(prev);
-  }
-
-  selectedLayer = layer;
-  layer.setStyle({
-    color:'#ffffff',
-    weight:3,
-    fillOpacity:0
-  });
-
-  map.fitBounds(layer.getBounds(),{ padding:[40,40] });
-
-  hudTitle.innerText = 'Comune di ' + nome;
-  hudSub.innerText   = hasRef(nome)
-    ? 'Referenti presenti: ' + referenti[nome].length
-    : '⚠ Comune orfano';
-
-  // nascondi labels quando lavoro su un singolo comune
-  Object.values(comuneLayers).forEach(l => {
-    if (l._labelMarker && map.hasLayer(l._labelMarker)) {
-      map.removeLayer(l._labelMarker);
+      l.on('click',()=>{
+        if(selectedComune) aggiornaStile(selectedComune);
+        selectedComune=n;
+        l.setStyle({color:'#fff', weight:3});
+        map.fitBounds(l.getBounds(),{padding:[40,40]});
+        renderHUD(n);
+      });
     }
-  });
-
-  mostraFarmacie(nome);
-}
-
-/* FARMACIE PER COMUNE */
-function mostraFarmacie(comune){
-  farmLayer.clearLayers();
-  const vis = farmacie.filter(f => f.comune === comune);
-  farmCountEl.innerText = vis.length + ' farmacie';
-
-  vis.forEach(f => {
-    const simbolo = f.tipo === 'privata'
-      ? `<div class="dot ${f.stato}"></div>`
-      : `<div class="triangle ${f.stato}"></div>`;
-
-    const popupHtml = `
-      <strong>${f.nome}</strong><br/>
-      ${f.tipo} – ${f.indirizzo}<br/>
-      Tel: ${f.tel}<br/>
-      <a href="${f.maps}" target="_blank">Apri in Maps</a><br/>
-      <a href="https://drive.google.com/drive/folders/1f9JTPwuquc1epCO6rpsONh2fFes8yabm" target="_blank">
-        Materiali campagna
-      </a>
-    `;
-
-    const m = L.marker([f.lat,f.lng],{
-      icon: L.divIcon({ html: simbolo, iconSize:[14,14], className:'' })
-    }).bindPopup(popupHtml);
-
-    farmLayer.addLayer(m);
-  });
-}
-
-/* REFERENTI: AGGIUNGI */
-document.getElementById('btnAdd').onclick = () => {
-  if(!selectedLayer){
-    alert('Seleziona prima un comune sulla mappa');
-    return;
-  }
-  const nomeComuneSel = hudTitle.innerText.replace('Comune di ','');
-  const n = prompt('Inserisci il tuo nome (verrà mostrato come referente)');
-  if(!n) return;
-  if(!referenti[nomeComuneSel]) referenti[nomeComuneSel] = [];
-  referenti[nomeComuneSel].push(n);
-  hudSub.innerText = 'Referenti presenti: ' + referenti[nomeComuneSel].length;
-
-  // aggiorna stile e contatori
-  updateComuneStyle(nomeComuneSel);
+  }).addTo(map);
   aggiornaContatori();
+});
 
-  if(refVisibili) mostraReferenti(nomeComuneSel);
+/* BOTTONI */
+document.getElementById('btnAdd').onclick=()=>{
+  if(!selectedComune) return alert("Seleziona un comune");
+  const nome=prompt("Nome referente");
+  if(!nome) return;
+  statoComuni[selectedComune].referenti.push(nome);
+  aggiornaStile(selectedComune);
+  aggiornaContatori();
+  renderHUD(selectedComune);
 };
 
-/* REFERENTI: TOGGLE VEDI/NASCONDI */
-document.getElementById('btnToggle').onclick = () => {
-  refVisibili = !refVisibili;
-  btnToggle.innerText = refVisibili ? 'Nascondi referenti' : 'Vedi referenti';
-
-  if(refVisibili && selectedLayer){
-    const nomeComuneSel = hudTitle.innerText.replace('Comune di ','');
-    mostraReferenti(nomeComuneSel);
-  } else {
-    refPanel.style.display = 'none';
-  }
+document.getElementById('btnToggle').onclick=()=>{
+  if(!selectedComune) return;
+  showRefs=!showRefs;
+  renderHUD(selectedComune);
 };
-
-function mostraReferenti(nome){
-  refList.innerHTML = '';
-  const lista = referenti[nome] || [];
-  lista.forEach(r => {
-    const li = document.createElement('li');
-    li.textContent = r;
-    refList.appendChild(li);
-  });
-  refPanel.style.display = lista.length ? 'block' : 'none';
-}
 </script>
-
 </body>
 </html>
-
