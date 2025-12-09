@@ -49,6 +49,21 @@ html, body {
 .badge-ok { background:rgba(0,255,156,.15); color:#bfffe8; }
 .badge-warn { background:rgba(255,170,0,.2); color:#ffd699; }
 
+/* ===== ACTION BUTTON ===== */
+#action {
+  margin-top:12px;
+  padding:8px;
+  text-align:center;
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  border-radius:4px;
+  background:#00ff9c;
+  color:#000;
+  display:none;
+}
+#action:hover { background:#33ffad; }
+
 /* ===== MAP ===== */
 .label-comune {
   color:rgba(240,240,240,.9);
@@ -95,6 +110,7 @@ html, body {
   </div>
 
   <div id="badge" class="badge badge-warn">Seleziona un comune</div>
+  <div id="action" onclick="aggiungiReferente()">➕ Diventa referente</div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -114,6 +130,25 @@ function hasReferenti(c){
   return referenti[c] && referenti[c].length>0;
 }
 
+/* ===== ACTION ===== */
+let comuneAttivo = null;
+function aggiungiReferente(){
+  if(!comuneAttivo) return;
+  const nome = prompt("Inserisci il tuo nome");
+  if(!nome) return;
+
+  if(!referenti[comuneAttivo]) referenti[comuneAttivo]=[];
+  referenti[comuneAttivo].push(nome);
+
+  // aggiornamento badge
+  document.getElementById('badge').className='badge badge-ok';
+  document.getElementById('badge').innerText='Comune coperto';
+
+  document.getElementById('action').innerText='➕ Aggiungi un altro referente';
+
+  aggiornaStats();
+}
+
 /* ===== MAPPA ===== */
 const map = L.map('map',{ attributionControl:false })
   .setView([45.43,10.99],11);
@@ -129,9 +164,7 @@ fetch('data/comuni_verona.json')
 .then(r=>r.json())
 .then(data=>{
 
-  // Ombra
-  L.geoJSON(data,{style:{color:'#000',weight:4,opacity:.3}})
-    .addTo(map);
+  L.geoJSON(data,{style:{color:'#000',weight:4,opacity:.3}}).addTo(map);
 
   const layer=L.geoJSON(data,{
     style:f=>{
@@ -147,7 +180,6 @@ fetch('data/comuni_verona.json')
       const nome=nomeComune(f.properties);
       const orfano=!hasReferenti(nome);
 
-      // Label
       const c=l.getBounds().getCenter();
       const lab=L.marker(c,{
         icon:L.divIcon({
@@ -170,6 +202,8 @@ fetch('data/comuni_verona.json')
           });
         }
         selected=l;
+        comuneAttivo=nome;
+
         l.setStyle({weight:3,color:'#fff'});
         l._path.classList.add('pulse');
 
@@ -179,22 +213,30 @@ fetch('data/comuni_verona.json')
           'badge '+(orfano?'badge-warn':'badge-ok');
         document.getElementById('badge').innerText=
           orfano?'⚠ Comune orfano':'Comune coperto';
+
+        const action=document.getElementById('action');
+        action.style.display='block';
+        action.innerText=orfano?
+          '➕ Diventa referente di questo comune':
+          '➕ Aggiungi un altro referente';
       });
     }
   }).addTo(map);
 
   map.fitBounds(layer.getBounds());
-
-  // Stats
-  const cop=comuniNomi.filter(c=>hasReferenti(c)).length;
-  document.getElementById('coperti').innerText=cop;
-  document.getElementById('orfani').innerText=comuniNomi.length-cop;
-  document.getElementById('farmacie').innerText=farmacie.length;
+  aggiornaStats();
 
   map.on('zoomend',()=>{
     labels.forEach(l=>map.getZoom()<=11?l.addTo(map):map.removeLayer(l));
   });
 });
+
+function aggiornaStats(){
+  const cop=comuniNomi.filter(c=>hasReferenti(c)).length;
+  document.getElementById('coperti').innerText=cop;
+  document.getElementById('orfani').innerText=comuniNomi.length-cop;
+  document.getElementById('farmacie').innerText=farmacie.length;
+}
 </script>
 
 </body>
