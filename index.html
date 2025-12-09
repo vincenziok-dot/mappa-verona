@@ -4,19 +4,23 @@
   <meta charset="utf-8">
   <title>Mappa Verona</title>
 
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
+  <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
 
   <style>
     html, body {
       margin: 0;
       height: 100%;
+      background: #000;
     }
     #map {
       height: 100%;
       width: 100%;
+      background: #0b0b0b;
+    }
+    .label {
+      color: #00ff9c;
+      font-weight: bold;
+      font-size: 14px;
     }
   </style>
 </head>
@@ -26,20 +30,44 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  const map = L.map('map').setView([45.4384, 10.9916], 10);
+  const map = L.map('map', {
+    zoomControl: true,
+    attributionControl: false,
+    crs: L.CRS.Simple
+  });
 
-L.tileLayer(
-  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-  {
-    subdomains: 'abc',
-    maxZoom: 19
-  }
-).addTo(map);
+  // spazio di gioco (tipo videogioco)
+  const bounds = [[0,0],[1000,1000]];
+  map.fitBounds(bounds);
 
-  L.marker([45.4384, 10.9916]).addTo(map)
-    .bindPopup('VERONA')
-    .openPopup();
+  // sfondo black
+  L.rectangle(bounds, {
+    fillColor: '#0b0b0b',
+    fillOpacity: 1,
+    stroke: false
+  }).addTo(map);
+
+  // area "Verona"
+  const verona = [
+    [300, 300],
+    [700, 300],
+    [700, 700],
+    [300, 700]
+  ];
+
+  const area = L.polygon(verona, {
+    color: '#00ff9c',
+    weight: 3,
+    fillOpacity: 0.05
+  }).addTo(map);
+
+  area.on('click', () => {
+    alert('Comune: Verona');
+  });
+
+  L.marker([500,500]).addTo(map)
+    .bindTooltip('VERONA', { permanent:true, className:'label' });
+
 </script>
-
 </body>
 </html>
