@@ -1,9 +1,8 @@
-
 <!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="utf-8">
-  <title>Mappa Verona – test</title>
+  <title>Mappa Verona</title>
 
   <link
     rel="stylesheet"
@@ -14,24 +13,51 @@
     html, body {
       margin: 0;
       height: 100%;
+      background: #000;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
     #map {
       width: 100%;
       height: 100%;
-      background: #000;
+      z-index: 1;
     }
 
+    /* HUD */
     #hud {
       position: fixed;
       top: 20px;
       left: 20px;
-      z-index: 9999;
-      padding: 12px 16px;
-      background: rgba(0,0,0,0.85);
-      color: #fff;
+      z-index: 10000;
+      padding: 16px 18px;
+      background: rgba(10,10,10,0.92);
       border-left: 4px solid #00ff9c;
-      font-family: system-ui, sans-serif;
+      min-width: 280px;
+      max-width: 300px;
+      pointer-events: none;
+    }
+
+    .hud-title {
+      font-size: 20px;
+      font-weight: 650;
+      letter-spacing: 1px;
+      color: #ffffff;
+      line-height: 1.25;
+    }
+
+    .hud-sub {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #b3b3b3;
+      line-height: 1.35;
+    }
+
+    /* Etichette comuni */
+    .label-comune {
+      color: rgba(235,235,235,0.85);
+      font-size: 11.5px;
+      white-space: nowrap;
+      text-shadow: 0 0 5px rgba(0,0,0,0.9);
       pointer-events: none;
     }
 
@@ -45,41 +71,115 @@
 <div id="map"></div>
 
 <div id="hud">
-  <b>TEST BASEMAP</b><br/>
-  Se vedi strade → OK
+  <div class="hud-title">Provincia di Verona</div>
+  <div class="hud-sub">Vista generale — seleziona un comune</div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+  /* MAPPA */
   const map = L.map('map', {
-    zoomControl: true
+    zoomControl: true,
+    attributionControl: false
   }).setView([45.43, 10.99], 11);
 
-  // === BASEMAP CHIARA (OSM) ===
-  const osm = L.tileLayer(
-    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    {
-      maxZoom: 19
-    }
-  );
-
-  // === BASEMAP SCURA (CARTO) ===
-  const dark = L.tileLayer(
+  /* BASEMAP SCURA (TESTATA, OK) */
+  L.tileLayer(
     'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    {
-      maxZoom: 19
-    }
-  );
+    { maxZoom: 19 }
+  ).addTo(map);
 
-  // carichiamo PRIMA la chiara
-  osm.addTo(map);
+  let selectedLayer = null;
+  let labels = [];
 
-  // switch manuale dopo 2 secondi (per test)
-  setTimeout(() => {
-    map.removeLayer(osm);
-    dark.addTo(map);
-  }, 2000);
+  fetch('data/comuni_verona.json')
+    .then(r => r.json())
+    .then(data => {
 
+      /* OMBRA (PROFONDITÀ) */
+      L.geoJSON(data, {
+        style: {
+          color: '#000',
+          weight: 4,
+          opacity: 0.3
+        }
+      }).addTo(map);
+
+      /* COMUNI */
+      const comuniLayer = L.geoJSON(data, {
+        style: {
+          color: '#00ff9c',
+          weight: 1,
+          opacity: 0.9,
+          fillOpacity: 0
+        },
+        onEachFeature: (feature, layer) => {
+
+          const nome =
+            feature.properties.nome ||
+            feature.properties.name ||
+            feature.properties.DENOM_COM ||
+            'Comune';
+
+          /* ETICHETTA (ZOOM OUT) */
+          const center = layer.getBounds().getCenter();
+          const label = L.marker(center, {
+            interactive: false,
+            icon: L.divIcon({
+              className: 'label-comune',
+              html: nome,
+              iconSize: [140, 16]
+            })
+          });
+          labels.push(label);
+          label.addTo(map);
+
+          /* HOVER */
+          layer.on('mouseover', () => {
+            if (layer !== selectedLayer) {
+              layer.setStyle({ color:'#ffffff', weight:2 });
+            }
+          });
+
+          layer.on('mouseout', () => {
+            if (layer !== selectedLayer) {
+              layer.setStyle({ color:'#00ff9c', weight:1 });
+            }
+          });
+
+          /* CLICK */
+          layer.on('click', () => {
+            if (selectedLayer) {
+              selectedLayer.setStyle({ color:'#00ff9c', weight:1 });
+            }
+
+            selectedLayer = layer;
+            layer.setStyle({ color:'#ffffff', weight:3 });
+
+            map.fitBounds(layer.getBounds(), { padding:[40,40] });
+
+            document.querySelector('.hud-title').innerText =
+              'Comune di ' + nome;
+            document.querySelector('.hud-sub').innerText =
+              'Referenti territoriali: —';
+          });
+        }
+      }).addTo(map);
+
+      map.fitBounds(comuniLayer.getBounds());
+
+      /* MOSTRA / NASCONDI NOMI */
+      function updateLabels() {
+        const z = map.getZoom();
+        labels.forEach(l => {
+          if (z <= 11) l.addTo(map);
+          else map.removeLayer(l);
+        });
+      }
+
+      map.on('zoomend', updateLabels);
+      updateLabels();
+    });
 </script>
 
 </body>
