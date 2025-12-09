@@ -87,6 +87,7 @@ html, body {
   align-items: center;
   gap: 6px;
   font-size: 11px;
+  margin-bottom: 2px;
 }
 .dot {
   width: 12px;
@@ -242,41 +243,35 @@ const farmacie = [
 ];
 
 let labels = [];
+let comuni = [];
 let selectedLayer = null;
 let refVisibili = false;
 let farmLayer = L.layerGroup().addTo(map);
 
-/* mappa nome comune → layer, per aggiornare stili dopo i cambi */
+/* nuovi: mappa comune -> layer per aggiornare colore quando aggiungo referenti */
 const comuneLayers = {};
 
 /* RIFERIMENTI HUD */
-const hudTitle    = document.getElementById('hudTitle');
-const hudSub      = document.getElementById('hudSub');
-const refPanel    = document.getElementById('refPanel');
-const refList     = document.getElementById('refList');
-const btnToggle   = document.getElementById('btnToggle');
-const farmCountEl = document.getElementById('farm-count');
+const hudTitle   = document.getElementById('hudTitle');
+const hudSub     = document.getElementById('hudSub');
+const refPanel   = document.getElementById('refPanel');
+const refList    = document.getElementById('refList');
+const btnToggle  = document.getElementById('btnToggle');
+const farmCountEl= document.getElementById('farm-count');
 
 const nomeComune = p => p.nome || p.DENOM_COM || p.name || 'Comune';
 const hasRef     = n => referenti[n] && referenti[n].length>0;
 
-/* stile di base per ogni comune (non selezionato) */
-function stileBase(nome){
-  const coperto = hasRef(nome);
-  return {
-    color: coperto ? '#00ff9c' : '#ffaa00',
-    weight: coperto ? 2 : 1,
-    fillColor: coperto ? '#00ff9c' : '#000000',
-    fillOpacity: coperto ? 0.12 : 0
-  };
-}
-
-/* ri-applica lo stile base a tutti i comuni (tranne quello selezionato) */
-function aggiornaStiliComuni(){
-  Object.keys(comuneLayers).forEach(n => {
-    const layer = comuneLayers[n];
-    if(layer === selectedLayer) return;
-    layer.setStyle(stileBase(n));
+/* aggiorna stile di UN comune in base ai referenti */
+function updateComuneStyle(nome) {
+  const layer = comuneLayers[nome];
+  if (!layer) return;
+  const baseColor = hasRef(nome) ? '#00ff9c' : '#ffaa00';
+  const isSelected = (selectedLayer === layer);
+  layer.setStyle({
+    color: isSelected ? '#ffffff' : baseColor,
+    weight: isSelected ? 3 : 1,
+    fillOpacity: 0
   });
 }
 
@@ -284,9 +279,9 @@ function aggiornaStiliComuni(){
 function resetSelezione(){
   if(selectedLayer){
     const prevName = nomeComune(selectedLayer.feature.properties);
-    selectedLayer.setStyle(stileBase(prevName));
+    selectedLayer = null;
+    updateComuneStyle(prevName);
   }
-  selectedLayer = null;
   hudTitle.innerText = 'Provincia di Verona';
   hudSub.innerText   = 'Vista generale';
   farmLayer.clearLayers();
@@ -297,11 +292,11 @@ function resetSelezione(){
   aggiornaLabels();
 }
 
-/* LABELS in base allo zoom e alla selezione */
+/* AGGIORNA LABELS IN BASE ALLO ZOOM E SELEZIONE */
 function aggiornaLabels(){
   const z = map.getZoom();
   labels.forEach(l => {
-    if(!selectedLayer && z >= 9){
+    if(!selectedLayer && z >= 9 && z <= 12){
       if(!map.hasLayer(l)) map.addLayer(l);
     } else {
       if(map.hasLayer(l)) map.removeLayer(l);
@@ -317,14 +312,19 @@ fetch('data/comuni_verona.json')
     const layer = L.geoJSON(data,{
       style: f => {
         const n = nomeComune(f.properties);
-        return stileBase(n);
+        if(!comuni.includes(n)) comuni.push(n);
+        const baseColor = hasRef(n) ? '#00ff9c' : '#ffaa00';
+        return {
+          color: baseColor,
+          weight: 1,
+          fillOpacity: 0
+        };
       },
       onEachFeature:(f,layer) => {
         const nome = nomeComune(f.properties);
-        const center = layer.getBounds().getCenter();
-
         comuneLayers[nome] = layer;
 
+        const center = layer.getBounds().getCenter();
         const label = L.marker(center,{
           icon: L.divIcon({
             className:'label-comune',
@@ -346,11 +346,11 @@ fetch('data/comuni_verona.json')
 
     map.on('zoomend', () => {
       const z = map.getZoom();
-      // appena fai un po' di zoom out, se eri dentro un comune, torna vista generale
-      if(selectedLayer && z <= 10.5){
+      if(selectedLayer && z < 9.5){
         resetSelezione();
+      } else {
+        aggiornaLabels();
       }
-      aggiornaLabels();
     });
   });
 
@@ -358,15 +358,12 @@ fetch('data/comuni_verona.json')
 function selezionaComune(layer,nome){
   if(selectedLayer){
     const prev = nomeComune(selectedLayer.feature.properties);
-    selectedLayer.setStyle(stileBase(prev));
+    selectedLayer = null;
+    updateComuneStyle(prev);
   }
 
   selectedLayer = layer;
-  layer.setStyle({
-    color:'#ffffff',
-    weight:3,
-    fillOpacity:0   // NESSUN RIEMPIMENTO QUANDO SELEZIONATO
-  });
+  updateComuneStyle(nome);
 
   map.fitBounds(layer.getBounds(),{ padding:[40,40] });
 
@@ -410,13 +407,12 @@ function mostraFarmacie(comune){
   });
 }
 
-/* CONTATORI COMUNI GLOBALI */
+/* CONTATORI COMUNI */
 function aggiornaContatori(){
-  const nomi = Object.keys(comuneLayers);
-  const ok   = nomi.filter(n => hasRef(n)).length;
-  const orfani = nomi.length - ok;
-  document.getElementById('cntOk').innerText      = ok;
-  document.getElementById('cntOrfani').innerText  = orfani;
+  const ok     = comuni.filter(n => hasRef(n)).length;
+  const orfani = comuni.length - ok;
+  document.getElementById('cntOk').innerText     = ok;
+  document.getElementById('cntOrfani').innerText = orfani;
 }
 
 /* REFERENTI: AGGIUNGI */
@@ -433,8 +429,9 @@ document.getElementById('btnAdd').onclick = () => {
 
   hudSub.innerText = 'Referenti presenti: ' + referenti[nomeComuneSel].length;
 
-  aggiornaStiliComuni();   // aggiorna colori (arancio⇄verde)
-  aggiornaContatori();     // aggiorna contatori globali
+  // aggiorna colore del comune e contatori globali
+  updateComuneStyle(nomeComuneSel);
+  aggiornaContatori();
 
   if(refVisibili) mostraReferenti(nomeComuneSel);
 };
