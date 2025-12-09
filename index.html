@@ -47,13 +47,22 @@
     stroke: false
   }).addTo(map);
 
-  // area "Verona"
-  const verona = [
-    [300, 300],
-    [700, 300],
-    [700, 700],
-    [300, 700]
-  ];
+// contorno reale semplificato Comune di Verona
+const verona = [
+  [350, 620],
+  [380, 680],
+  [440, 720],
+  [510, 710],
+  [560, 660],
+  [590, 610],
+  [580, 560],
+  [540, 520],
+  [500, 500],
+  [450, 505],
+  [410, 540],
+  [370, 580]
+];
+
 
   const area = L.polygon(verona, {
     color: '#00ff9c',
