@@ -1,289 +1,403 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-<meta charset="utf-8">
-<title>Mappa Verona</title>
+  <meta charset="utf-8">
+  <title>Mappa Verona – Referenti</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
-<style>
-html, body {
-  margin: 0;
-  height: 100%;
-  background: #000;
-  font-family: system-ui, sans-serif;
-}
-#map { position:absolute; inset:0; }
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #000;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
 
-/* ===== HUD ===== */
-#hud {
-  position: fixed;
-  top: 18px;
-  left: 18px;
-  z-index: 9999;
-  width: 320px;
-  padding: 16px;
-  background: rgba(10,10,10,.94);
-  border-left: 4px solid #00ff9c;
-}
-.hud-title { font-size:18px; font-weight:650; color:#fff; }
-.hud-sub { margin-top:4px; font-size:12px; color:#bbb; }
+    #map {
+      position: absolute;
+      inset: 0;
+      background: #050505;
+      z-index: 1;
+    }
 
-/* ===== STATS ===== */
-#stats {
-  margin-top:12px;
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
-}
-.stat { font-size:12px; background:#111; padding:8px; }
-.stat strong { font-size:18px; display:block; }
-.ok strong { color:#00ff9c; }
-.warn strong { color:#ffaa00; }
+    /* HUD laterale in alto a sinistra */
+    #hud {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 9999;
+      padding: 14px 16px 10px;
+      background: rgba(8, 8, 8, 0.95);
+      border-left: 4px solid #00ff9c;
+      min-width: 280px;
+      max-width: 320px;
+      box-shadow: 0 0 18px rgba(0,0,0,0.7);
+      border-radius: 3px;
+      color: #f5f5f5;
+    }
 
-/* ===== BADGE ===== */
-.badge {
-  margin-top:10px;
-  padding:4px 8px;
-  font-size:11px;
-  display:inline-block;
-}
-.badge-ok { background:rgba(0,255,156,.15); color:#bfffe8; }
-.badge-warn { background:rgba(255,170,0,.25); color:#ffd699; }
+    .hud-title {
+      font-size: 19px;
+      font-weight: 650;
+      letter-spacing: 0.5px;
+      line-height: 1.2;
+    }
 
-/* ===== ACTION BUTTONS ===== */
-.action {
-  margin-top:10px;
-  padding:8px;
-  text-align:center;
-  font-size:13px;
-  font-weight:600;
-  border-radius:4px;
-  cursor:pointer;
-  background:#00ff9c;
-  color:#000;
-}
-.action.secondary {
-  background:#1b1b1b;
-  color:#fff;
-  border:1px solid #333;
-}
-.action:hover { filter:brightness(1.1); }
+    .hud-sub {
+      margin-top: 6px;
+      font-size: 13px;
+      color: #b5b5b5;
+      line-height: 1.35;
+    }
 
-/* ===== LISTA REFERENTI ===== */
-#referentiBox {
-  margin-top:10px;
-  padding:10px;
-  background:#111;
-  color:#fff;
-  font-size:13px;
-  border-left:3px solid #00ff9c;
-  display:none;
-}
-#referentiBox h4 {
-  margin:0 0 6px 0;
-  font-size:12px;
-  color:#9ef5d9;
-  text-transform:uppercase;
-  letter-spacing:1px;
-}
-#referentiBox ul {
-  margin:0;
-  padding-left:18px;
-}
-#referentiBox li {
-  margin-bottom:4px;
-}
+    .hud-meta {
+      margin-top: 8px;
+      font-size: 11px;
+      color: #8c8c8c;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
 
-/* ===== MAP STYLES ===== */
-.label-comune {
-  color:rgba(240,240,240,.9);
-  font-size:11px;
-  text-shadow:0 0 4px #000;
-  pointer-events:none;
-}
-.pulse { animation:pulse .8s ease-out; }
-@keyframes pulse {
-  0%{stroke-opacity:.3}
-  50%{stroke-opacity:1}
-  100%{stroke-opacity:.3}
-}
-.orfano { animation:glow 2.5s infinite; }
-@keyframes glow {
-  0%,100%{stroke-opacity:.5}
-  50%{stroke-opacity:1}
-}
-.leaflet-interactive{cursor:pointer}
-</style>
+    .hud-meta span {
+      background: rgba(255,255,255,0.03);
+      padding: 3px 6px;
+      border-radius: 2px;
+    }
+
+    #hud-actions {
+      margin-top: 10px;
+      display: flex;
+      gap: 6px;
+    }
+
+    #hud-actions button {
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 3px;
+      border: 1px solid #00ff9c;
+      background: #050b09;
+      color: #e8ffe9;
+      cursor: pointer;
+    }
+
+    #hud-actions button:hover {
+      background: #00ff9c;
+      color: #05110b;
+    }
+
+    #ref-list {
+      margin-top: 8px;
+      font-size: 12px;
+      max-height: 120px;
+      overflow-y: auto;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      padding-top: 6px;
+    }
+
+    #ref-list ul {
+      margin: 4px 0 0;
+      padding-left: 18px;
+    }
+
+    #ref-list li {
+      margin-bottom: 2px;
+      color: #ffffff;
+    }
+
+    #ref-list-empty {
+      color: #ffcc66;
+      font-size: 11px;
+    }
+
+    .badge-orfano {
+      color: #ff6666;
+      font-weight: 600;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    /* Etichette dei comuni sulla mappa */
+    .label-comune {
+      color: rgba(235,235,235,0.9);
+      font-size: 11px;
+      white-space: nowrap;
+      text-shadow: 0 0 5px rgba(0,0,0,0.95);
+      pointer-events: none;
+    }
+
+    .leaflet-interactive {
+      cursor: pointer;
+    }
+  </style>
 </head>
-
 <body>
 
 <div id="map"></div>
 
 <div id="hud">
-  <div class="hud-title">Provincia di Verona</div>
-  <div class="hud-sub">Situazione territoriale</div>
-
-  <div id="stats">
-    <div class="stat ok">
-      <strong id="coperti">0</strong>comuni coperti
-    </div>
-    <div class="stat warn">
-      <strong id="orfani">0</strong>comuni orfani
-    </div>
-    <div class="stat">
-      <strong id="farmacie">0</strong>farmacie
-    </div>
-    <div class="stat">
-      <strong>–</strong>medici/studi
-    </div>
+  <div class="hud-title" id="hud-title">Provincia di Verona</div>
+  <div class="hud-sub" id="hud-sub">
+    Vista generale — seleziona un comune sulla mappa
   </div>
 
-  <div id="badge" class="badge badge-warn">Seleziona un comune</div>
+  <div class="hud-meta">
+    <span id="hud-counter">Comuni caricati: 0</span>
+    <span id="hud-orfani">Comuni orfani: 0</span>
+  </div>
 
-  <div id="addBtn" class="action" style="display:none"
-       onclick="aggiungiReferente()">➕ Aggiungiti come referente</div>
+  <div id="hud-actions" class="hidden">
+    <button id="btn-add-ref">Aggiungi referente</button>
+    <button id="btn-toggle-refs">Vedi referenti</button>
+  </div>
 
-  <div id="listBtn" class="action secondary" style="display:none"
-       onclick="toggleLista()">👤 Vedi referenti</div>
-
-  <div id="referentiBox"></div>
+  <div id="ref-list" class="hidden"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-/* ===== MOCK DB (TEMPORANEO) ===== */
-const referenti = {
-  "Verona": ["Anna R.", "Luca M."]
-};
-const farmacie = [
-  { nome:"Farmacia Centrale", comune:"Verona" },
-  { nome:"Farmacia San Zeno", comune:"Verona" }
-];
+  // Mappa base con tile scuri (per avere sfondo leggibile)
+  const map = L.map('map', {
+    zoomControl: true,
+    attributionControl: false
+  }).setView([45.43, 10.99], 10); // zoom leggermente più vicino
 
-/* ===== STATE ===== */
-let comuneAttivo = null;
-let listaVisibile = false;
-
-/* ===== UTILS ===== */
-const nomeComune = p => p.nome || p.DENOM_COM || p.name || p.COMUNE;
-const hasReferenti = c => referenti[c] && referenti[c].length>0;
-
-/* ===== REFERENTI UI ===== */
-function renderReferenti(){
-  const box = document.getElementById('referentiBox');
-  box.innerHTML = '<h4>Referenti</h4>';
-
-  if(!referenti[comuneAttivo] || referenti[comuneAttivo].length===0){
-    box.innerHTML += '<em>Nessun referente assegnato</em>';
-    return;
-  }
-
-  const ul = document.createElement('ul');
-  referenti[comuneAttivo].forEach(r=>{
-    const li=document.createElement('li');
-    li.textContent = r;
-    ul.appendChild(li);
-  });
-  box.appendChild(ul);
-}
-
-function toggleLista(){
-  listaVisibile = !listaVisibile;
-  const box = document.getElementById('referentiBox');
-  box.style.display = listaVisibile ? 'block' : 'none';
-  if(listaVisibile) renderReferenti();
-}
-
-function aggiungiReferente(){
-  if(!comuneAttivo) return;
-  const nome = prompt("Inserisci il tuo nome");
-  if(!nome) return;
-
-  if(!referenti[comuneAttivo]) referenti[comuneAttivo] = [];
-  referenti[comuneAttivo].push(nome);
-
-  document.getElementById('badge').className = 'badge badge-ok';
-  document.getElementById('badge').innerText = 'Comune coperto';
-
-  document.getElementById('listBtn').style.display = 'block';
-
-  renderReferenti();
-  aggiornaStats();
-}
-
-/* ===== MAPPA ===== */
-const map = L.map('map',{ attributionControl:false })
-  .setView([45.43,10.99],11);
-
-L.tileLayer(
- 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
- {maxZoom:19}
-).addTo(map);
-
-let labels=[], comuniNomi=[], selected=null;
-
-fetch('data/comuni_verona.json')
-.then(r=>r.json())
-.then(data=>{
-  L.geoJSON(data,{style:{color:'#000',weight:4,opacity:.3}}).addTo(map);
-
-  const layer=L.geoJSON(data,{
-    style:f=>{
-      const n=nomeComune(f.properties);
-      comuniNomi.push(n);
-      return { color:hasReferenti(n)?'#00ff9c':'#ffaa00', weight:1 };
-    },
-    onEachFeature:(f,l)=>{
-      const nome=nomeComune(f.properties);
-      const c=l.getBounds().getCenter();
-
-      const lab=L.marker(c,{
-        icon:L.divIcon({
-          className:'label-comune',
-          html:nome,
-          iconSize:[120,14]
-        }),
-        interactive:false
-      }).addTo(map);
-      labels.push(lab);
-
-      if(!hasReferenti(nome))
-        setTimeout(()=>l._path.classList.add('orfano'),50);
-
-      l.on('click',()=>{
-        comuneAttivo = nome;
-        listaVisibile = false;
-
-        document.getElementById('referentiBox').style.display='none';
-        document.getElementById('listBtn').style.display =
-          hasReferenti(nome) ? 'block' : 'none';
-
-        document.getElementById('addBtn').style.display='block';
-
-        document.getElementById('badge').className =
-          'badge '+(hasReferenti(nome)?'badge-ok':'badge-warn');
-        document.getElementById('badge').innerText =
-          hasReferenti(nome)?'Comune coperto':'⚠ Comune orfano';
-      });
-    }
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
   }).addTo(map);
 
-  map.fitBounds(layer.getBounds());
-  aggiornaStats();
+  // HUD elementi
+  const hudTitle   = document.getElementById('hud-title');
+  const hudSub     = document.getElementById('hud-sub');
+  const hudCounter = document.getElementById('hud-counter');
+  const hudOrfani  = document.getElementById('hud-orfani');
+  const hudActions = document.getElementById('hud-actions');
+  const refListBox = document.getElementById('ref-list');
+  const btnAddRef  = document.getElementById('btn-add-ref');
+  const btnToggle  = document.getElementById('btn-toggle-refs');
 
-  map.on('zoomend',()=>{
-    labels.forEach(l=>map.getZoom()<=11?l.addTo(map):map.removeLayer(l));
+  // Stato in memoria
+  let comuniLayer = null;
+  let selectedLayer = null;
+  let selectedComuneName = null;
+  let labels = [];
+  const referentiByComune = {}; // { nomeComune : [ 'Vincenzo', ... ] }
+  let refsVisible = false;
+
+  // Aggiorna contatori orfani / totali
+  function updateCounters() {
+    if (!comuniLayer) return;
+    const layers = comuniLayer.getLayers();
+    const tot = layers.length;
+    let orfani = 0;
+    layers.forEach(l => {
+      const nome = l.feature.properties._nomeComune;
+      const refs = referentiByComune[nome] || [];
+      if (!refs.length) orfani++;
+    });
+    hudCounter.textContent = 'Comuni caricati: ' + tot;
+    hudOrfani.innerHTML = 'Comuni orfani: <span class="badge-orfano">' + orfani + '</span>';
+  }
+
+  // Aggiorna pannello referenti per il comune selezionato
+  function refreshRefList() {
+    if (!selectedComuneName) return;
+    const refs = referentiByComune[selectedComuneName] || [];
+
+    if (!refs.length) {
+      refListBox.innerHTML = '<div id="ref-list-empty">Nessun referente — comune orfano.</div>';
+    } else {
+      refListBox.innerHTML = '<div style="font-size:11px;margin-bottom:3px;">Referenti per ' +
+        selectedComuneName +
+        ':</div><ul>' +
+        refs.map(r => '<li>' + r + '</li>').join('') +
+        '</ul>';
+    }
+  }
+
+  // Selezione di un comune
+  function selectComune(layer) {
+    const nome = layer.feature.properties._nomeComune || 'Comune';
+
+    // reset stile precedente
+    if (selectedLayer && selectedLayer !== layer) {
+      selectedLayer.setStyle({
+        color: '#00ff9c',
+        weight: 1,
+        fillOpacity: 0
+      });
+    }
+
+    selectedLayer = layer;
+    selectedComuneName = nome;
+
+    // stile selezionato
+    layer.setStyle({
+      color: '#ffffff',
+      weight: 2.5,
+      fillOpacity: 0.12
+    });
+
+    // zoom al comune
+    map.fitBounds(layer.getBounds(), { padding: [40, 40] });
+
+    // aggiorna HUD
+    const refs = referentiByComune[nome] || [];
+    hudTitle.textContent = 'Comune di ' + nome;
+    hudSub.innerHTML =
+      'Referenti territoriali: ' +
+      (refs.length ? refs.join(', ') : '<span class="badge-orfano">— nessuno (comune orfano)</span>');
+
+    // mostra bottoni
+    hudActions.classList.remove('hidden');
+
+    // se la lista è visibile, refresh
+    if (refsVisible) {
+      refListBox.classList.remove('hidden');
+      refreshRefList();
+    } else {
+      refListBox.classList.add('hidden');
+    }
+  }
+
+  // Bottone: aggiungi referente
+  btnAddRef.addEventListener('click', () => {
+    if (!selectedComuneName) {
+      alert('Seleziona prima un comune sulla mappa.');
+      return;
+    }
+    const nome = prompt('Inserisci il tuo nome come referente per ' + selectedComuneName + ':');
+    if (!nome) return;
+    const trimmed = nome.trim();
+    if (!trimmed) return;
+
+    if (!referentiByComune[selectedComuneName]) {
+      referentiByComune[selectedComuneName] = [];
+    }
+    referentiByComune[selectedComuneName].push(trimmed);
+
+    // aggiorna HUD e contatori
+    const refs = referentiByComune[selectedComuneName];
+    hudSub.innerHTML = 'Referenti territoriali: ' + refs.join(', ');
+    updateCounters();
+
+    // se lista aperta, aggiornala
+    if (refsVisible) {
+      refreshRefList();
+    }
   });
-});
 
-function aggiornaStats(){
-  const cop = comuniNomi.filter(c=>hasReferenti(c)).length;
-  document.getElementById('coperti').innerText = cop;
-  document.getElementById('orfani').innerText = comuniNomi.length - cop;
-  document.getElementById('farmacie').innerText = farmacie.length;
-}
+  // Bottone: vedi / nascondi referenti
+  btnToggle.addEventListener('click', () => {
+    if (!selectedComuneName) {
+      alert('Seleziona prima un comune sulla mappa.');
+      return;
+    }
+    refsVisible = !refsVisible;
+    if (refsVisible) {
+      btnToggle.textContent = 'Nascondi referenti';
+      refListBox.classList.remove('hidden');
+      refreshRefList();
+    } else {
+      btnToggle.textContent = 'Vedi referenti';
+      refListBox.classList.add('hidden');
+    }
+  });
+
+  // Carica i comuni
+  fetch('data/comuni_verona.json')
+    .then(r => r.json())
+    .then(data => {
+
+      // Primo layer: "ombra" per dare profondità
+      L.geoJSON(data, {
+        style: {
+          color: '#000',
+          weight: 3,
+          opacity: 0.35
+        }
+      }).addTo(map);
+
+      // Layer principale comuni
+      comuniLayer = L.geoJSON(data, {
+        style: {
+          color: '#00ff9c',
+          weight: 1,
+          opacity: 0.9,
+          fillOpacity: 0
+        },
+        onEachFeature: (feature, layer) => {
+          // Nome del comune: prova vari campi
+          const nome =
+            feature.properties.nome ||
+            feature.properties.name ||
+            feature.properties.DENOM_COM ||
+            feature.properties.COMUNE ||
+            feature.properties.DEN_UTS ||
+            'Comune';
+
+          // memorizzo un nome "standardizzato" dentro alle properties per riuso
+          feature.properties._nomeComune = nome;
+
+          // Etichetta testuale al centro (zoom out)
+          const center = layer.getBounds().getCenter();
+          const label = L.marker(center, {
+            interactive: false,
+            icon: L.divIcon({
+              className: 'label-comune',
+              html: nome,
+              iconSize: [140, 16]
+            })
+          });
+          labels.push(label);
+          label.addTo(map);
+
+          // hover
+          layer.on('mouseover', () => {
+            if (layer !== selectedLayer) {
+              layer.setStyle({ color: '#ffffff', weight: 2 });
+            }
+          });
+
+          layer.on('mouseout', () => {
+            if (layer !== selectedLayer) {
+              layer.setStyle({ color: '#00ff9c', weight: 1 });
+            }
+          });
+
+          // click
+          layer.on('click', () => {
+            selectComune(layer);
+          });
+        }
+      }).addTo(map);
+
+      // adatta la vista a tutti i comuni
+      map.fitBounds(comuniLayer.getBounds());
+      updateCounters();
+
+      // gestione delle etichette in base allo zoom
+      function updateLabels() {
+        const z = map.getZoom();
+        labels.forEach(l => {
+          if (z >= 9.5) {
+            l.addTo(map);
+          } else {
+            map.removeLayer(l);
+          }
+        });
+      }
+
+      map.on('zoomend', updateLabels);
+      updateLabels();
+    })
+    .catch(err => {
+      console.error('Errore nel caricamento dei comuni:', err);
+      hudSub.textContent = 'Errore nel caricamento dei confini.';
+    });
 </script>
 
 </body>
