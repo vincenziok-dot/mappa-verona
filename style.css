@@ -36,3 +36,7 @@ html, body {
   color: #9a9a9a;
   text-transform: uppercase;
 }
+/* aree cliccabili */
+.leaflet-interactive {
+  cursor: pointer;
+}
