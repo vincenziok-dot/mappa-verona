@@ -161,7 +161,6 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{max
 
 const DRIVE_URL="https://drive.google.com/drive/folders/1f9JTPwuquc1epCO6rpsONh2fFes8yabm";
 
-/* DATI */
 const referenti={ "Verona":["Vincenzo R."] };
 const farmacie=[
  {nome:"Farmacia Centrale",comune:"Verona",lat:45.4387,lng:10.9921,tipo:"privata",stato:"accetta"},
@@ -207,10 +206,24 @@ fetch('data/comuni_verona.json')
   handleZoom();
 });
 
+/* ✅ GESTIONE ZOOM CORRETTA */
 function handleZoom(){
-  const z=map.getZoom();
+  const z = map.getZoom();
+
+  // SE ZOOM OUT → reset selezione
+  if(z <= 10 && selectedLayer){
+    const prev = nomeComune(selectedLayer.feature.properties);
+    selectedLayer.setStyle({ color:hasRef(prev)?'#00ff9c':'#ffaa00', weight:1 });
+    selectedLayer = null;
+    hudTitle.innerText = "Provincia di Verona";
+    hudSub.innerText = "Vista generale";
+    farmLayer.clearLayers();
+    document.getElementById('farm-count').innerText = "—";
+  }
+
+  // LABEL ON/OFF
   labels.forEach(l=>{
-    if(!selectedLayer && z<=12) map.addLayer(l);
+    if(!selectedLayer && z <= 12) map.addLayer(l);
     else map.removeLayer(l);
   });
 }
@@ -237,14 +250,13 @@ function showFarmacie(comune){
     const symbol=f.tipo==="privata"
       ? `<div class="dot ${f.stato}"></div>`
       : `<div class="triangle ${f.stato}"></div>`;
-    const popup=`
-      <strong>${f.nome}</strong><br>
-      <a href="https://www.google.com/maps?q=${f.lat},${f.lng}" target="_blank">Apri su Maps</a><br>
-      <a href="${DRIVE_URL}" target="_blank">Materiali campagna</a>
-    `;
     farmLayer.addLayer(
       L.marker([f.lat,f.lng],{icon:L.divIcon({html:symbol,iconSize:[14,14]})})
-        .bindPopup(popup)
+        .bindPopup(`
+          <strong>${f.nome}</strong><br>
+          <a href="https://www.google.com/maps?q=${f.lat},${f.lng}" target="_blank">Apri su Maps</a><br>
+          <a href="${DRIVE_URL}" target="_blank">Materiali campagna</a>
+        `)
     );
   });
 }
@@ -254,32 +266,6 @@ function updateStats(){
   document.getElementById('cntOk').innerText=ok;
   document.getElementById('cntOrfani').innerText=comuni.length-ok;
 }
-
-/* REFERENTI */
-document.getElementById('btnAdd').onclick=()=>{
-  if(!selectedLayer) return alert("Seleziona un comune");
-  const nome=hudTitle.innerText.replace("Comune di ","");
-  const n=prompt("Nome referente");
-  if(!n) return;
-  if(!referenti[nome]) referenti[nome]=[];
-  referenti[nome].push(n);
-  hudSub.innerText=`Referenti: ${referenti[nome].length}`;
-  updateStats();
-};
-
-document.getElementById('btnToggle').onclick=()=>{
-  refVisibili=!refVisibili;
-  document.getElementById('btnToggle').innerText=refVisibili?"Nascondi referenti":"Vedi referenti";
-  if(refVisibili && selectedLayer){
-    const nome=hudTitle.innerText.replace("Comune di ","");
-    refList.innerHTML="";
-    (referenti[nome]||[]).forEach(r=>{
-      const li=document.createElement('li'); li.textContent=r;
-      refList.appendChild(li);
-    });
-    refPanel.style.display="block";
-  } else refPanel.style.display="none";
-};
 </script>
 
 </body>
