@@ -20,7 +20,7 @@ html,body{margin:0;height:100%;background:#000;font-family:system-ui}
 .hud-title{color:#fff;font-size:18px;font-weight:650;text-transform:uppercase}
 .hud-sub{color:#bbb;font-size:13px}
 
-/* bottoni */
+/* buttons */
 .buttons{margin-top:10px;display:flex;gap:6px}
 button{
  background:#041812;border:1px solid #00ff9c;
@@ -35,55 +35,27 @@ button:hover{background:#00ff9c;color:#00110b}
 /* sezioni */
 .section{margin-top:12px;border-top:1px solid #222;padding-top:8px}
 
-/* LEGENDA */
-.legend h4{
- margin:4px 0 6px;
- font-size:11px;
- text-transform:uppercase;
- letter-spacing:.12em;
- color:#9ef5d9
-}
-.legend-row{
- display:flex;
- align-items:center;
- gap:8px;
- font-size:11px;
- margin:4px 0;
- color:#e6e6e6
-}
-
-/* simboli */
-.dot{width:12px;height:12px;border-radius:50%}
+/* legenda */
+.legend-row{display:flex;gap:6px;align-items:center;font-size:11px;color:#eee}
+.swatch{width:14px;height:14px;border:2px solid}
+.border-ok{border-color:#00ff9c}
+.border-warn{border-color:#ffaa00}
+.dot{border-radius:50%;background:#00ff9c}
 .triangle{
- width:0;height:0;
- border-left:7px solid transparent;
- border-right:7px solid transparent;
- border-bottom:12px solid
+ width:0;height:0;border-left:7px solid transparent;
+ border-right:7px solid transparent;border-bottom:12px solid #00ff9c
 }
-.cross{
- font-weight:900;
- font-size:14px;
- line-height:12px
-}
-
-/* colori stato */
-.partecipa{background:#00ff9c;border-bottom-color:#00ff9c;color:#00ff9c}
-.trattativa{background:#4da6ff;border-bottom-color:#4da6ff;color:#4da6ff}
-.contattare{background:#ffaa00;border-bottom-color:#ffaa00;color:#ffaa00}
-.rifiuta{background:#ff4d4d;border-bottom-color:#ff4d4d;color:#ff4d4d}
 
 /* label comuni */
 .label-comune{
- color:#fff;
- font-size:11px;
+ color:#fff;font-size:11px;
  text-shadow:0 0 6px rgba(0,0,0,.9);
  pointer-events:none
 }
 
 /* banner */
 #banner{
- position:fixed;
- top:0;left:50%;
+ position:fixed;top:0;left:50%;
  transform:translateX(-50%);
  background:rgba(0,0,0,.85);
  padding:10px 20px;
@@ -98,6 +70,7 @@ button:hover{background:#00ff9c;color:#00110b}
 </head>
 
 <body>
+
 <div id="map"></div>
 <div id="banner"></div>
 
@@ -111,59 +84,29 @@ button:hover{background:#00ff9c;color:#00110b}
   </div>
   <div id="refPanel"><ul id="refList"></ul></div>
 
-  <!-- LEGENDA -->
-  <div class="section legend">
-    <h4>Legenda – Stato</h4>
-    <div class="legend-row"><span class="dot partecipa"></span> Partecipa</div>
-    <div class="legend-row"><span class="dot trattativa"></span> In trattativa</div>
-    <div class="legend-row"><span class="dot contattare"></span> Da contattare</div>
-    <div class="legend-row"><span class="dot rifiuta"></span> Rifiuta</div>
-
-    <h4>Legenda – Tipologia</h4>
-    <div class="legend-row"><span class="dot partecipa"></span> Farmacia privata</div>
-    <div class="legend-row"><span class="triangle partecipa"></span> Farmacia comunale</div>
-    <div class="legend-row"><span class="cross partecipa">✚</span> MMG / Studio associato</div>
+  <div class="section">
+    <div class="legend-row"><div class="swatch border-ok"></div> Comune con referenti</div>
+    <div class="legend-row"><div class="swatch border-warn"></div> Comune orfano</div>
+    <div class="legend-row"><div class="dot swatch"></div> Farmacia privata</div>
+    <div class="legend-row"><div class="triangle"></div> Farmacia comunale</div>
   </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 /* MAPPA */
-const map=L.map('map',{attributionControl:false})
-  .setView([45.43,10.99],10)
-
-L.tileLayer(
- 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
- {maxZoom:18}
-).addTo(map)
+const map=L.map('map',{attributionControl:false}).setView([45.43,10.99],10)
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map)
 
 /* DATI */
 const referenti={"Verona":["Vincenzo R."]}
-
 const farmacie=[
- {
-  nome:"Farmacia Centrale",
-  comune:"Verona",
-  lat:45.438,
-  lng:10.992,
-  tipo:"privata",
-  stato:"partecipa",
-  indirizzo:"Via Roma 1",
-  maps:"https://www.google.com/maps/search/?api=1&query=Farmacia+Centrale+Verona"
- },
- {
-  nome:"Farmacia San Zeno",
-  comune:"Verona",
-  lat:45.443,
-  lng:10.98,
-  tipo:"comunale",
-  stato:"trattativa",
-  indirizzo:"Piazza Corrubbio",
-  maps:"https://www.google.com/maps/search/?api=1&query=Farmacia+San+Zeno+Verona"
- }
+ {nome:"Farmacia Centrale",comune:"Verona",lat:45.438,lng:10.992,tipo:"privata"},
+ {nome:"Farmacia San Zeno",comune:"Verona",lat:45.443,lng:10.98,tipo:"comunale"}
 ]
 
-let layers={},labels=[],selected=null
+let layers={},labels=[],labelLayer=L.layerGroup().addTo(map)
+let selected=null
 const farmLayer=L.layerGroup().addTo(map)
 
 const hudTitle=document.getElementById('hudTitle')
@@ -174,6 +117,13 @@ const refList=document.getElementById('refList')
 
 const nomeComune=p=>p.nome||p.DENOM_COM||p.name||'Comune'
 const hasRef=n=>referenti[n]&&referenti[n].length>0
+
+/* === GESTIONE LABEL COMUNI (FIX DEFINITIVO) === */
+function aggiornaLabelComuni(){
+  labelLayer.clearLayers()
+  if(selected) return
+  labels.forEach(l => labelLayer.addLayer(l))
+}
 
 /* COMUNI */
 fetch('data/comuni_verona.json')
@@ -192,16 +142,16 @@ fetch('data/comuni_verona.json')
    const n=nomeComune(f.properties)
    layers[n]=l
 
-   const lab=L.marker(l.getBounds().getCenter(),{
+   const lbl=L.marker(l.getBounds().getCenter(),{
     icon:L.divIcon({className:'label-comune',html:n})
-   }).addTo(map)
-   labels.push(lab)
+   })
+   labels.push(lbl)
 
    l.on('click',()=>{
     selected=n
-    map.fitBounds(l.getBounds(),{padding:[50,50]})
-    labels.forEach(x=>map.removeLayer(x))
+    labelLayer.clearLayers()
 
+    map.fitBounds(l.getBounds(),{padding:[50,50]})
     hudTitle.textContent='Comune di '+n
     hudSub.textContent=hasRef(n)
       ?'Referenti: '+referenti[n].length
@@ -217,42 +167,30 @@ fetch('data/comuni_verona.json')
  }).addTo(map)
 
  map.fitBounds(geo.getBounds())
+ aggiornaLabelComuni()
 
  map.on('zoomend',()=>{
   if(map.getZoom()<9.5){
    selected=null
    banner.style.display='none'
-   labels.forEach(l=>map.addLayer(l))
    hudTitle.textContent='Provincia di Verona'
    hudSub.textContent='Vista generale'
    farmLayer.clearLayers()
+   aggiornaLabelComuni()
   }
  })
 })
 
 /* FARMACIE */
-function simboloFarmacia(f){
- if(f.tipo==="privata"){
-  return `<div class="dot ${f.stato}"></div>`
- }
- return `<div class="triangle ${f.stato}"></div>`
-}
-
-function mostraFarmacie(comune){
+function mostraFarmacie(n){
  farmLayer.clearLayers()
- farmacie.filter(f=>f.comune===comune).forEach(f=>{
-  const popup=`
-   <strong>${f.nome}</strong><br>
-   ${f.tipo}<br>
-   ${f.indirizzo}<br>
-   <a href="${f.maps}" target="_blank">Apri in Google Maps</a><br>
-   <a href="https://drive.google.com/drive/folders/1f9JTPwuquc1epCO6rpsONh2fFes8yabm" target="_blank">
-    Materiali campagna
-   </a>
-  `
+ farmacie.filter(f=>f.comune===n).forEach(f=>{
+  const icon=f.tipo==="privata"
+    ?'<div class="dot" style="width:12px;height:12px"></div>'
+    :'<div class="triangle"></div>'
   L.marker([f.lat,f.lng],{
-   icon:L.divIcon({html:simboloFarmacia(f),iconSize:[14,14]})
-  }).bindPopup(popup).addTo(farmLayer)
+    icon:L.divIcon({html:icon,iconSize:[14,14]})
+  }).bindPopup(`<b>${f.nome}</b>`).addTo(farmLayer)
  })
 }
 
