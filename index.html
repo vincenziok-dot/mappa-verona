@@ -28,14 +28,13 @@
 <script>
   const map = L.map('map').setView([45.4384, 10.9916], 10);
 
-  L.gridLayer({
-    createTile: function () {
-      const tile = document.createElement('div');
-      tile.style.outline = '1px solid #333';
-      tile.style.background = '#111';
-      return tile;
-    }
-  }).addTo(map);
+L.tileLayer(
+  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {
+    subdomains: 'abc',
+    maxZoom: 19
+  }
+).addTo(map);
 
   L.marker([45.4384, 10.9916]).addTo(map)
     .bindPopup('VERONA')
