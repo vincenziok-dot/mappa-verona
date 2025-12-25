@@ -73,7 +73,7 @@ html, body { margin:0; height:100%; background:#000; font-family:system-ui, sans
 #farm-box h4{
   margin:0 0 6px;
   font-size:11px; text-transform:uppercase; letter-spacing:.12em;
-  color:#99f5d9;
+  color:#9ef5d9;
 }
 #farm-count, #mmg-count{ font-size:12px; margin-bottom:0; color:#e6e6e6; }
 
@@ -101,11 +101,7 @@ html, body { margin:0; height:100%; background:#000; font-family:system-ui, sans
 }
 .square{ width:12px; height:12px; border-radius:2px; }
 
-.aderisce{ background:#00ff9c; border-bottom-color:#00ff9c; color:#00ff9c; }
-.trattativa{ background:#4da6ff; border-bottom-color:#4da6ff; color:#4da6ff; }
 .contattare{ background:#ffaa00; border-bottom-color:#ffaa00; color:#ffaa00; }
-.rifiuta{ background:#ff4d4d; border-bottom-color:#ff4d4d; color:#ff4d4d; }
-
 .leg-coperto{ background:#00ff9c; }
 .leg-orfano{ background:#ffaa00; }
 
@@ -200,8 +196,8 @@ html, body { margin:0; height:100%; background:#000; font-family:system-ui, sans
     <div class="legend-row"><span class="dot contattare"></span> Privata (marker tondo)</div>
     <div class="legend-row"><span class="triangle contattare"></span> Comunale (marker triangolo)</div>
 
-    <h4>Nota attività</h4>
-    <div class="legend-row"><span class="square" style="background:#666"></span> “chiusa_temporaneamente” = marker semi-trasparente</div>
+    <h4>Nota</h4>
+    <div class="legend-row"><span class="square" style="background:#666"></span> Solo “chiusa_temporaneamente” = marker semi-trasparente</div>
   </div>
 
   <div class="hud-buttons">
@@ -446,7 +442,7 @@ document.getElementById('btnToggle').onclick = () => {
 };
 
 /* ===============================
-   COORD PARSE + VALIDATION (swap lat/lon + warning)
+   COORD PARSE + VALIDATION
 ================================ */
 function parseFloatIT(x){
   if(x === null || x === undefined) return NaN;
@@ -485,43 +481,90 @@ function iconFarmacia(gestione, statoLavoro){
 }
 
 /* ===============================
-   MAPS URL PICKER
-   Regola operativa:
-   - Popup: usa SEMPRE maps_share_url se c'è
-   - Poi maps_url
-   - Poi maps_url_addr
-   - Poi maps_url_coords (solo fallback tecnico)
-   - Ultimo fallback: query da indirizzo con "farmacia"/"dispensario"
+   MAPS URL PICKER (POPUP)
+   PRIORITÀ (come richiesto):
+   1) maps_share_url
+   2) maps_url_addr
+   fallback: query da indirizzo completo + "farmacia"/"dispensario"
 ================================ */
 function safeStr(x){ return (x===null || x===undefined) ? '' : String(x).trim(); }
 function ensureHttp(u){
   if(!u) return '';
   if(/^https?:\/\//i.test(u)) return u;
-  // es: maps.app.goo.gl/...
   return 'https://' + u.replace(/^\/+/, '');
 }
-function mapsUrlFallbackFromAddress(nome, indirizzoFull, comune, tipologia){
-  const t = (tipologia || '').toLowerCase();
-  const keyword = t.includes('dispens') ? 'dispensario' : 'farmacia';
+function isDispensario(tipologia){
+  const t = (tipologia || '').toString().toLowerCase();
+  return t.includes('dispens');
+}
+function mapsQueryFromAddress(nome, indirizzoFull, comune, tipologia){
+  const keyword = isDispensario(tipologia) ? 'dispensario' : 'farmacia';
   const q = `${keyword} ${nome || ''} ${indirizzoFull || ''} ${comune || ''} Verona Italia`.trim().replace(/\s+/g,' ');
+  return q;
+}
+function mapsUrlFallbackFromQuery(q){
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 }
-function pickMapsUrl(row, fixed, nome, indirizzoFull, comune, tipologia){
+function extractQueryFromMapsUrlAddr(url){
+  try{
+    const u = new URL(ensureHttp(url));
+    const q = u.searchParams.get('query') || '';
+    return decodeURIComponent(q.replace(/\+/g,' ')).trim();
+  }catch(e){
+    return '';
+  }
+}
+
+function pickMapsUrlPopup(row, nome, indirizzoFull, comune, tipologia){
   const share = ensureHttp(safeStr(row.maps_share_url));
   if(share) return share;
+  const addr = ensureHttp(safeStr(row.maps_url_addr));
+  if(addr) return addr;
+  return mapsUrlFallbackFromQuery(mapsQueryFromAddress(nome, indirizzoFull, comune, tipologia));
+}
 
-  const u1 = ensureHttp(safeStr(row.maps_url));
-  if(u1) return u1;
+/* ===============================
+   GEO (MARKER) – preferisci indirizzo (maps_url_addr / query)
+   - se maps_share_url esiste: NON geocodifico (assumo che le tue coordinate siano già precise)
+   - altrimenti: provo geocodifica Nominatim su query da indirizzo completo (+ farmacia/dispensario)
+   - fallback finale: lat/lon del CSV
+================================ */
+const GEO_CACHE_KEY = 'spg_farm_geocode_cache_v1';
+function loadGeoCache(){ try { return JSON.parse(localStorage.getItem(GEO_CACHE_KEY) || '{}'); } catch(e){ return {}; } }
+function saveGeoCache(obj){ try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(obj)); } catch(e){} }
+const geoCache = loadGeoCache();
 
-  const u2 = ensureHttp(safeStr(row.maps_url_addr));
-  if(u2) return u2;
+async function geocodeNominatim(query){
+  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`;
+  try{
+    const r = await fetch(url, { headers: { 'Accept':'application/json' } });
+    const arr = await r.json();
+    return (arr && arr.length) ? arr[0] : null;
+  }catch(e){ return null; }
+}
+async function pickMarkerLatLon(row, fixedCsv, queryForGeo, hasShare){
+  // 1) se hai maps_share_url, uso coordinate CSV (le hai verificate a mano)
+  if(hasShare) return { lat: fixedCsv.lat, lon: fixedCsv.lon, source:'csv_share' };
 
-  const u3 = ensureHttp(safeStr(row.maps_url_coords));
-  if(u3) return u3;
+  // 2) cache
+  const key = queryForGeo;
+  if(key && geoCache[key]) return { lat: geoCache[key].lat, lon: geoCache[key].lon, source:'cache' };
 
-  // ultimo fallback
-  return mapsUrlFallbackFromAddress(nome, indirizzoFull, comune, tipologia) ||
-         `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fixed.lat + ',' + fixed.lon)}`;
+  // 3) geocode
+  if(key){
+    const hit = await geocodeNominatim(key);
+    if(hit && hit.lat && hit.lon){
+      const lat = parseFloat(hit.lat), lon = parseFloat(hit.lon);
+      if(isFinite(lat) && isFinite(lon)){
+        geoCache[key] = { lat, lon };
+        saveGeoCache(geoCache);
+        return { lat, lon, source:'geocoded' };
+      }
+    }
+  }
+
+  // 4) fallback
+  return { lat: fixedCsv.lat, lon: fixedCsv.lon, source:'csv_fallback' };
 }
 
 /* ===============================
@@ -608,25 +651,40 @@ function caricaStatsFarmaciePerComune(doneCb){
 }
 
 /* ===============================
-   LOAD: FARMACIE – farmacie.csv (nuovo)
-   Regola:
-   - Marker: SOLO da lat/lon
-   - Popup: link da maps_share_url (preferito) → maps_url → maps_url_addr → maps_url_coords → fallback query
+   LOAD: FARMACIE – farmacie.csv
+   - Link popup: maps_share_url → maps_url_addr → fallback query
+   - Marker: per le 43 con maps_share_url uso subito lat/lon del CSV
+             per tutte le altre provo geocodifica da indirizzo completo (cache browser) e fallback su lat/lon
 ================================ */
-function caricaFarmacieCSV(){
+function normStatoAttivita(s){
+  return normKey(s).replace(/\s+/g,'_'); // es: "chiusa temporaneamente" -> "chiusa_temporaneamente"
+}
+
+async function caricaFarmacieCSV(){
   Papa.parse('data/farmacie.csv', {
     download: true,
     header: true,
     skipEmptyLines: true,
-    complete: (res) => {
+    complete: async (res) => {
       const rows = res.data || [];
       let added = 0, skipped = 0, swapped = 0, outRange = 0, noComuneMatch = 0;
       const unrecognizedComuni = new Set();
       const idsDup = new Set();
       const idsSeen = new Set();
-      let shareUsed = 0;
 
-      rows.forEach(row => {
+      let shareCount = 0;
+      let geocodedCount = 0;
+      let usedCacheCount = 0;
+      let csvFallbackCount = 0;
+
+      // carico prima le 43 "share" (veloci)
+      const shareRows = [];
+      const otherRows = [];
+      rows.forEach(r => (safeStr(r.maps_share_url) ? shareRows : otherRows).push(r));
+
+      geoProgress.textContent = `Farmacie: carico ${shareRows.length} con maps_share_url + geocodifico ${otherRows.length} da indirizzo (cache browser)…`;
+
+      const processRow = async (row, allowGeocode) => {
         const comuneRaw = safeStr(row.comune);
         if(!comuneRaw){ skipped++; return; }
         const comune = canonComune(comuneRaw);
@@ -643,21 +701,31 @@ function caricaFarmacieCSV(){
         const cap = safeStr(row.cap);
         const gestione = safeStr(row.gestione);
         const tipologia = safeStr(row.descrizione_tipologia);
-        const statoAttivita = safeStr(row.stato_attivita);
+        const statoAttivitaRaw = safeStr(row.stato_attivita);
 
-        // Marker SOLO da lat/lon
         const fixed = fixLatLng(row.lat, row.lon);
         if(!fixed.ok){ skipped++; return; }
         if(fixed.swapped) swapped++;
         if(fixed.outOfRange) outRange++;
 
-        const linkMaps = pickMapsUrl(row, fixed, nome, indirizzo, comune, tipologia);
-        if(safeStr(row.maps_share_url)) shareUsed++;
+        const hasShare = !!safeStr(row.maps_share_url);
+        if(hasShare) shareCount++;
+
+        const qFromUrl = extractQueryFromMapsUrlAddr(safeStr(row.maps_url_addr));
+        const qGeo = qFromUrl || mapsQueryFromAddress(nome, indirizzo, comune, tipologia);
+        const markerPos = allowGeocode ? await pickMarkerLatLon(row, fixed, qGeo, hasShare)
+                                       : { lat: fixed.lat, lon: fixed.lon, source:'csv_only' };
+
+        if(markerPos.source === 'geocoded') geocodedCount++;
+        if(markerPos.source === 'cache') usedCacheCount++;
+        if(markerPos.source === 'csv_fallback') csvFallbackCount++;
+
+        const linkMaps = pickMapsUrlPopup(row, nome, indirizzo, comune, tipologia);
 
         const key = `pharm::${id || (nome + '|' + indirizzo + '|' + comune)}`;
         const statoLavoro = (statusRAM[key]?.stato) || 'contattare';
 
-        const isChiusa = (statoAttivita === 'chiusa_temporaneamente');
+        const isChiusa = (normStatoAttivita(statoAttivitaRaw) === 'chiusa_temporaneamente');
         const warnChiusa = isChiusa
           ? `<div style="margin-top:8px;color:#ffaa00;font-size:12px"><b>⚠ CHIUSA TEMPORANEAMENTE</b></div>`
           : '';
@@ -675,21 +743,33 @@ function caricaFarmacieCSV(){
             <a href="${linkMaps}" target="_blank" rel="noopener">Apri in Google Maps</a><br/>
             <a href="${DRIVE_MATERIALI}" target="_blank" rel="noopener">Materiali campagna</a>
           </div>
-          ${fixed.outOfRange ? `<div style="margin-top:8px;color:#ffaa00;font-size:11px">⚠ Coordinate fuori range: verifica (lat=${fixed.lat}, lon=${fixed.lon})</div>` : ''}
-          ${fixed.swapped ? `<div style="margin-top:8px;color:#4da6ff;font-size:11px">ℹ Coordinate invertite: corrette automaticamente</div>` : ''}
+          <div style="margin-top:8px;font-size:11px;opacity:.75">Marker: ${markerPos.source}</div>
+          ${fixed.outOfRange ? `<div style="margin-top:8px;color:#ffaa00;font-size:11px">⚠ Coordinate CSV fuori range (lat=${fixed.lat}, lon=${fixed.lon})</div>` : ''}
+          ${fixed.swapped ? `<div style="margin-top:8px;color:#4da6ff;font-size:11px">ℹ Coordinate CSV invertite: corrette automaticamente</div>` : ''}
         `;
 
-        const marker = L.marker([fixed.lat, fixed.lon], { icon: iconFarmacia(gestione, statoLavoro) })
+        const marker = L.marker([markerPos.lat, markerPos.lon], { icon: iconFarmacia(gestione, statoLavoro) })
           .bindPopup(popupHtml);
 
-        // chiusa_temporaneamente = marker semi-trasparente (ma visibile)
         const baseOpacity = isChiusa ? 0.35 : 1.0;
         marker.setOpacity(baseOpacity);
 
         marker.addTo(farmLayer);
         farmMarkers.push({ marker, comune, isChiusa, baseOpacity });
         added++;
-      });
+      };
+
+      // 1) share rows: no geocode (come richiesto: dot affidabile)
+      for(let i=0; i<shareRows.length; i++){
+        await processRow(shareRows[i], false);
+      }
+
+      // 2) altre: geocode da indirizzo (throttle 1 req/sec)
+      for(let i=0; i<otherRows.length; i++){
+        geoProgress.textContent = `Geocodifica (farmacie senza maps_share_url): ${i+1} / ${otherRows.length}…`;
+        await processRow(otherRows[i], true);
+        await new Promise(r => setTimeout(r, 1100));
+      }
 
       aggiornaContatoriGlobali();
 
@@ -706,10 +786,11 @@ function caricaFarmacieCSV(){
       mism.sort((a,b)=> Math.abs((b.exp-b.real)) - Math.abs((a.exp-a.real)));
 
       let msg =
-        `Farmacie caricate: ${added} (saltate: ${skipped})` +
-        (shareUsed ? `\nLink share (maps.app.goo.gl) usati: ${shareUsed}` : '') +
-        (swapped ? `\nInvertite corrette: ${swapped}` : '') +
-        (outRange ? `\nFuori range: ${outRange}` : '');
+        `Farmacie caricate: ${added} (saltate: ${skipped})\n` +
+        `Link share usati (popup): ${shareCount}\n` +
+        `Marker geocodificati: ${geocodedCount} (cache: ${usedCacheCount}, fallback CSV: ${csvFallbackCount})` +
+        (swapped ? `\nCSV invertite corrette: ${swapped}` : '') +
+        (outRange ? `\nCSV fuori range: ${outRange}` : '');
 
       if(noComuneMatch){
         msg += `\n⚠ Comuni NON riconosciuti dal GeoJSON: ${noComuneMatch}`;
@@ -728,7 +809,6 @@ function caricaFarmacieCSV(){
 
       geoProgress.textContent = msg;
 
-      // se c'è già un comune selezionato, aggiorna riga comune
       if(selectedNome && layersByNome[selectedNome]){
         selezionaComune(layersByNome[selectedNome], selectedNome);
       }
