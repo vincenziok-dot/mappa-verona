@@ -553,7 +553,6 @@ function iconStudio(stato, isAssociato, isNuovo2025){
 
 /* ===============================
    MAPS LINK
-   - se hai lat/lon: uso sempre quello (è il più affidabile)
 ================================ */
 function mapsLinkFromLatLng(lat,lng, label){
   const q = encodeURIComponent((label ? label + ' ' : '') + lat + ',' + lng);
@@ -611,7 +610,6 @@ fetch('data/comuni_verona.json')
 
 /* ===============================
    CARICA FARMACIE (CSV con coordinate)
-   Nota: il tuo CSV attuale NON ha maps_url, quindi genero link da lat/lon.
 ================================ */
 function guessFarmNome(row){
   return (row.denominazione || row.nome || row.descrizione_farmacia || row.farmacia || 'Farmacia').toString().trim();
@@ -704,7 +702,7 @@ function caricaFarmacieCSV(){
 /* ===============================
    CARICA STUDI MMG
    - Se nel CSV ci sono già lat/lon: li usa (VELOCE)
-   - Se NON ci sono (come nel tuo mmg2025.csv attuale): geocode (LENTO) con cache browser
+   - Se NON ci sono: geocode (LENTO) con cache browser
 ================================ */
 const GEO_CACHE_KEY = 'spg_geocode_cache_v2';
 function loadGeoCache(){ try { return JSON.parse(localStorage.getItem(GEO_CACHE_KEY) || '{}'); } catch(e){ return {}; } }
@@ -719,11 +717,45 @@ async function geocodeNominatim(query){
     return (arr && arr.length) ? arr[0] : null;
   }catch(e){ return null; }
 }
-function hasLatLonColumns(row){
-  const keys = Object.keys(row || {});
-  const hasLat = keys.some(k => /^(lat|latitudine)$/i.test(k) || /latitud/i.test(k));
-  const hasLon = keys.some(k => /^(lon|long|lng|longitudine)$/i.test(k) || /longitud/i.test(k));
-  return hasLat && hasLon;
+
+/* ✅ NUOVA VERSIONE: detectLatLonColumns(rows)
+   - trova quali colonne sono lat e lon (tra vari nomi)
+   - verifica che almeno una riga abbia valori numerici
+*/
+function detectLatLonColumns(rows){
+  const r0 = (rows && rows.length) ? rows[0] : null;
+  if(!r0) return { have:false, latKey:null, lonKey:null };
+
+  const keys = Object.keys(r0);
+
+  const latCandidates = [
+    /^lat$/i, /^latitude$/i, /^latitudine$/i, /latitud/i, /y$/i
+  ];
+  const lonCandidates = [
+    /^(lon|lng|long)$/i, /^longitude$/i, /^longitudine$/i, /longitud/i, /x$/i
+  ];
+
+  const pickKey = (patterns) => {
+    for(const k of keys){
+      for(const p of patterns){
+        if(p.test(k)) return k;
+      }
+    }
+    return null;
+  };
+
+  const latKey = pickKey(latCandidates);
+  const lonKey = pickKey(lonCandidates);
+  if(!latKey || !lonKey) return { have:false, latKey, lonKey };
+
+  // verifica numerica su un piccolo campione
+  const N = Math.min(rows.length, 30);
+  for(let i=0; i<N; i++){
+    const a = parseFloatIT(rows[i][latKey]);
+    const b = parseFloatIT(rows[i][lonKey]);
+    if(isFinite(a) && isFinite(b)) return { have:true, latKey, lonKey };
+  }
+  return { have:false, latKey, lonKey };
 }
 
 function caricaStudiMMGCSV(){
@@ -735,17 +767,18 @@ function caricaStudiMMGCSV(){
       const rows = res.data || [];
       let added = 0, skipped = 0, swapped = 0, outRange = 0, noComuneMatch = 0, geocoded = 0, usedCoords = 0;
 
-      const haveCoords = rows.length ? hasLatLonColumns(rows[0]) : false;
-
       if(!rows.length){
         geoProgress.innerHTML += `<br/><span style="color:#ffaa00">⚠ mmg2025.csv vuoto o non leggibile</span>`;
         return;
       }
 
+      const coordInfo = detectLatLonColumns(rows);
+      const haveCoords = coordInfo.have;
+
       if(!haveCoords){
-        geoProgress.innerHTML += `<br/><span style="color:#4da6ff">MMG: il CSV non contiene lat/lon → geocodifica (più lenta, con cache browser)</span>`;
+        geoProgress.innerHTML += `<br/><span style="color:#4da6ff">MMG: il CSV non contiene lat/lon validi → geocodifica (più lenta, con cache browser)</span>`;
       } else {
-        geoProgress.innerHTML += `<br/><span style="color:#4da6ff">MMG: coordinate già presenti nel CSV → caricamento rapido</span>`;
+        geoProgress.innerHTML += `<br/><span style="color:#4da6ff">MMG: coordinate presenti nel CSV (colonne: ${coordInfo.latKey}, ${coordInfo.lonKey}) → caricamento rapido</span>`;
       }
 
       for (let i=0; i<rows.length; i++){
@@ -767,18 +800,16 @@ function caricaStudiMMGCSV(){
         const telefoni = (row.telefoni || '').toString().trim();
         const orari = (row.orari_per_medico || row.orari || '').toString().trim();
 
-        // id stabile (se non c'è studio_id)
         const studioId = (row.studio_id || '').toString().trim() || stableId(`studio|${indirizzo}|${comune}|${nomiMedici}`);
-
         const key = `studio::${studioId}`;
         const st = (statusRAM[key]?.stato) || 'contattare';
 
         let latlng = null;
-        let fixed = None;
 
         if(haveCoords){
-          const lat = row.lat ?? row.latitudine ?? row.Lat ?? row.LAT;
-          const lon = row.lon ?? row.long ?? row.lng ?? row.longitudine ?? row.Lon ?? row.LON ?? row.LNG;
+          const lat = row[coordInfo.latKey];
+          const lon = row[coordInfo.lonKey];
+
           const fx = fixLatLng(lat, lon);
           if(!fx.ok){ skipped++; continue; }
           if(fx.swapped) swapped++;
@@ -786,7 +817,6 @@ function caricaStudiMMGCSV(){
           latlng = { lat: fx.lat, lon: fx.lon };
           usedCoords++;
         } else {
-          // geocode con cache
           const q = `${indirizzo}, ${comune}, Verona, Italia`;
           if(geoCache[q]){
             latlng = geoCache[q];
@@ -799,11 +829,9 @@ function caricaStudiMMGCSV(){
               saveGeoCache(geoCache);
               geocoded++;
             } else {
-              // fallback: centro comune
               const c = centriComuni[comune];
               if(c) latlng = { lat: c.lat, lon: c.lng };
             }
-            // throttle 1 req/sec
             await new Promise(r => setTimeout(r, 1000));
           }
         }
@@ -862,3 +890,4 @@ function caricaStudiMMGCSV(){
 </script>
 </body>
 </html>
+
