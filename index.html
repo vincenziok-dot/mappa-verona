@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Mappa Verona – SpG (farmacie only)</title>
+<title>Mappa Verona – SpG (farmacie)</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -60,7 +60,10 @@ html, body { margin:0; height:100%; background:#000; font-family:system-ui, sans
 .stat-info .stat-value{ color:#4da6ff; }
 .stat-muted .stat-value{ color:#d0d0d0; }
 
-#geoProgress{ margin-top:8px; font-size:11px; color:#bdbdbd; line-height:1.35; }
+#geoProgress{
+  margin-top:8px; font-size:11px; color:#bdbdbd;
+  white-space:pre-line; line-height:1.35;
+}
 
 /* stats comune selezionato */
 #farm-box{
@@ -180,8 +183,8 @@ html, body { margin:0; height:100%; background:#000; font-family:system-ui, sans
       <div class="stat-value" id="cntFarm">0</div>
     </div>
     <div class="stat stat-info">
-      <div class="stat-title">Studi MMG</div>
-      <div class="stat-value" id="cntStudi">—</div>
+      <div class="stat-title">Chiuse temp.</div>
+      <div class="stat-value" id="cntChiuse">0</div>
     </div>
   </div>
 
@@ -199,17 +202,11 @@ html, body { margin:0; height:100%; background:#000; font-family:system-ui, sans
     <div class="legend-row"><span class="square leg-orfano"></span> Comune orfano (bordo tratteggiato)</div>
 
     <h4>Legenda farmacie</h4>
-    <div class="legend-row"><span class="dot aderisce"></span> Privata – aderisce</div>
-    <div class="legend-row"><span class="dot trattativa"></span> Privata – in trattativa</div>
-    <div class="legend-row"><span class="dot contattare"></span> Privata – da contattare</div>
-    <div class="legend-row"><span class="dot rifiuta"></span> Privata – rifiuta</div>
-    <div class="legend-row"><span class="triangle aderisce"></span> Comunale – aderisce</div>
-    <div class="legend-row"><span class="triangle trattativa"></span> Comunale – in trattativa</div>
-    <div class="legend-row"><span class="triangle contattare"></span> Comunale – da contattare</div>
-    <div class="legend-row"><span class="triangle rifiuta"></span> Comunale – rifiuta</div>
+    <div class="legend-row"><span class="dot contattare"></span> Privata – (stato lavoro: default “da contattare”)</div>
+    <div class="legend-row"><span class="triangle contattare"></span> Comunale – (stato lavoro: default “da contattare”)</div>
 
-    <h4>Debug (farmacie)</h4>
-    <div class="legend-row"><span class="square" style="background:#4da6ff"></span> Mostro “reale / atteso” se ho stats per comune</div>
+    <h4>Nota attività</h4>
+    <div class="legend-row"><span class="square" style="background:#666"></span> “chiusa_temporaneamente” = marker semi-trasparente</div>
   </div>
 
   <div class="hud-buttons">
@@ -272,7 +269,7 @@ const farmLayer = L.layerGroup().addTo(map);
 const farmMarkers = [];   // {marker, comune}
 
 /* stats file (atteso per comune) */
-const expectedFarmByComune = {}; // canonComune -> int
+const statsFarmByComune = {}; // canonComune -> {n_farmacie, n_chiuse_temporanee, n_link_share}
 
 /* ===============================
    UTIL: normalizzazione comune
@@ -300,7 +297,10 @@ function aggiornaContatoriGlobali(){
   document.getElementById('cntOk').innerText = coperti;
   document.getElementById('cntOrfani').innerText = orfani;
   document.getElementById('cntFarm').innerText = farmMarkers.length;
-  document.getElementById('cntStudi').innerText = '—';
+
+  // chiuse temp da markers (non dallo stats, così controlli se le stai caricando davvero)
+  const chiuse = farmMarkers.reduce((acc, x) => acc + (x.isChiusa ? 1 : 0), 0);
+  document.getElementById('cntChiuse').innerText = chiuse;
 }
 
 /* ===============================
@@ -354,7 +354,7 @@ function resetSelezione(){
   farmCountEl.innerText = 'Farmacie: —';
   mmgCountEl.innerText  = 'MMG: disabilitato (in attesa CSV)';
 
-  farmMarkers.forEach(x => x.marker.setOpacity(1));
+  farmMarkers.forEach(x => x.marker.setOpacity(x.baseOpacity));
 
   refPanel.style.display = 'none';
   refVisibili = false;
@@ -385,14 +385,20 @@ function selezionaComune(layer, nome){
 
   aggiornaLabels();
 
-  farmMarkers.forEach(x => x.marker.setOpacity(x.comune === nome ? 1 : 0.18));
+  farmMarkers.forEach(x => x.marker.setOpacity(x.comune === nome ? x.baseOpacity : 0.18));
 
   const real = farmMarkers.filter(x => x.comune === nome).length;
-  const expected = (expectedFarmByComune[nome] !== undefined) ? expectedFarmByComune[nome] : null;
+  const chiuse = farmMarkers.filter(x => x.comune === nome && x.isChiusa).length;
 
-  farmCountEl.innerText = expected !== null
-    ? `Farmacie: ${real} / ${expected} (reale/atteso)`
-    : `Farmacie: ${real}`;
+  const st = statsFarmByComune[nome] || null;
+  const expected = st ? st.n_farmacie : null;
+  const linkShare = st ? st.n_link_share : null;
+
+  let line = (expected !== null) ? `Farmacie: ${real} / ${expected} (reale/atteso)` : `Farmacie: ${real}`;
+  if(chiuse) line += ` • chiuse temp: ${chiuse}`;
+  if(linkShare !== null) line += ` • link share ok: ${linkShare}`;
+
+  farmCountEl.innerText = line;
 
   if(refVisibili) mostraReferenti(nome);
 }
@@ -449,7 +455,7 @@ document.getElementById('btnToggle').onclick = () => {
 ================================ */
 function parseFloatIT(x){
   if(x === null || x === undefined) return NaN;
-  const s = String(x).trim().replace(',', '.'); // supporta virgola decimale
+  const s = String(x).trim().replace(',', '.');
   return parseFloat(s);
 }
 function fixLatLng(lat, lon){
@@ -460,7 +466,6 @@ function fixLatLng(lat, lon){
   const LAT_OK = (x)=> x >= 44.7 && x <= 46.2;
   const LON_OK = (x)=> x >= 9.8 && x <= 11.9;
 
-  // swap case
   if(!LAT_OK(a) && !LON_OK(b) && LAT_OK(b) && LON_OK(a)){
     const tmp = a; a = b; b = tmp;
     return { ok:true, lat:a, lon:b, swapped:true };
@@ -472,13 +477,12 @@ function fixLatLng(lat, lon){
 }
 
 /* ===============================
-   MARKER ICONS
+   MARKER ICONS (solo gestione per ora)
 ================================ */
-function iconFarmacia(gestione, stato){
-  const cls = (stato || 'contattare');
+function iconFarmacia(gestione, statoLavoro){
+  const cls = (statoLavoro || 'contattare'); // status lavoro arriverà dopo con status.csv
   const g = (gestione || '').toString().toLowerCase();
   const isComunale = g.includes('comunal');
-
   if(isComunale){
     return L.divIcon({ className:'', html:`<div class="triangle ${cls}"></div>`, iconSize:[14,14], iconAnchor:[7,7] });
   }
@@ -525,14 +529,18 @@ fetch('data/comuni_verona.json')
       aggiornaLabels();
     });
 
-    // PRIMA stats attese, POI farmacie
+    // carico stats (QC) e poi farmacie
     caricaStatsFarmaciePerComune(() => caricaFarmacieCSV());
   });
 
 /* ===============================
-   STATS (atteso) – farmacie_stats_comune.csv
-   colonne: comune, n_farmacie (vedi README)
+   STATS (QC) – farmacie_stats_comune.csv
+   colonne: comune, n_farmacie, n_chiuse_temporanee, n_link_share
 ================================ */
+function toInt(x){
+  const n = parseInt(String(x ?? '').trim(), 10);
+  return isFinite(n) ? n : null;
+}
 function caricaStatsFarmaciePerComune(doneCb){
   Papa.parse('data/farmacie_stats_comune.csv', {
     download:true,
@@ -542,11 +550,21 @@ function caricaStatsFarmaciePerComune(doneCb){
       const rows = res.data || [];
       let loaded = 0;
       rows.forEach(r=>{
-        const comuneRaw = (r.comune || r.COMUNE || '').toString().trim();
-        const n = parseInt((r.n_farmacie || r.N_FARMACIE || r.totale || '0').toString(), 10);
-        if(!comuneRaw || !isFinite(n)) return;
+        const comuneRaw = String(r.comune ?? r.COMUNE ?? '').trim();
+        if(!comuneRaw) return;
         const canon = canonComune(comuneRaw);
-        expectedFarmByComune[canon] = n;
+
+        const nFarm = toInt(r.n_farmacie);
+        const nChiuse = toInt(r.n_chiuse_temporanee);
+        const nShare = toInt(r.n_link_share);
+
+        if(nFarm === null) return;
+
+        statsFarmByComune[canon] = {
+          n_farmacie: nFarm,
+          n_chiuse_temporanee: (nChiuse ?? 0),
+          n_link_share: (nShare ?? 0),
+        };
         loaded++;
       });
       geoProgress.textContent = `Stats farmacie per comune caricate: ${loaded}`;
@@ -561,7 +579,9 @@ function caricaStatsFarmaciePerComune(doneCb){
 
 /* ===============================
    CARICA FARMACIE – farmacie.csv (nuovo)
-   colonne attese (minime): farmacia_id, comune, lat, lon, denominazione, indirizzo_full, maps_url, gestione
+   Regola:
+   - Marker: SOLO da lat/lon
+   - Link popup: SOLO maps_url (fallback: maps_url_addr, poi maps_url_coords)
 ================================ */
 function safeStr(x){ return (x===null || x===undefined) ? '' : String(x).trim(); }
 
@@ -574,63 +594,103 @@ function caricaFarmacieCSV(){
       const rows = res.data || [];
       let added = 0, skipped = 0, swapped = 0, outRange = 0, noComuneMatch = 0;
       const unrecognizedComuni = new Set();
+      const idsDup = new Set();
+      const idsSeen = new Set();
 
       rows.forEach(row => {
-        const comuneRaw = safeStr(row.comune || row.COMUNE);
+        const comuneRaw = safeStr(row.comune);
         if(!comuneRaw){ skipped++; return; }
         const comune = canonComune(comuneRaw);
         if(!comuneCanonByNorm[normKey(comuneRaw)]) { noComuneMatch++; unrecognizedComuni.add(comuneRaw); }
 
         const id = safeStr(row.farmacia_id);
-        const nome = safeStr(row.denominazione || row.nome || row.farmacia);
-        const indirizzo = safeStr(row.indirizzo_full || row.indirizzo);
-        const cap = safeStr(row.cap);
-        const tel = safeStr(row.telefono);
-        const gestione = safeStr(row.gestione);
-        const mapsUrl = safeStr(row.maps_url);
+        if(id){
+          if(idsSeen.has(id)) idsDup.add(id);
+          idsSeen.add(id);
+        }
 
+        const nome = safeStr(row.descrizione_farmacia);
+        const indirizzo = safeStr(row.indirizzo_full);
+        const cap = safeStr(row.cap);
+        const gestione = safeStr(row.gestione);
+        const tipologia = safeStr(row.descrizione_tipologia);
+        const statoAttivita = safeStr(row.stato_attivita);
+
+        // Marker SOLO da lat/lon
         const fixed = fixLatLng(row.lat, row.lon);
         if(!fixed.ok){ skipped++; return; }
         if(fixed.swapped) swapped++;
         if(fixed.outOfRange) outRange++;
 
-        const key = `pharm::${id || (nome + '|' + indirizzo + '|' + comune)}`;
-        const st = (statusRAM[key]?.stato) || 'contattare';
+        // link popup SOLO maps_url (fallback tecnico, se manca)
+        const linkMaps = safeStr(row.maps_url) || safeStr(row.maps_share_url) || safeStr(row.maps_url_addr) || safeStr(row.maps_url_coords) ||
+          `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((nome ? nome+' ' : '') + fixed.lat + ',' + fixed.lon)}`;
 
-        const mapsFinal = mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((nome ? nome+' ' : '') + fixed.lat + ',' + fixed.lon)}`;
+        const key = `pharm::${id || (nome + '|' + indirizzo + '|' + comune)}`;
+        const statoLavoro = (statusRAM[key]?.stato) || 'contattare';
+
+        const isChiusa = (statoAttivita === 'chiusa_temporaneamente');
+
+        const warnChiusa = isChiusa
+          ? `<div style="margin-top:8px;color:#ffaa00;font-size:12px"><b>⚠ CHIUSA TEMPORANEAMENTE</b></div>`
+          : '';
 
         const popupHtml = `
           <strong>${nome || 'Farmacia'}</strong><br/>
-          <div style="opacity:.9">${gestione ? gestione + ' – ' : ''}${indirizzo}${cap ? ' – ' + cap : ''}<br/>${comune}</div>
+          <div style="opacity:.9">
+            ${gestione ? gestione : ''}${tipologia ? ' – ' + tipologia : ''}<br/>
+            ${indirizzo}${cap ? ' – ' + cap : ''}<br/>
+            ${comune}
+          </div>
           ${id ? `<div style="margin-top:6px;font-size:11px;opacity:.8">ID: ${id}</div>` : ''}
-          <div style="margin-top:8px">
-            <a href="${mapsFinal}" target="_blank" rel="noopener">Apri in Google Maps</a><br/>
-            ${tel ? `<a href="tel:${tel.replace(/\s+/g,'')}" rel="noopener">Chiama: ${tel}</a><br/>` : ''}
+          ${warnChiusa}
+          <div style="margin-top:10px">
+            <a href="${linkMaps}" target="_blank" rel="noopener">Apri in Google Maps</a><br/>
             <a href="${DRIVE_MATERIALI}" target="_blank" rel="noopener">Materiali campagna</a>
           </div>
           ${fixed.outOfRange ? `<div style="margin-top:8px;color:#ffaa00;font-size:11px">⚠ Coordinate fuori range: verifica (lat=${fixed.lat}, lon=${fixed.lon})</div>` : ''}
           ${fixed.swapped ? `<div style="margin-top:8px;color:#4da6ff;font-size:11px">ℹ Coordinate invertite: corrette automaticamente</div>` : ''}
         `;
 
-        const marker = L.marker([fixed.lat, fixed.lon], { icon: iconFarmacia(gestione, st) })
+        const marker = L.marker([fixed.lat, fixed.lon], { icon: iconFarmacia(gestione, statoLavoro) })
           .bindPopup(popupHtml);
 
+        // chiusa_temporaneamente = marker semi-trasparente (ma visibile)
+        const baseOpacity = isChiusa ? 0.35 : 1.0;
+        marker.setOpacity(baseOpacity);
+
         marker.addTo(farmLayer);
-        farmMarkers.push({ marker, comune });
+        farmMarkers.push({ marker, comune, isChiusa, baseOpacity });
         added++;
       });
 
       aggiornaContatoriGlobali();
 
-      // contatore per comune selezionato (se già selezionato)
       if(selectedNome){
-        farmMarkers.forEach(x => x.marker.setOpacity(x.comune === selectedNome ? 1 : 0.18));
+        farmMarkers.forEach(x => x.marker.setOpacity(x.comune === selectedNome ? x.baseOpacity : 0.18));
         const real = farmMarkers.filter(x => x.comune === selectedNome).length;
-        const expected = (expectedFarmByComune[selectedNome] !== undefined) ? expectedFarmByComune[selectedNome] : null;
-        farmCountEl.innerText = expected !== null ? `Farmacie: ${real} / ${expected} (reale/atteso)` : `Farmacie: ${real}`;
+        const chiuse = farmMarkers.filter(x => x.comune === selectedNome && x.isChiusa).length;
+        const st = statsFarmByComune[selectedNome] || null;
+        const expected = st ? st.n_farmacie : null;
+        const linkShare = st ? st.n_link_share : null;
+        let line = (expected !== null) ? `Farmacie: ${real} / ${expected} (reale/atteso)` : `Farmacie: ${real}`;
+        if(chiuse) line += ` • chiuse temp: ${chiuse}`;
+        if(linkShare !== null) line += ` • link share ok: ${linkShare}`;
+        farmCountEl.innerText = line;
       }
 
-      // riepilogo debug
+      // mismatch atteso vs reale (top 6)
+      const realByComune = {};
+      farmMarkers.forEach(x => { realByComune[x.comune] = (realByComune[x.comune] || 0) + 1; });
+
+      const mism = [];
+      Object.keys(statsFarmByComune).forEach(c => {
+        const exp = statsFarmByComune[c].n_farmacie;
+        const real = realByComune[c] || 0;
+        if(exp !== real) mism.push({ c, real, exp });
+      });
+      mism.sort((a,b)=> Math.abs((b.exp-b.real)) - Math.abs((a.exp-a.real)));
+
       let msg =
         `Farmacie caricate: ${added} (saltate: ${skipped})` +
         (swapped ? ` — invertite corrette: ${swapped}` : '') +
@@ -638,25 +698,17 @@ function caricaFarmacieCSV(){
 
       if(noComuneMatch){
         msg += `\n⚠ Comuni non riconosciuti dal GeoJSON: ${noComuneMatch}`;
-        // mostra al massimo 8 esempi
         const ex = Array.from(unrecognizedComuni).slice(0, 8);
-        if(ex.length) msg += `\nEsempi: ${ex.join(' | ')}` + (unrecognizedComuni.size > ex.length ? ' | …' : '');
+        if(ex.length) msg += `\nEsempi: ${ex.join(' | ')}${unrecognizedComuni.size > ex.length ? ' | …' : ''}`;
       }
-
-      // mismatch "atteso vs reale" (top 10)
-      const realByComune = {};
-      farmMarkers.forEach(x => { realByComune[x.comune] = (realByComune[x.comune] || 0) + 1; });
-
-      const mism = [];
-      Object.keys(expectedFarmByComune).forEach(c => {
-        const exp = expectedFarmByComune[c];
-        const real = realByComune[c] || 0;
-        if(exp !== real) mism.push({ c, real, exp });
-      });
-      mism.sort((a,b)=> Math.abs((b.exp-b.real)) - Math.abs((a.exp-a.real)));
+      if(idsDup.size){
+        const ex = Array.from(idsDup).slice(0, 8);
+        msg += `\n⚠ ID duplicati (farmacia_id): ${idsDup.size}`;
+        msg += `\nEsempi: ${ex.join(' | ')}${idsDup.size > ex.length ? ' | …' : ''}`;
+      }
       if(mism.length){
         const top = mism.slice(0, 6).map(x => `${x.c}: ${x.real}/${x.exp}`).join(' • ');
-        msg += `\nΔ atteso/reale (top): ${top}` + (mism.length > 6 ? ' • …' : '');
+        msg += `\nΔ atteso/reale (top): ${top}${mism.length > 6 ? ' • …' : ''}`;
       }
 
       geoProgress.textContent = msg;
