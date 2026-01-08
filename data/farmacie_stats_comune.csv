@@ -1,98 +1,98 @@
-comune,sigla_provincia,n_farmacie,n_chiuse_temporanee,n_link_share
-VERONA,VR,78,0,9
-VILLAFRANCA DI VERONA,VR,10,0,2
-LEGNAGO,VR,7,0,0
-SAN GIOVANNI LUPATOTO,VR,7,0,2
-NEGRAR,VR,6,0,1
-SAN BONIFACIO,VR,6,0,1
-SONA,VR,6,0,2
-BOVOLONE,VR,5,0,2
-BUSSOLENGO,VR,5,0,0
-CEREA,VR,5,0,1
-CASTELNUOVO DEL GARDA,VR,4,0,1
-LAZISE,VR,4,1,2
-PESCHIERA DEL GARDA,VR,4,0,1
-SAN MARTINO BUON ALBERGO,VR,4,0,1
-SAN PIETRO IN CARIANO,VR,4,0,1
-SANT'AMBROGIO DI VALPOLICELLA,VR,4,0,2
-SOMMACAMPAGNA,VR,4,0,1
-VALEGGIO SUL MINCIO,VR,4,0,1
-ZEVIO,VR,4,0,1
-CAPRINO VERONESE,VR,3,0,0
-CASTEL D'AZZANO,VR,3,0,1
-COLOGNA VENETA,VR,3,0,0
-GREZZANA,VR,3,0,1
-ISOLA DELLA SCALA,VR,3,0,0
-OPPEANO,VR,3,0,0
-PESCANTINA,VR,3,0,0
-VIGASIO,VR,3,0,1
-ALBAREDO D'ADIGE,VR,2,0,0
-ARCOLE,VR,2,0,0
-BARDOLINO,VR,2,0,1
-BUTTAPIETRA,VR,2,0,1
-CALDIERO,VR,2,0,1
-CAVAION VERONESE,VR,2,0,1
-COLOGNOLA AI COLLI,VR,2,0,0
-GAZZO VERONESE,VR,2,0,0
-LAVAGNO,VR,2,0,0
-MONTEFORTE D'ALPONE,VR,2,0,0
-MOZZECANE,VR,2,0,1
-NOGARA,VR,2,0,1
-POVEGLIANO VERONESE,VR,2,0,1
-RONCO ALL'ADIGE,VR,2,0,0
-SAN GIOVANNI ILARIONE,VR,2,0,1
-SOAVE,VR,2,0,0
-SORGA',VR,2,0,0
-VILLA BARTOLOMEA,VR,2,0,0
-ZIMELLA,VR,2,0,0
-AFFI,VR,1,0,0
-ANGIARI,VR,1,0,0
-BADIA CALAVENA,VR,1,0,0
-BELFIORE,VR,1,0,0
-BEVILACQUA,VR,1,0,0
-BONAVIGO,VR,1,0,0
-BOSCHI SANT'ANNA,VR,1,0,0
-BOSCO CHIESANUOVA,VR,1,0,0
-BRENTINO BELLUNO,VR,1,0,1
-BRENZONE,VR,1,0,0
-CASALEONE,VR,1,0,0
-CASTAGNARO,VR,1,0,0
-CAZZANO DI TRAMIGNA,VR,1,0,0
-CERRO VERONESE,VR,1,0,0
-CONCAMARISE,VR,1,0,0
-COSTERMANO,VR,1,0,0
-DOLCE',VR,1,0,0
-ERBE',VR,1,0,0
-ERBEZZO,VR,1,0,0
-FUMANE,VR,1,0,0
-GARDA,VR,1,0,0
-ILLASI,VR,1,0,0
-ISOLA RIZZA,VR,1,0,0
-MALCESINE,VR,1,0,0
-MARANO DI VALPOLICELLA,VR,1,0,0
-MEZZANE DI SOTTO,VR,1,0,0
-MINERBE,VR,1,0,0
-MONTECCHIA DI CROSARA,VR,1,0,0
-NOGAROLE ROCCA,VR,1,0,0
-PALU',VR,1,0,0
-PASTRENGO,VR,1,0,0
-PRESSANA,VR,1,0,0
-RIVOLI VERONESE,VR,1,0,0
-RONCA',VR,1,0,0
-ROVERCHIARA,VR,1,0,0
-ROVERE' VERONESE,VR,1,0,0
-ROVEREDO DI GUA',VR,1,0,0
-SALIZZOLE,VR,1,0,0
-SAN MAURO DI SALINE,VR,1,0,0
-SAN PIETRO DI MORUBIO,VR,1,0,0
-SAN ZENO DI MONTAGNA,VR,1,0,0
-SANGUINETTO,VR,1,0,0
-SANT'ANNA D'ALFAEDO,VR,1,0,0
-SELVA DI PROGNO,VR,1,0,0
-TERRAZZO,VR,1,0,0
-TORRI DEL BENACO,VR,1,0,0
-TREGNAGO,VR,1,0,0
-TREVENZUOLO,VR,1,0,0
-VELO VERONESE,VR,1,0,0
-VERONELLA,VR,1,0,0
-VESTENANOVA,VR,1,0,0
+comune,n_farmacie,n_private,n_comunali,n_share_url,n_chiuse_temporanee
+Affi,1,1,0,0,0
+Albaredo D'Adige,2,2,0,0,0
+Angiari,1,1,0,0,0
+Arcole,2,1,1,0,0
+Badia Calavena,1,1,0,0,0
+Bardolino,2,2,0,1,0
+Belfiore,1,1,0,0,0
+Bevilacqua,1,1,0,0,0
+Bonavigo,1,1,0,0,0
+Boschi Sant'Anna,1,1,0,0,0
+Bosco Chiesanuova,1,1,0,0,0
+Bovolone,5,4,1,2,0
+Brentino Belluno,1,1,0,1,0
+Brenzone,1,1,0,0,0
+Bussolengo,5,5,0,0,0
+Buttapietra,2,2,0,1,0
+Caldiero,2,2,0,1,0
+Caprino Veronese,3,3,0,0,0
+Casaleone,1,1,0,0,0
+Castagnaro,1,1,0,0,0
+Castel D'Azzano,3,3,0,1,0
+Castelnuovo Del Garda,4,4,0,1,0
+Cavaion Veronese,2,2,0,1,0
+Cazzano Di Tramigna,1,1,0,0,0
+Cerea,5,5,0,1,0
+Cerro Veronese,1,1,0,0,0
+Cologna Veneta,3,3,0,0,0
+Colognola Ai Colli,2,2,0,0,0
+Concamarise,1,1,0,0,0
+Costermano,1,1,0,0,0
+Dolce',1,1,0,0,0
+Erbe',1,1,0,0,0
+Erbezzo,1,1,0,0,0
+Fumane,1,1,0,0,0
+Garda,1,1,0,0,0
+Gazzo Veronese,2,2,0,0,0
+Grezzana,3,3,0,1,0
+Illasi,1,1,0,0,0
+Isola Della Scala,3,3,0,0,0
+Isola Rizza,1,1,0,0,0
+Lavagno,2,2,0,0,0
+Lazise,4,4,0,2,1
+Legnago,7,7,0,0,0
+Malcesine,1,1,0,0,0
+Marano Di Valpolicella,1,1,0,0,0
+Mezzane Di Sotto,1,1,0,0,0
+Minerbe,1,1,0,0,0
+Montecchia Di Crosara,1,1,0,0,0
+Monteforte D'Alpone,2,2,0,0,0
+Mozzecane,2,2,0,1,0
+Negrar,6,6,0,1,0
+Nogara,2,2,0,1,0
+Nogarole Rocca,1,1,0,0,0
+Oppeano,3,2,1,0,0
+Palu',1,1,0,0,0
+Pastrengo,1,1,0,0,0
+Pescantina,3,3,0,0,0
+Peschiera Del Garda,4,4,0,1,0
+Povegliano Veronese,2,2,0,1,0
+Pressana,1,1,0,0,0
+Rivoli Veronese,1,1,0,0,0
+Ronca',1,1,0,0,0
+Ronco All'Adige,2,2,0,0,0
+Roverchiara,1,1,0,0,0
+Rovere' Veronese,1,1,0,0,0
+Roveredo Di Gua',1,1,0,0,0
+Salizzole,1,1,0,0,0
+San Bonifacio,6,6,0,1,0
+San Giovanni Ilarione,2,2,0,1,0
+San Giovanni Lupatoto,7,7,0,2,0
+San Martino Buon Albergo,4,4,0,1,0
+San Mauro Di Saline,1,1,0,0,0
+San Pietro Di Morubio,1,1,0,0,0
+San Pietro In Cariano,4,3,1,1,0
+San Zeno Di Montagna,1,1,0,0,0
+Sanguinetto,1,1,0,0,0
+Sant'Ambrogio Di Valpolicella,4,4,0,2,0
+Sant'Anna D'Alfaedo,1,1,0,0,0
+Selva Di Progno,1,1,0,0,0
+Soave,2,2,0,0,0
+Sommacampagna,4,3,1,1,0
+Sona,6,3,3,2,0
+Sorga',2,2,0,0,0
+Terrazzo,1,1,0,0,0
+Torri Del Benaco,1,1,0,0,0
+Tregnago,1,1,0,0,0
+Trevenzuolo,1,1,0,0,0
+Valeggio Sul Mincio,4,4,0,1,0
+Velo Veronese,1,1,0,0,0
+Verona,78,64,14,9,0
+Veronella,1,1,0,0,0
+Vestenanova,1,1,0,0,0
+Vigasio,3,2,1,1,0
+Villa Bartolomea,2,2,0,0,0
+Villafranca Di Verona,10,8,2,2,0
+Zevio,4,4,0,1,0
+Zimella,2,2,0,0,0
