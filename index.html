@@ -276,7 +276,22 @@
     /* ===============================
        CONFIG
     ================================ */
-    const DATA_FARMACIE_CSV = 'data/farmacie.csv';
+    const FARMACIE_CSV_CANDIDATES = ['DATA/farmacie.csv','data/farmacie.csv','farmacie.csv'];
+
+async function fetchTextFirstOk(paths){
+  let lastErr = null;
+  for(const p of paths){
+    try{
+      const r = await fetch(p, { cache:'no-store' });
+      if(r && r.ok){
+        const text = await r.text();
+        return { path:p, text };
+      }
+    }catch(e){ lastErr = e; }
+  }
+  throw new Error('farmacie.csv non trovato. Provati: ' + paths.join(', ') + (lastErr ? ' — ' + lastErr : ''));
+}
+
     const DATA_COMUNI_GEOJSON = 'data/comuni_verona.json';
     const DRIVE_MATERIALI = "https://drive.google.com/drive/folders/1f9JTPwuquc1epCO6rpsONh2fFes8yabm";
 
@@ -788,71 +803,62 @@ function parseCoordinateCell(cell){
 }
 
 
-    function caricaFarmacieCSV(){
-      Papa.parse(DATA_FARMACIE_CSV, {
-        download:true,
-        header:true,
-        skipEmptyLines:true,
-        complete: (res) => {
-          const rows = res.data || [];
-          farmLayer.clearLayers();
-          farmMarkers.length = 0;
+    async function caricaFarmacieCSV(){
+      try{
+        const loaded = await fetchTextFirstOk(FARMACIE_CSV_CANDIDATES);
+        debugLine.textContent = 'Caricamento farmacie da: ' + loaded.path + ' …';
 
-          let skipped = 0;
-          let unmatched = 0;
+        Papa.parse(loaded.text, {
+          header:true,
+          skipEmptyLines:true,
+          complete:(res)=>{
+            const rows = res.data || [];
+            farmLayer.clearLayers();
+            farmMarkers.length = 0;
 
-          for(const row of rows){
-            const rawComune = (row.comune || '').toString().trim();
-            const comune = canonComune(rawComune);
-            if(!rawComune) { skipped++; continue; }
-            if(!comuneCanonByNorm[normKey(rawComune)]) unmatched++;
+            let skipped = 0;
+            rows.forEach(row => {
+              const comuneRaw = (row.comune || '').toString().trim();
+              if(!comuneRaw){ skipped++; return; }
+              const comune = canonComune(comuneRaw);
 
-            const coord = parseCoordinateCell(row.coordinate);
-            if(!coord) { skipped++; continue; }
-            const lat = coord.lat;
-            const lon = coord.lon;
+              const coord = parseCoordinateCell(row.coordinate);
+              if(!coord){ skipped++; return; }
 
-            const id = (row.farmacia_id || '').toString().trim() || (row.descrizione_farmacia ? ('auto_' + normKey(row.descrizione_farmacia) + '_' + lat + '_' + lon) : ('auto_' + lat + '_' + lon));
+              const nome = (row.descrizione_farmacia || row.nome || 'Farmacia').toString().trim();
+              const indirizzo = (row.indirizzo_full || '').toString().trim();
+              const id = (row.farmacia_id || stableId(nome + '|' + indirizzo + '|' + comune)).toString().trim();
 
-            const family = workFamilyFor(id);
-            const chiusa = isChiusaTemp(row, id);
+              const statoLavoro = (statusStore[id]?.stato) || 'non_contattata';
+              const chiusa = isChiusaTemp(row, id);
 
-            const marker = L.marker([lat, lon], {
-              icon: iconFarmacia(row.gestione, family, chiusa),
-              interactive:true
+              const marker = L.marker([coord.lat, coord.lon], { icon: iconFarmacia(row.gestione, statoLavoro, chiusa) })
+                .bindPopup(buildPopupHtml(row, id), { maxWidth: 360 });
+
+              marker.addTo(farmLayer);
+              farmMarkers.push({ marker, comune, id });
+
+              attachPopupHandlers(marker, row, id);
             });
 
-            const popupHtml = buildPopupHtml(row, id);
-            marker.bindPopup(popupHtml, { maxWidth: 360, closeButton:true });
+            aggiornaHUD();
 
-            attachPopupHandlers(marker, row, id);
+            // se un comune è già selezionato, riapplica filtro opacità e conteggi
+            if(selectedComune){
+              farmMarkers.forEach(x => x.marker.setOpacity(x.comune === selectedComune ? 1 : 0.18));
+              aggiornaHUD();
+            }
 
-            marker.addTo(farmLayer);
-
-            farmMarkers.push({ id, comune, gestione: row.gestione || '', marker, row });
-            comuniSet.add(comune);
+            debugLine.innerHTML = `Farmacie caricate: <b>${farmMarkers.length}</b> — comuni nel GeoJSON: ${comuniSet.size}` +
+              (skipped ? ` — saltate (coord invalide): ${skipped}` : '');
+          },
+          error:(err)=>{
+            debugLine.textContent = 'Errore parsing farmacie.csv: ' + (err?.message || String(err));
           }
-
-          // debug line: molto discreta
-          if(unmatched > 0){
-            debugLine.style.display = 'block';
-            debugLine.textContent = `⚠ Comune non riconosciuto rispetto al GeoJSON: ${unmatched} (es. "Negrar" vs "Negrar di Valpolicella").`;
-          } else {
-            debugLine.style.display = 'none';
-          }
-
-          // se stavo già su un comune, riapplico filtro
-          if(selectedComune){
-            farmMarkers.forEach(x => x.marker.setOpacity(x.comune === selectedComune ? 1 : 0.18));
-          }
-
-          aggiornaHUD();
-        },
-        error: (err) => {
-          debugLine.style.display = 'block';
-          debugLine.textContent = 'Errore nel caricamento CSV farmacie: ' + (err?.message || String(err));
-        }
-      });
+        });
+      }catch(e){
+        debugLine.textContent = 'Errore caricamento farmacie.csv: ' + (e?.message || String(e));
+      }
     }
 
     /* ===============================
