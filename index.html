@@ -672,224 +672,103 @@ async function fetchTextFirstOk(paths){
 
     
     
-    function buildPopupHtml(row, id){
-      const nome = (row.descrizione_farmacia || 'Farmacia').toString().trim();
-      const comune = (row.comune || '').toString().trim();
-      const indirizzo = (row.indirizzo_full || row.indirizzo || '').toString().trim();
-      const cap = (row.cap || '').toString().trim();
-      const gestione = (row.gestione || '').toString().trim();
-      const maps = (row.maps_url || '').toString().trim();
+function buildPopupHtml(row, id){
+  const st = statusStore[id] || {};
+  const stato = st.stato || 'non_contattata';
+  const note = st.note || '';
+  const incaricati = Array.isArray(st.incaricati)
+    ? st.incaricati
+    : (st.incaricati ? String(st.incaricati).split(',').map(s=>s.trim()).filter(Boolean) : []);
 
-      // stato dinamico (RAM + localStorage)
-      const stObj = statusStore[id] || {};
-      const stato = (stObj.stato_lavoro || defaultWorkState());
-      const note = (stObj.note || '').toString();
-      const incaricati = Array.isArray(stObj.incaricati) ? stObj.incaricati : [];
-      const chiusa = isChiusaTemp(row, id);
+  const nome = escapeHtml(row.descrizione_farmacia || row.nome || 'Farmacia');
+  const gestione = escapeHtml(row.gestione || '');
+  const indirizzo = escapeHtml(row.indirizzo_full || row.indirizzo || '');
+  const cap = escapeHtml(row.cap || '');
+  const comune = escapeHtml(row.comune || '');
+  const statoAtt = escapeHtml(row.stato_attivita || '');
 
-      // helpers
-      const esc = htmlEscape;
-      const chips = incaricati.length ? incaricati.map(n => {
-        const data = encodeURIComponent(n);
-        return `<span class="chip"><span class="chip-name">${esc(n)}</span><button class="chip-x" data-name="${data}" title="Rimuovi">×</button></span>`;
-      }).join('') : `<span class="muted">Nessun incaricato</span>`;
+  const mapsUrl = String(pickField(row, ['maps_url'])).trim();
 
-      const statoLabel = WORK_STATE_BY_KEY[stato]?.label || '—';
+  const chiusaBadge = (statoAtt && statoAtt.toLowerCase().includes('chiusa'))
+    ? `<div class="badge badge-chiusa">⚠ ${statoAtt}</div>`
+    : '';
 
-      // Se chiusa temporaneamente: UI minimale (solo riapri)
-      if(chiusa){
-        return `
-          <div class="popup">
-            <div class="popup-title">${esc(nome)}</div>
-            <div class="popup-sub">${esc(gestione ? gestione + ' – ' : '')}${esc(indirizzo)}${cap ? ' – ' + esc(cap) : ''} – ${esc(comune)}</div>
+  const chipsHtml = incaricati.length
+    ? incaricati.map(n => `
+        <span class="chip">${escapeHtml(n)}
+          <button class="chip-x" data-name="${escapeHtml(n).replace(/"/g,'&quot;')}" title="Rimuovi">×</button>
+        </span>
+      `).join('')
+    : `<span class="muted">Nessun incaricato</span>`;
 
-            <div class="popup-badge warn">⚠ Segnata come chiusa temporaneamente</div>
+  const incaricatiCsv = incaricati.join(', ').replace(/"/g,'&quot;');
 
-            <div class="popup-actions">
-              <button class="btn btn-primary" data-action="riapri">Segna come RIAPERTA</button>
-              ${maps ? `<a class="btn btn-link" href="${esc(maps)}" target="_blank" rel="noopener">Apri in Google Maps</a>` : ``}
-              <a class="btn btn-link" href="${esc(DRIVE_MATERIALI)}" target="_blank" rel="noopener">Materiali campagna</a>
-            </div>
-          </div>
-        `;
-      }
+  return `
+    <div class="popup">
+      <div class="popup-title">${nome}</div>
+      <div class="popup-sub">${gestione ? `<b>${gestione}</b> — ` : ''}${indirizzo}${cap ? ' ('+cap+')' : ''} — ${comune}</div>
+      ${chiusaBadge}
 
-      const options = Object.keys(WORK_STATES).map(k => {
-        const sel = (k === stato) ? 'selected' : '';
-        return `<option value="${k}" ${sel}>${esc(WORK_STATES[k].label)}</option>`;
-      }).join('');
+      <div class="popup-row">
+        <label>Stato</label>
+        <select id="stato_${id}">
+          <option value="non_contattata" ${stato==='non_contattata'?'selected':''}>Non contattata</option>
+          <option value="in_carico" ${stato==='in_carico'?'selected':''}>In carico</option>
+          <option value="trattativa" ${stato==='trattativa'?'selected':''}>In trattativa</option>
+          <option value="favorevole_poster" ${stato==='favorevole_poster'?'selected':''}>Favorevole + poster</option>
+          <option value="favorevole_boi" ${stato==='favorevole_boi'?'selected':''}>Favorevole + boicotta</option>
+          <option value="non_aderisce" ${stato==='non_aderisce'?'selected':''}>Non aderisce</option>
+          <option value="chiusa_temp" ${stato==='chiusa_temp'?'selected':''}>Chiusa temporaneamente</option>
+        </select>
+      </div>
 
-      return `
-        <div class="popup">
-          <div class="popup-title">${esc(nome)}</div>
-          <div class="popup-sub">${esc(gestione ? gestione + ' – ' : '')}${esc(indirizzo)}${cap ? ' – ' + esc(cap) : ''} – ${esc(comune)}</div>
-
-          <div class="popup-row">
-            <label>Stato farmacia</label>
-            <select id="stato_${id}">
-              ${options}
-            </select>
-            <div class="popup-hint">Attuale: <b>${esc(statoLabel)}</b></div>
-          </div>
-
-          <div class="popup-row">
-            <label>In carico a</label>
-            <div class="inline">
-              <input id="inc_new_${id}" type="text" placeholder="Aggiungi nome (invio o +)" />
-              <button class="btn btn-mini" data-action="add-incaricato">+</button>
-            </div>
-            <div class="chips" id="inc_list_${id}">${chips}</div>
-            <div class="popup-hint">Puoi avere più incaricati. Clicca “×” per rimuovere.</div>
-          </div>
-
-          <div class="popup-row">
-            <label>Note</label>
-            <textarea id="note_${id}" rows="3" placeholder="Es: favorevole con poster, ha magazzino, ecc.">${esc(note)}</textarea>
-          </div>
-
-          <div class="popup-actions">
-            <button class="btn btn-primary" data-action="save">Salva</button>
-            <button class="btn btn-warn" data-action="chiusa">Segna CHIUSA temporaneamente</button>
-            ${maps ? `<a class="btn btn-link" href="${esc(maps)}" target="_blank" rel="noopener">Apri in Google Maps</a>` : ``}
-            <a class="btn btn-link" href="${esc(DRIVE_MATERIALI)}" target="_blank" rel="noopener">Materiali campagna</a>
-          </div>
+      <div class="popup-row">
+        <label>Incaricati</label>
+        <div class="chips" id="chips_${id}">${chipsHtml}</div>
+        <div class="chip-add">
+          <input id="incadd_${id}" type="text" placeholder="Aggiungi nome e premi +">
+          <button class="btn-mini" id="incbtn_${id}" type="button">+</button>
         </div>
-      `;
-    }
+        <input type="hidden" id="incval_${id}" value="${incaricatiCsv}">
+      </div>
+
+      <div class="popup-row">
+        <label>Note</label>
+        <textarea id="note_${id}" rows="3" placeholder="Note operative (poster, BDS, magazzino, ecc.)">${escapeHtml(note)}</textarea>
+      </div>
+
+      <div class="popup-actions">
+        <button class="btn" id="save_${id}">Salva</button>
+        <button class="btn-ghost" id="close_${id}" type="button">Chiudi</button>
+      </div>
+
+      <div class="popup-links">
+        ${mapsUrl ? `<a href="${mapsUrl}" target="_blank" rel="noopener">Apri in Google Maps</a>` : ''}
+        <a href="${DRIVE_MATERIALI}" target="_blank" rel="noopener">Materiali campagna</a>
+      </div>
+    </div>
+  `;
+}
 
 
 
     
-    function attachPopupHandlers(marker, row, id){
-      // chiamata ad ogni popupopen e dopo ogni refresh del contenuto
-      const pop = marker.getPopup();
-      if(!pop) return;
+function attachPopupHandlers(marker, row, id){
+  const root = marker.getPopup()?.getElement();
+  if(!root) return;
 
-      // utility: refresh popup content and rebind handlers
-      const refresh = () => {
-        marker.setPopupContent(buildPopupHtml(row, id));
-        // se popup aperto, riattacca handlers al prossimo tick
-        if(marker.isPopupOpen()){
-          setTimeout(() => attachPopupHandlers(marker, row, id), 0);
-        }
-      };
+  const sel = root.querySelector(`#stato_${id}`);
+  const note = root.querySelector(`#note_${id}`);
+  const chipsBox = root.querySelector(`#chips_${id}`);
+  const incVal = root.querySelector(`#incval_${id}`);
+  const incAdd = root.querySelector(`#incadd_${id}`);
+  const incBtn = root.querySelector(`#incbtn_${id}`);
+  const btnSave = root.querySelector(`#save_${id}`);
+  const btnClose = root.querySelector(`#close_${id}`);
 
-      // --- action buttons (save, chiusa, riapri, add-incaricato)
-      const container = pop.getElement();
-      if(!container) return;
-
-      const byAction = (name) => container.querySelector(`[data-action="${name}"]`);
-
-      const btnSave = byAction('save');
-      const btnChiusa = byAction('chiusa');
-      const btnRiapri = byAction('riapri');
-      const btnAddInc = byAction('add-incaricato');
-
-      const ensureStore = () => {
-        if(!statusStore[id]) statusStore[id] = {};
-        if(!Array.isArray(statusStore[id].incaricati)) statusStore[id].incaricati = [];
-      };
-
-      const updateMarkerVisual = () => {
-        const fam = workFamilyFor(id);
-        const chiusa = isChiusaTemp(row, id);
-        marker.setIcon(iconFarmacia(row.gestione, fam, chiusa));
-      };
-
-      // Aggiungi incaricato (da input)
-      const addFromInput = () => {
-        const inp = container.querySelector(`#inc_new_${CSS.escape(id)}`);
-        if(!inp) return;
-        const raw = (inp.value || '').trim();
-        if(!raw) return;
-        const names = splitList(raw); // supporto: "a, b"
-        ensureStore();
-        const cur = statusStore[id].incaricati;
-        names.forEach(n => { if(n && !cur.includes(n)) cur.push(n); });
-        inp.value = '';
-        saveStatusStore(statusStore);
-        refresh();
-        aggiornaTuttiContatori();
-      };
-
-      if(btnAddInc){
-        btnAddInc.onclick = (e) => { e.preventDefault(); addFromInput(); };
-      }
-      const inpNew = container.querySelector(`#inc_new_${CSS.escape(id)}`);
-      if(inpNew){
-        inpNew.onkeydown = (e) => {
-          if(e.key === 'Enter'){
-            e.preventDefault();
-            addFromInput();
-          }
-        };
-      }
-
-      // rimozione incaricato (chips)
-      container.querySelectorAll('.chip-x').forEach(btn => {
-        btn.onclick = (e) => {
-          e.preventDefault();
-          const encoded = btn.getAttribute('data-name') || '';
-          const name = decodeURIComponent(encoded);
-          ensureStore();
-          statusStore[id].incaricati = (statusStore[id].incaricati || []).filter(x => x !== name);
-          saveStatusStore(statusStore);
-          refresh();
-          aggiornaTuttiContatori();
-        };
-      });
-
-      // salva stato + note
-      if(btnSave){
-        btnSave.onclick = (e) => {
-          e.preventDefault();
-          ensureStore();
-
-          const sel = container.querySelector(`#stato_${CSS.escape(id)}`);
-          const noteEl = container.querySelector(`#note_${CSS.escape(id)}`);
-
-          const stato = sel ? sel.value : defaultWorkState();
-          const note = noteEl ? (noteEl.value || '') : '';
-
-          statusStore[id] = {
-            ...statusStore[id],
-            stato_lavoro: stato,
-            note: note
-          };
-
-          saveStatusStore(statusStore);
-          updateMarkerVisual();
-          refresh();
-          aggiornaTuttiContatori();
-        };
-      }
-
-      // segna chiusa temporaneamente
-      if(btnChiusa){
-        btnChiusa.onclick = (e) => {
-          e.preventDefault();
-          ensureStore();
-          statusStore[id].chiusa_temp = true;
-          saveStatusStore(statusStore);
-          updateMarkerVisual();
-          refresh();
-          aggiornaTuttiContatori();
-        };
-      }
-
-      // segna riaperta
-      if(btnRiapri){
-        btnRiapri.onclick = (e) => {
-          e.preventDefault();
-          ensureStore();
-          statusStore[id].chiusa_temp = false;
-          saveStatusStore(statusStore);
-          updateMarkerVisual();
-          refresh();
-          aggiornaTuttiContatori();
-        };
-      }
-    }
+  function listFromHidden(){
+    return (incVal?.value || '').split(',').map(s=>s.trim()).filter(Boolean);
+  }
   function writeHidden(list){
     if(incVal) incVal.value = (list || []).join(', ');
   }
@@ -1052,7 +931,7 @@ function sameComune(a,b){
               marker.addTo(farmLayer);
               farmMarkers.push({ marker, comune, id, row });
 
-              marker.on('popupopen', () => attachPopupHandlers(marker, row, id));
+              attachPopupHandlers(marker, row, id);
             });
 
             aggiornaHUD();
