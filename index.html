@@ -625,83 +625,78 @@
       return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
 
-    function buildPopupHtml(row, id){
-      const nome = row.descrizione_farmacia || 'Farmacia';
-      const indir = row.indirizzo_full || row.indirizzo || '';
-      const cap = row.cap || '';
-      const comune = row.comune || '';
-      const gestione = row.gestione || '';
-      const stAtt = row.stato_attivita || '';
+    function buildPopupHtml(row, id){      // NOTE: con il nuovo schema farmacie.csv, il link Maps definitivo è `maps_url`.
+      // Niente fallback automatici: se manca, lo segnaliamo.
+      const nome = (row.descrizione_farmacia || row.nome || row.denominazione || 'Farmacia').toString().trim();
+      const comune = canonComune((row.comune || '').toString().trim());
+      const indirizzo = (row.indirizzo_full || row.indirizzo || '').toString().trim();
+      const cap = (row.cap || '').toString().trim();
+      const gestione = (row.gestione || '').toString().trim(); // "Privata" / "Comunale" (se presente)
+      const mapsUrl = (row.maps_url || '').toString().trim();
 
-      const rec = statusStore[id] || {};
-      const statoL = rec.stato_lavoro || defaultWorkState();
-      const incar = (rec.incaricati || []).join(', ');
-      const note = rec.note || '';
+      const family = workFamilyFor(id);
       const chiusa = isChiusaTemp(row, id);
 
-      const mapsUrl = (row.maps_share_url && String(row.maps_share_url).trim())
-        || (row.maps_url_addr && String(row.maps_url_addr).trim())
-        || '';
+      const incaricati = (statusStore[id]?.incaricati || []).join(', ');
+      const statoLavoro = familyLabel(family);
 
       return `
         <div style="min-width:260px">
-
-          <strong>${escapeHtml(nome)}</strong><br/>
-
-          <div style="opacity:.9; margin-top:2px">
-
-            ${escapeHtml(gestione)}<br/>
-
-            ${escapeHtml(indir)}${cap ? ' – ' + escapeHtml(cap) : ''}<br/>
-
-            ${escapeHtml(comune)}
-
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+            <div>
+              <div style="font-weight:800;font-size:14px">${escapeHtml(nome)}</div>
+              <div style="opacity:.9;font-size:12px;margin-top:2px">
+                ${gestione ? `<span style="color:#9ef5d9"><b>${escapeHtml(gestione)}</b></span> — ` : ''}
+                ${escapeHtml(indirizzo)}${cap ? ', ' + escapeHtml(cap) : ''}${comune ? ' — ' + escapeHtml(comune) : ''}
+              </div>
+            </div>
+            <div style="text-align:right;font-size:11px;opacity:.85">
+              <div><b>${chiusa ? 'CHIUSA TEMP.' : 'APERTA'}</b></div>
+              <div style="margin-top:2px">${escapeHtml(statoLavoro)}</div>
+            </div>
           </div>
 
-          ${stAtt ? `<div style="margin-top:6px; font-size:12px; color:${String(stAtt).toLowerCase().includes('chiusa') ? '#ffaa00' : '#bdbdbd'}">Stato attività: <b>${escapeHtml(stAtt)}</b></div>` : ''}
-
-          <div style="margin-top:8px">
-
-            ${mapsUrl ? `<a href="${escapeHtml(mapsUrl)}" target="_blank" rel="noopener">Apri in Google Maps</a><br/>` : ''}
-
-            <a href="${DRIVE_MATERIALI}" target="_blank" rel="noopener">Materiali campagna</a>
-
-          </div>
-
-          <hr style="border:none;border-top:1px solid #222;margin:10px 0"/>
-
-          <div class="pform" data-id="${escapeHtml(id)}">
-
-            <label>Stato lavoro</label>
-
-            <select name="stato">
-
-              ${WORK_STATES.map(s => `<option value="${s.key}" ${s.key===statoL?'selected':''}>${escapeHtml(s.label)}</option>`).join('')}
-
-            </select>
-
-            <label>In carico a</label>
-
-            <input name="incaricati" placeholder="Nomi separati da virgola" value="${escapeHtml(incar)}"/>
-
-            <div class="hint">Puoi aggiungere e togliere nomi modificando questa riga.</div>
-
-            <label>Note</label>
-
-            <textarea name="note" placeholder="Es: espone poster, informativa BDS, ecc.">${escapeHtml(note)}</textarea>
-
-            <div class="row">
-
-              <button type="button" class="saveBtn">Salva</button>
-
-              <button type="button" class="toggleClosedBtn">${chiusa ? 'Segna riaperta' : 'Segna chiusa temp.'}</button>
-
+          <div style="margin-top:10px;border-top:1px solid #1f1f1f;padding-top:10px">
+            <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#bdbdbd">Gestione campagna</div>
+            <div style="margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <label style="font-size:12px">
+                <span style="display:block;opacity:.9;margin-bottom:4px">In carico a (separa con virgole)</span>
+                <input id="inc-${id}" value="${escapeAttr(incaricati)}"
+                       placeholder="es. Vincenzo, Nicolò"
+                       style="width:100%;background:#0b0b0b;border:1px solid #222;color:#fff;padding:6px 8px;border-radius:6px"/>
+              </label>
+              <label style="font-size:12px">
+                <span style="display:block;opacity:.9;margin-bottom:4px">Stato</span>
+                <select id="st-${id}"
+                        style="width:100%;background:#0b0b0b;border:1px solid #222;color:#fff;padding:6px 8px;border-radius:6px">
+                  ${familyOptionsHtml(family)}
+                </select>
+              </label>
             </div>
 
+            <label style="display:block;margin-top:8px;font-size:12px">
+              <span style="display:block;opacity:.9;margin-bottom:4px">Note</span>
+              <textarea id="note-${id}" rows="2"
+                        placeholder="poster / BDS / boicottaggio magazzino / ecc"
+                        style="width:100%;background:#0b0b0b;border:1px solid #222;color:#fff;padding:6px 8px;border-radius:6px;resize:vertical">${escapeHtml(statusStore[id]?.note || '')}</textarea>
+            </label>
+
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+              <button id="save-${id}" style="cursor:pointer;background:#00ff9c;border:0;color:#00110b;padding:7px 10px;border-radius:8px;font-weight:750">Salva</button>
+              <button id="toggle-${id}" style="cursor:pointer;background:#0b0b0b;border:1px solid #2a2a2a;color:#fff;padding:7px 10px;border-radius:8px">
+                ${chiusa ? 'Segna riaperta' : 'Segna chiusa temp.'}
+              </button>
+              ${mapsUrl ? `
+                <a href="${escapeAttr(mapsUrl)}" target="_blank" rel="noopener"
+                   style="display:inline-flex;align-items:center;gap:6px;text-decoration:none;background:#0b0b0b;border:1px solid #2a2a2a;color:#fff;padding:7px 10px;border-radius:8px">
+                  Apri in Google Maps
+                </a>
+              ` : `
+                <span style="font-size:11px;color:#ffaa00;align-self:center">⚠ maps_url mancante</span>
+              `}
+            </div>
           </div>
-
         </div>
-
       `;
     }
 
@@ -770,14 +765,28 @@
 
     /* ===============================
        CARICA FARMACIE CSV
-       - marker: SEMPRE latitudine/longitudine (no geocode)
-       - popup link: priorità maps_share_url > maps_url_addr
+       - marker: SEMPRE da `coordinate` (formato: "latitudine, longitudine") → NO geocodifica
+       - popup link: usa SEMPRE `maps_url` (link POI definitivo)
     ================================ */
     function parseFloatIT(x){
       if(x === null || x === undefined) return NaN;
       const s = String(x).trim().replace(',', '.');
       return parseFloat(s);
     }
+
+// Header definitivo CSV: `coordinate` = "latitudine, longitudine"
+function parseCoordinateCell(cell){
+  const s = (cell || '').toString();
+  // Estrae i primi due numeri (supporta separatori vari e virgola decimale)
+  const nums = s.match(/-?\d+(?:[\.,]\d+)?/g);
+  if(!nums || nums.length < 2) return null;
+  const a = parseFloat(nums[0].replace(',', '.'));
+  const b = parseFloat(nums[1].replace(',', '.'));
+  if(!isFinite(a) || !isFinite(b)) return null;
+  // Qui assumiamo che il formato sia sempre lat,lon (come da tuo CSV definitivo).
+  return { lat: a, lon: b };
+}
+
 
     function caricaFarmacieCSV(){
       Papa.parse(DATA_FARMACIE_CSV, {
@@ -798,9 +807,10 @@
             if(!rawComune) { skipped++; continue; }
             if(!comuneCanonByNorm[normKey(rawComune)]) unmatched++;
 
-            const lat = parseFloatIT(row.latitudine);
-            const lon = parseFloatIT(row.longitudine);
-            if(!isFinite(lat) || !isFinite(lon)) { skipped++; continue; }
+            const coord = parseCoordinateCell(row.coordinate);
+            if(!coord) { skipped++; continue; }
+            const lat = coord.lat;
+            const lon = coord.lon;
 
             const id = (row.farmacia_id || '').toString().trim() || (row.descrizione_farmacia ? ('auto_' + normKey(row.descrizione_farmacia) + '_' + lat + '_' + lon) : ('auto_' + lat + '_' + lon));
 
