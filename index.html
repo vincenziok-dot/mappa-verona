@@ -181,7 +181,17 @@
       .grid2{ grid-template-columns:1fr 1fr; }
       .stat-value{ font-size:22px; }
     }
-  </style>
+  
+/* Popup: incaricati “chip” + pulsanti piccoli */
+.incarChips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 8px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;background:#0e0e0e;border:1px solid #1f1f1f;border-radius:999px;font-size:11px;color:#e6e6e6}
+.chip button{background:transparent;border:0;color:#bdbdbd;cursor:pointer;font-size:14px;line-height:12px;padding:0}
+.chip button:hover{color:#ff4d4d}
+.incarAdd{display:flex;gap:8px;align-items:center;margin:0 0 4px}
+.miniBtn{background:#0e0e0e;border:1px solid #1f1f1f;color:#e6e6e6;padding:6px 8px;cursor:pointer;border-radius:8px;font-size:11px}
+.miniBtn:hover{border-color:#00ff9c;color:#00ff9c}
+
+</style>
 </head>
 
 <body>
@@ -293,7 +303,7 @@ async function fetchTextFirstOk(paths){
 }
 
     const DATA_COMUNI_GEOJSON = 'data/comuni_verona.json';
-    const DRIVE_MATERIALI = "https://drive.google.com/drive/folders/1f9JTPwuquc1epCO6rpsONh2fFes8yabm";
+    const DRIVE_MATERIALI = "https://drive.google.com/drive/folders/1oMqJ_6ZLthMK73FkpirBtvQ_Ycif4OYS";
 
     /* REFERENTI (RAM) */
     const referenti = { "Verona": ["Vincenzo Russo"] };
@@ -415,6 +425,7 @@ async function fetchTextFirstOk(paths){
 
     /* runtime state */
     let selectedComune = null;
+    let selectedComuneKey = null;
     let selectedComuneLayer = null;
 
     /* data */
@@ -601,6 +612,7 @@ async function fetchTextFirstOk(paths){
     ================================ */
     function resetSelezione(){
       selectedComune = null;
+      selectedComuneKey = null;
       selectedComuneLayer = null;
 
       hudTitle.textContent = 'Provincia di Verona';
@@ -618,6 +630,7 @@ async function fetchTextFirstOk(paths){
 
     function selezionaComune(layer, nome){
       selectedComune = nome;
+      selectedComuneKey = normKey(nome);
       selectedComuneLayer = layer;
 
       hudTitle.textContent = `Comune di ${nome}`;
@@ -703,10 +716,17 @@ async function fetchTextFirstOk(paths){
               ${opt}
             </select>
 
-            <label style="display:block; font-size:11px; opacity:.85; margin:10px 0 4px">In carico a (separare con virgola)</label>
-            <input name="incaricati" value="${escapeHtml(incaricati)}"
-              placeholder="es. Vincenzo, Marta"
-              style="width:100%; padding:6px; background:#0e0e0e; color:#fff; border:1px solid #222; border-radius:6px"/>
+            <label style="display:block; font-size:11px; opacity:.85; margin:8px 0 4px">
+  In carico a (aggiungi/rimuovi)
+</label>
+<div class="incarChips"></div>
+<div class="incarAdd">
+  <input name="inc_add"
+         placeholder="Aggiungi nome/i (virgola)"
+         style="flex:1; padding:6px; background:#0e0e0e; color:#fff; border:1px solid #222; border-radius:8px;"/>
+  <button type="button" class="miniBtn addIncarBtn">Aggiungi</button>
+</div>
+<input type="hidden" name="incaricati" value="${incVal}"/>
 
             <label style="display:block; font-size:11px; opacity:.85; margin:10px 0 4px">Note (poster, BDS, boicotta, ecc.)</label>
             <textarea name="note" rows="3"
@@ -727,69 +747,153 @@ async function fetchTextFirstOk(paths){
 
 
     function attachPopupHandlers(marker, row, id){
-      marker.on('popupopen', (e) => {
-        const container = e.popup.getElement();
-        if(!container) return;
+  marker.on('popupopen', (e) => {
+    const root = e.popup.getElement();
+    if(!root) return;
+    const form = root.querySelector('.popupForm');
+    if(!form) return;
 
-        const form = container.querySelector('.pform');
-        if(!form) return;
+    const statoSel = form.querySelector('select[name="stato"]');
+    const noteIn   = form.querySelector('textarea[name="note"]');
+    const hiddenIncar = form.querySelector('input[name="incaricati"]');
 
-        const saveBtn = form.querySelector('.saveBtn');
-        const toggleBtn = form.querySelector('.toggleClosedBtn');
+    // UI incaricati (chips + add)
+    const chipsEl = form.querySelector('.incarChips');
+    const addIn   = form.querySelector('input[name="inc_add"]');
+    const addBtn  = form.querySelector('.addIncarBtn');
 
-        const save = () => {
-          const stato = form.querySelector('select[name="stato"]').value;
-          const incarRaw = form.querySelector('input[name="incaricati"]').value || '';
-          const note = form.querySelector('textarea[name="note"]').value || '';
-
-          const incaricati = Array.from(new Set(
-            incarRaw.split(',').map(s => s.trim()).filter(Boolean)
-          ));
-
-          const prev = statusStore[id] || {};
-          statusStore[id] = {
-            ...prev,
-            stato_lavoro: stato,
-            incaricati,
-            note
-          };
-          saveStatusStore(statusStore);
-
-          // refresh marker icon
-          const family = workFamilyFor(id);
-          const chiusa = isChiusaTemp(row, id);
-          marker.setIcon(iconFarmacia(row.gestione, family, chiusa));
-
-          // refresh popup button label (if open)
-          if(toggleBtn){
-            toggleBtn.textContent = chiusa ? 'Segna riaperta' : 'Segna chiusa temp.';
-          }
-
-          aggiornaHUD();
+    function parseCsv(v){
+      return (v || '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+    function uniq(arr){
+      const seen = new Set();
+      const out = [];
+      for(const x of arr){
+        const k = x.toLowerCase();
+        if(seen.has(k)) continue;
+        seen.add(k);
+        out.push(x);
+      }
+      return out;
+    }
+    function setIncar(arr){
+      if(!hiddenIncar) return;
+      hiddenIncar.value = uniq(arr).join(', ');
+    }
+    function getIncar(){
+      if(!hiddenIncar) return [];
+      return parseCsv(hiddenIncar.value);
+    }
+    function renderChips(){
+      if(!chipsEl) return;
+      const arr = getIncar();
+      chipsEl.innerHTML = '';
+      if(!arr.length){
+        const em = document.createElement('div');
+        em.style.fontSize = '11px';
+        em.style.color = '#bdbdbd';
+        em.textContent = 'Nessun incaricato.';
+        chipsEl.appendChild(em);
+        return;
+      }
+      arr.forEach(name => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        const label = document.createElement('span');
+        label.textContent = name;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.title = 'Rimuovi';
+        btn.textContent = '×';
+        btn.onclick = () => {
+          const next = getIncar().filter(n => n.toLowerCase() !== name.toLowerCase());
+          setIncar(next);
+          renderChips();
         };
-
-        const toggleClosed = () => {
-          const prev = statusStore[id] || {};
-          statusStore[id] = { ...prev, chiusa_temp: !prev.chiusa_temp };
-          saveStatusStore(statusStore);
-
-          const family = workFamilyFor(id);
-          const chiusa = isChiusaTemp(row, id);
-          marker.setIcon(iconFarmacia(row.gestione, family, chiusa));
-
-          // aggiorna bottone e HUD
-          if(toggleBtn){
-            toggleBtn.textContent = chiusa ? 'Segna riaperta' : 'Segna chiusa temp.';
-          }
-          aggiornaHUD();
-        };
-
-        if(saveBtn) saveBtn.onclick = save;
-        if(toggleBtn) toggleBtn.onclick = toggleClosed;
+        chip.appendChild(label);
+        chip.appendChild(btn);
+        chipsEl.appendChild(chip);
       });
     }
 
-    /* ===============================
+    if(addBtn && addIn){
+      addBtn.onclick = () => {
+        const add = parseCsv(addIn.value);
+        if(!add.length) return;
+        const merged = uniq(getIncar().concat(add));
+        setIncar(merged);
+        addIn.value = '';
+        renderChips();
+      };
+      addIn.addEventListener('keydown', (ev) => {
+        if(ev.key === 'Enter'){
+          ev.preventDefault();
+          addBtn.click();
+        }
+      });
+    }
+    renderChips();
+
+    const saveBtn = form.querySelector('.saveBtn');
+    const msg = form.querySelector('.msg');
+    const toggleBtn = form.querySelector('.toggleClosedBtn');
+
+    function refreshPopup(){
+      const html = buildPopupHtml(row, id);
+      marker.setPopupContent(html);
+      marker.openPopup();
+    }
+
+    if(toggleBtn){
+      toggleBtn.onclick = () => {
+        const cur = statusStore[id] || {};
+        const nextClosed = !(cur.closed_temp === true);
+        statusStore[id] = {
+          ...cur,
+          closed_temp: nextClosed,
+          updated_at: new Date().toISOString()
+        };
+        saveStatusStore();
+        aggiornaIconFarmacia(marker, row, id);
+        aggiornaHUD();
+        refreshPopup();
+      };
+    }
+
+    if(saveBtn){
+      saveBtn.onclick = () => {
+        const stato = statoSel ? statoSel.value : 'non_contattata';
+        const note = noteIn ? noteIn.value.trim() : '';
+        const incarArr = getIncar();
+
+        statusStore[id] = {
+          ...(statusStore[id] || {}),
+          stato,
+          note,
+          incaricati: incarArr,
+          updated_at: new Date().toISOString()
+        };
+        saveStatusStore();
+
+        aggiornaIconFarmacia(marker, row, id);
+        aggiornaHUD();
+
+        if(msg){
+          msg.textContent = 'Salvato ✓';
+          setTimeout(()=>{ msg.textContent=''; }, 1200);
+        }
+
+        // IMPORTANT: ricostruisci il popup usando i dati salvati (così note/nomi non spariscono)
+        refreshPopup();
+      };
+    }
+  });
+}
+
+/* ===============================
        CARICA FARMACIE CSV
        - marker: SEMPRE da `coordinate` (formato: "latitudine, longitudine") → NO geocodifica
        - popup link: usa SEMPRE `maps_url` (link POI definitivo)
@@ -856,7 +960,7 @@ function parseCoordinateCell(cell){
 
             // se un comune è già selezionato, riapplica filtro opacità e conteggi
             if(selectedComune){
-              farmMarkers.forEach(x => x.marker.setOpacity(x.comune === selectedComune ? 1 : 0.18));
+              farmMarkers.forEach(x => x.marker.setOpacity(x.comuneKey === selectedComuneKey ? 1 : 0.18));
               aggiornaHUD();
             }
 
