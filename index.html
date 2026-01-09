@@ -182,15 +182,31 @@
       .stat-value{ font-size:22px; }
     }
   
-/* Popup: incaricati “chip” + pulsanti piccoli */
-.incarChips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 8px}
-.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;background:#0e0e0e;border:1px solid #1f1f1f;border-radius:999px;font-size:11px;color:#e6e6e6}
-.chip button{background:transparent;border:0;color:#bdbdbd;cursor:pointer;font-size:14px;line-height:12px;padding:0}
-.chip button:hover{color:#ff4d4d}
-.incarAdd{display:flex;gap:8px;align-items:center;margin:0 0 4px}
-.miniBtn{background:#0e0e0e;border:1px solid #1f1f1f;color:#e6e6e6;padding:6px 8px;cursor:pointer;border-radius:8px;font-size:11px}
-.miniBtn:hover{border-color:#00ff9c;color:#00ff9c}
-
+/* popup pharmacy UI */
+.popup{ min-width:240px; max-width:320px; color:#fff; font-family:system-ui,sans-serif; }
+.popup-title{ font-weight:750; margin-bottom:4px; }
+.popup-sub{ font-size:12px; color:#cfcfcf; line-height:1.25; }
+.popup-row{ margin-top:10px; }
+.popup-row label{ display:block; font-size:10px; text-transform:uppercase; letter-spacing:.12em; color:#9ef5d9; margin-bottom:4px; }
+.popup select, .popup textarea, .popup input{ width:100%; background:#0e0e0e; color:#fff; border:1px solid #222; padding:6px 8px; border-radius:6px; font-size:12px; box-sizing:border-box; }
+.popup textarea{ resize:vertical; }
+.popup-actions{ display:flex; gap:8px; margin-top:10px; }
+.btn{ background:#00ff9c; color:#00110b; border:1px solid #00ff9c; padding:7px 10px; border-radius:8px; font-weight:750; cursor:pointer; }
+.btn:hover{ filter:brightness(1.05); }
+.btn-ghost{ background:transparent; color:#eafff7; border:1px solid #2a2a2a; padding:7px 10px; border-radius:8px; cursor:pointer; }
+.btn-mini{ width:38px; background:#041812; color:#eafff7; border:1px solid #00ff9c; border-radius:8px; cursor:pointer; font-weight:800; }
+.btn-mini:hover{ background:#00ff9c; color:#00110b; }
+.popup-links{ margin-top:10px; font-size:12px; display:flex; flex-direction:column; gap:6px; }
+.popup-links a{ color:#9ef5d9; text-decoration:none; }
+.popup-links a:hover{ text-decoration:underline; }
+.badge{ margin-top:8px; display:inline-block; font-size:11px; padding:4px 8px; border-radius:999px; }
+.badge-chiusa{ background:rgba(255,77,77,.18); border:1px solid rgba(255,77,77,.35); color:#ffb3b3; }
+.chips{ display:flex; flex-wrap:wrap; gap:6px; }
+.chip{ background:#0e0e0e; border:1px solid #222; padding:4px 6px; border-radius:999px; font-size:12px; display:inline-flex; align-items:center; gap:6px; }
+.chip-x{ background:transparent; border:none; color:#ffb3b3; font-weight:900; cursor:pointer; line-height:1; }
+.chip-add{ display:flex; gap:6px; margin-top:6px; }
+.chip-add input{ flex:1; }
+.muted{ color:#bdbdbd; font-size:12px; }
 </style>
 </head>
 
@@ -425,7 +441,6 @@ async function fetchTextFirstOk(paths){
 
     /* runtime state */
     let selectedComune = null;
-    let selectedComuneKey = null;
     let selectedComuneLayer = null;
 
     /* data */
@@ -551,7 +566,7 @@ async function fetchTextFirstOk(paths){
       renderStatusGrid(g_statusGrid, all);
 
       if(selectedComune){
-        const inComune = all.filter(x => x.comune === selectedComune);
+        const inComune = all.filter(x => sameComune(x.comune, selectedComune));
         comuneHint.textContent = selectedComune;
         c_total.textContent = inComune.length;
         c_chiuse.textContent = inComune.filter(x => isChiusaTemp(x.row, x.id)).length;
@@ -612,7 +627,6 @@ async function fetchTextFirstOk(paths){
     ================================ */
     function resetSelezione(){
       selectedComune = null;
-      selectedComuneKey = null;
       selectedComuneLayer = null;
 
       hudTitle.textContent = 'Provincia di Verona';
@@ -630,7 +644,6 @@ async function fetchTextFirstOk(paths){
 
     function selezionaComune(layer, nome){
       selectedComune = nome;
-      selectedComuneKey = normKey(nome);
       selectedComuneLayer = layer;
 
       hudTitle.textContent = `Comune di ${nome}`;
@@ -642,7 +655,7 @@ async function fetchTextFirstOk(paths){
       aggiornaStiliComuni();
 
       // dim out-of-comune markers
-      farmMarkers.forEach(x => x.marker.setOpacity(x.comune === nome ? 1 : 0.18));
+      farmMarkers.forEach(x => x.marker.setOpacity(sameComune(x.comune, nome) ? 1 : 0.18));
 
       // zoom sul comune
       try { map.fitBounds(layer.getBounds(), { padding:[40,40] }); } catch(e){}
@@ -658,242 +671,190 @@ async function fetchTextFirstOk(paths){
     }
 
     
-    function buildPopupHtml(row, id){
-      // Con farmacie.csv definitivo:
-      // - posizione marker: colonna `coordinate` = "latitudine, longitudine"
-      // - link maps: colonna `maps_url` (già POI, preferita)
-      const nome = (row.descrizione_farmacia || row.nome || row.denominazione || 'Farmacia').toString().trim();
-      const comune = canonComune((row.comune || '').toString().trim());
-      const indirizzo = (row.indirizzo_full || row.indirizzo || '').toString().trim();
-      const cap = (row.cap || '').toString().trim();
-      const gestione = (row.gestione || '').toString().trim(); // "Privata" / "Comunale"
-      const mapsUrl = (row.maps_url || '').toString().trim();
-      const statoAttivita = (row.stato_attivita || '').toString().trim();
+    
+function buildPopupHtml(row, id){
+  const st = statusStore[id] || {};
+  const stato = st.stato || 'non_contattata';
+  const note = st.note || '';
+  const incaricati = Array.isArray(st.incaricati)
+    ? st.incaricati
+    : (st.incaricati ? String(st.incaricati).split(',').map(s=>s.trim()).filter(Boolean) : []);
 
-      const rec = statusStore[id] || {};
-      const statoLavoro = (rec.stato_lavoro || defaultWorkState());
-      const incaricati = Array.isArray(rec.incaricati) ? rec.incaricati.join(', ') : (rec.incaricati || '');
-      const note = (rec.note || '').toString();
+  const nome = escapeHtml(row.descrizione_farmacia || row.nome || 'Farmacia');
+  const gestione = escapeHtml(row.gestione || '');
+  const indirizzo = escapeHtml(row.indirizzo_full || row.indirizzo || '');
+  const cap = escapeHtml(row.cap || '');
+  const comune = escapeHtml(row.comune || '');
+  const statoAtt = escapeHtml(row.stato_attivita || '');
 
-      const opt = WORK_STATES.map(s => {
-        const sel = (s.key === statoLavoro) ? 'selected' : '';
-        return `<option value="${escapeHtml(s.key)}" ${sel}>${escapeHtml(s.label)}</option>`;
-      }).join('');
+  const mapsUrl = String(pickField(row, ['maps_url'])).trim();
 
-      const family = workFamilyFor(id);
-      const familyTxt = (family === 'aderisce') ? 'Favorevole' :
-                        (family === 'trattativa') ? 'In trattativa' :
-                        (family === 'rifiuta') ? 'Non aderisce' : 'Da contattare';
+  const chiusaBadge = (statoAtt && statoAtt.toLowerCase().includes('chiusa'))
+    ? `<div class="badge badge-chiusa">⚠ ${statoAtt}</div>`
+    : '';
 
-      const isChiusa = (String(statoAttivita).toLowerCase() === 'chiusa_temporaneamente') || !!rec.chiusa_temp;
+  const chipsHtml = incaricati.length
+    ? incaricati.map(n => `
+        <span class="chip">${escapeHtml(n)}
+          <button class="chip-x" data-name="${escapeHtml(n).replace(/"/g,'&quot;')}" title="Rimuovi">×</button>
+        </span>
+      `).join('')
+    : `<span class="muted">Nessun incaricato</span>`;
 
-      return `
-        <div class="pop">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px">
-            <div>
-              <div style="font-weight:800; font-size:14px">${escapeHtml(nome)}</div>
-              <div style="opacity:.9; margin-top:2px; font-size:12px">
-                ${escapeHtml(indirizzo)}${cap ? ', ' + escapeHtml(cap) : ''} — ${escapeHtml(comune)}
-              </div>
-              ${gestione ? `<div style="opacity:.85; margin-top:2px; font-size:12px"><b>Gestione:</b> ${escapeHtml(gestione)}</div>` : ''}
-            </div>
-            <div style="text-align:right">
-              <div class="pill ${family}">${escapeHtml(familyTxt)}</div>
-              ${isChiusa ? `<div class="pill chiusa" style="margin-top:6px">Chiusa temp.</div>` : ''}
-            </div>
-          </div>
+  const incaricatiCsv = incaricati.join(', ').replace(/"/g,'&quot;');
 
-          <div style="margin-top:10px">
-            ${mapsUrl ? `<a href="${escapeHtml(mapsUrl)}" target="_blank" rel="noopener">Apri in Google Maps</a>` :
-                        `<span style="color:#ffaa00">⚠ maps_url mancante</span>`}
-          </div>
+  return `
+    <div class="popup">
+      <div class="popup-title">${nome}</div>
+      <div class="popup-sub">${gestione ? `<b>${gestione}</b> — ` : ''}${indirizzo}${cap ? ' ('+cap+')' : ''} — ${comune}</div>
+      ${chiusaBadge}
 
-          <hr style="border:0; border-top:1px solid #222; margin:10px 0">
+      <div class="popup-row">
+        <label>Stato</label>
+        <select id="stato_${id}">
+          <option value="non_contattata" ${stato==='non_contattata'?'selected':''}>Non contattata</option>
+          <option value="in_carico" ${stato==='in_carico'?'selected':''}>In carico</option>
+          <option value="trattativa" ${stato==='trattativa'?'selected':''}>In trattativa</option>
+          <option value="favorevole_poster" ${stato==='favorevole_poster'?'selected':''}>Favorevole + poster</option>
+          <option value="favorevole_boi" ${stato==='favorevole_boi'?'selected':''}>Favorevole + boicotta</option>
+          <option value="non_aderisce" ${stato==='non_aderisce'?'selected':''}>Non aderisce</option>
+          <option value="chiusa_temp" ${stato==='chiusa_temp'?'selected':''}>Chiusa temporaneamente</option>
+        </select>
+      </div>
 
-          <form class="pform" onsubmit="return false">
-            <label style="display:block; font-size:11px; opacity:.85; margin-bottom:4px">Stato lavoro</label>
-            <select name="stato" style="width:100%; padding:6px; background:#0e0e0e; color:#fff; border:1px solid #222; border-radius:6px">
-              ${opt}
-            </select>
-
-            <label style="display:block; font-size:11px; opacity:.85; margin:8px 0 4px">
-  In carico a (aggiungi/rimuovi)
-</label>
-<div class="incarChips"></div>
-<div class="incarAdd">
-  <input name="inc_add"
-         placeholder="Aggiungi nome/i (virgola)"
-         style="flex:1; padding:6px; background:#0e0e0e; color:#fff; border:1px solid #222; border-radius:8px;"/>
-  <button type="button" class="miniBtn addIncarBtn">Aggiungi</button>
-</div>
-<input type="hidden" name="incaricati" value="${incVal}"/>
-
-            <label style="display:block; font-size:11px; opacity:.85; margin:10px 0 4px">Note (poster, BDS, boicotta, ecc.)</label>
-            <textarea name="note" rows="3"
-              style="width:100%; padding:6px; background:#0e0e0e; color:#fff; border:1px solid #222; border-radius:6px; resize:vertical">${escapeHtml(note)}</textarea>
-
-            <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap">
-              <button type="button" class="saveBtn hud-btn" style="flex:1 1 auto">Salva</button>
-              <button type="button" class="toggleClosedBtn hud-btn" style="flex:1 1 auto; border-color:#ffaa00; background:#1a1200">
-                ${isChiusa ? 'Segna riaperta' : 'Segna chiusa temp.'}
-              </button>
-            </div>
-
-            ${statoAttivita ? `<div style="margin-top:10px; font-size:11px; opacity:.85"><b>Stato attività:</b> ${escapeHtml(statoAttivita)}</div>` : ''}
-          </form>
+      <div class="popup-row">
+        <label>Incaricati</label>
+        <div class="chips" id="chips_${id}">${chipsHtml}</div>
+        <div class="chip-add">
+          <input id="incadd_${id}" type="text" placeholder="Aggiungi nome e premi +">
+          <button class="btn-mini" id="incbtn_${id}" type="button">+</button>
         </div>
-      `;
-    }
+        <input type="hidden" id="incval_${id}" value="${incaricatiCsv}">
+      </div>
 
+      <div class="popup-row">
+        <label>Note</label>
+        <textarea id="note_${id}" rows="3" placeholder="Note operative (poster, BDS, magazzino, ecc.)">${escapeHtml(note)}</textarea>
+      </div>
 
-    function attachPopupHandlers(marker, row, id){
-  marker.on('popupopen', (e) => {
-    const root = e.popup.getElement();
-    if(!root) return;
-    const form = root.querySelector('.popupForm');
-    if(!form) return;
+      <div class="popup-actions">
+        <button class="btn" id="save_${id}">Salva</button>
+        <button class="btn-ghost" id="close_${id}" type="button">Chiudi</button>
+      </div>
 
-    const statoSel = form.querySelector('select[name="stato"]');
-    const noteIn   = form.querySelector('textarea[name="note"]');
-    const hiddenIncar = form.querySelector('input[name="incaricati"]');
-
-    // UI incaricati (chips + add)
-    const chipsEl = form.querySelector('.incarChips');
-    const addIn   = form.querySelector('input[name="inc_add"]');
-    const addBtn  = form.querySelector('.addIncarBtn');
-
-    function parseCsv(v){
-      return (v || '')
-        .split(',')
-        .map(s => s.trim())
-        .filter(Boolean);
-    }
-    function uniq(arr){
-      const seen = new Set();
-      const out = [];
-      for(const x of arr){
-        const k = x.toLowerCase();
-        if(seen.has(k)) continue;
-        seen.add(k);
-        out.push(x);
-      }
-      return out;
-    }
-    function setIncar(arr){
-      if(!hiddenIncar) return;
-      hiddenIncar.value = uniq(arr).join(', ');
-    }
-    function getIncar(){
-      if(!hiddenIncar) return [];
-      return parseCsv(hiddenIncar.value);
-    }
-    function renderChips(){
-      if(!chipsEl) return;
-      const arr = getIncar();
-      chipsEl.innerHTML = '';
-      if(!arr.length){
-        const em = document.createElement('div');
-        em.style.fontSize = '11px';
-        em.style.color = '#bdbdbd';
-        em.textContent = 'Nessun incaricato.';
-        chipsEl.appendChild(em);
-        return;
-      }
-      arr.forEach(name => {
-        const chip = document.createElement('span');
-        chip.className = 'chip';
-        const label = document.createElement('span');
-        label.textContent = name;
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.title = 'Rimuovi';
-        btn.textContent = '×';
-        btn.onclick = () => {
-          const next = getIncar().filter(n => n.toLowerCase() !== name.toLowerCase());
-          setIncar(next);
-          renderChips();
-        };
-        chip.appendChild(label);
-        chip.appendChild(btn);
-        chipsEl.appendChild(chip);
-      });
-    }
-
-    if(addBtn && addIn){
-      addBtn.onclick = () => {
-        const add = parseCsv(addIn.value);
-        if(!add.length) return;
-        const merged = uniq(getIncar().concat(add));
-        setIncar(merged);
-        addIn.value = '';
-        renderChips();
-      };
-      addIn.addEventListener('keydown', (ev) => {
-        if(ev.key === 'Enter'){
-          ev.preventDefault();
-          addBtn.click();
-        }
-      });
-    }
-    renderChips();
-
-    const saveBtn = form.querySelector('.saveBtn');
-    const msg = form.querySelector('.msg');
-    const toggleBtn = form.querySelector('.toggleClosedBtn');
-
-    function refreshPopup(){
-      const html = buildPopupHtml(row, id);
-      marker.setPopupContent(html);
-      marker.openPopup();
-    }
-
-    if(toggleBtn){
-      toggleBtn.onclick = () => {
-        const cur = statusStore[id] || {};
-        const nextClosed = !(cur.closed_temp === true);
-        statusStore[id] = {
-          ...cur,
-          closed_temp: nextClosed,
-          updated_at: new Date().toISOString()
-        };
-        saveStatusStore();
-        aggiornaIconFarmacia(marker, row, id);
-        aggiornaHUD();
-        refreshPopup();
-      };
-    }
-
-    if(saveBtn){
-      saveBtn.onclick = () => {
-        const stato = statoSel ? statoSel.value : 'non_contattata';
-        const note = noteIn ? noteIn.value.trim() : '';
-        const incarArr = getIncar();
-
-        statusStore[id] = {
-          ...(statusStore[id] || {}),
-          stato,
-          note,
-          incaricati: incarArr,
-          updated_at: new Date().toISOString()
-        };
-        saveStatusStore();
-
-        aggiornaIconFarmacia(marker, row, id);
-        aggiornaHUD();
-
-        if(msg){
-          msg.textContent = 'Salvato ✓';
-          setTimeout(()=>{ msg.textContent=''; }, 1200);
-        }
-
-        // IMPORTANT: ricostruisci il popup usando i dati salvati (così note/nomi non spariscono)
-        refreshPopup();
-      };
-    }
-  });
+      <div class="popup-links">
+        ${mapsUrl ? `<a href="${mapsUrl}" target="_blank" rel="noopener">Apri in Google Maps</a>` : ''}
+        <a href="${DRIVE_MATERIALI}" target="_blank" rel="noopener">Materiali campagna</a>
+      </div>
+    </div>
+  `;
 }
 
-/* ===============================
+
+
+    
+function attachPopupHandlers(marker, row, id){
+  const root = marker.getPopup()?.getElement();
+  if(!root) return;
+
+  const sel = root.querySelector(`#stato_${id}`);
+  const note = root.querySelector(`#note_${id}`);
+  const chipsBox = root.querySelector(`#chips_${id}`);
+  const incVal = root.querySelector(`#incval_${id}`);
+  const incAdd = root.querySelector(`#incadd_${id}`);
+  const incBtn = root.querySelector(`#incbtn_${id}`);
+  const btnSave = root.querySelector(`#save_${id}`);
+  const btnClose = root.querySelector(`#close_${id}`);
+
+  function listFromHidden(){
+    return (incVal?.value || '').split(',').map(s=>s.trim()).filter(Boolean);
+  }
+  function writeHidden(list){
+    if(incVal) incVal.value = (list || []).join(', ');
+  }
+  function renderChips(list){
+    if(!chipsBox) return;
+    if(!list.length){
+      chipsBox.innerHTML = `<span class="muted">Nessun incaricato</span>`;
+      return;
+    }
+    chipsBox.innerHTML = list.map(n => `
+      <span class="chip">${escapeHtml(n)}
+        <button class="chip-x" data-name="${escapeHtml(n).replace(/"/g,'&quot;')}" title="Rimuovi">×</button>
+      </span>`).join('');
+    chipsBox.querySelectorAll('.chip-x').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.preventDefault();
+        const name = btn.getAttribute('data-name') || '';
+        const cur = listFromHidden().filter(x => normKey(x) !== normKey(name));
+        writeHidden(cur);
+        renderChips(cur);
+      });
+    });
+  }
+
+  // init chips from store/hidden
+  renderChips(listFromHidden());
+
+  if(incBtn){
+    incBtn.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const name = (incAdd?.value || '').trim();
+      if(!name) return;
+      const cur = listFromHidden();
+      if(!cur.some(x => normKey(x) === normKey(name))) cur.push(name);
+      writeHidden(cur);
+      renderChips(cur);
+      if(incAdd) incAdd.value = '';
+    });
+  }
+  if(incAdd){
+    incAdd.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        incBtn?.click();
+      }
+    });
+  }
+
+  if(btnClose){
+    btnClose.addEventListener('click', (e)=>{
+      e.preventDefault();
+      marker.closePopup();
+    });
+  }
+
+  if(btnSave){
+    btnSave.addEventListener('click', (e)=>{
+      e.preventDefault();
+
+      const stato = sel ? sel.value : 'non_contattata';
+      const noteTxt = note ? note.value.trim() : '';
+      const incaricati = listFromHidden();
+
+      statusStore[id] = {
+        ...(statusStore[id] || {}),
+        stato,
+        note: noteTxt,
+        incaricati
+      };
+      saveStatusStore();
+
+      const gestione = (row.gestione || '').toString().toLowerCase();
+      const isComunale = gestione.includes('comunal');
+      marker.setIcon(iconForFarmacia(isComunale ? 'comunale' : 'privata', stato, row.stato_attivita));
+
+      // IMPORTANT: rebuild popup so note/incaricati persist even after reopen
+      marker.setPopupContent(buildPopupHtml(row, id));
+      marker.openPopup();
+
+      aggiornaHUD();
+    });
+  }
+}
+
+
+    /* ===============================
        CARICA FARMACIE CSV
        - marker: SEMPRE da `coordinate` (formato: "latitudine, longitudine") → NO geocodifica
        - popup link: usa SEMPRE `maps_url` (link POI definitivo)
@@ -917,6 +878,23 @@ function parseCoordinateCell(cell){
   return { lat: a, lon: b };
 }
 
+function pickField(row, names){
+  for (const n of names){
+    if (row && row[n] !== undefined && row[n] !== null && String(row[n]).trim() !== '') return row[n];
+  }
+  const keys = row ? Object.keys(row) : [];
+  for (const n of names){
+    const low = String(n).toLowerCase();
+    const k = keys.find(k => String(k).toLowerCase() === low);
+    if (k && row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== '') return row[k];
+  }
+  return '';
+}
+function sameComune(a,b){
+  return normKey(a) === normKey(b);
+}
+
+
 
     async function caricaFarmacieCSV(){
       try{
@@ -937,7 +915,7 @@ function parseCoordinateCell(cell){
               if(!comuneRaw){ skipped++; return; }
               const comune = canonComune(comuneRaw);
 
-              const coord = parseCoordinateCell(row.coordinate);
+              const coord = parseCoordinateCell(pickField(row, ['coordinate','coordinate']));
               if(!coord){ skipped++; return; }
 
               const nome = (row.descrizione_farmacia || row.nome || 'Farmacia').toString().trim();
@@ -951,7 +929,7 @@ function parseCoordinateCell(cell){
                 .bindPopup(buildPopupHtml(row, id), { maxWidth: 360 });
 
               marker.addTo(farmLayer);
-              farmMarkers.push({ marker, comune, id });
+              farmMarkers.push({ marker, comune, id, row });
 
               attachPopupHandlers(marker, row, id);
             });
@@ -960,7 +938,7 @@ function parseCoordinateCell(cell){
 
             // se un comune è già selezionato, riapplica filtro opacità e conteggi
             if(selectedComune){
-              farmMarkers.forEach(x => x.marker.setOpacity(x.comuneKey === selectedComuneKey ? 1 : 0.18));
+              farmMarkers.forEach(x => x.marker.setOpacity(sameComune(x.comune, selectedComune) ? 1 : 0.18));
               aggiornaHUD();
             }
 
