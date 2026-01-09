@@ -1,19 +1,9 @@
-<
-function baseComuneName(s){
-  // per gestire casi tipo "Negrar di Valpolicella" vs "Negrar"
-  let t = (s || '').toString().trim();
-  // taglia dopo d'...
-  t = t.replace(/\s+d['’].+$/i, '').trim();
-  // taglia dopo "di/del/della/dei/degli/delle ..."
-  t = t.replace(/\s+d(?:i|el|ella|ello|ei|egli|elle)\s+.+$/i, '').trim();
-  return t;
-}
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Mappa Verona – SpG (Farmacie + Stato)</title>
+<title>Mappa Verona – SpG (Farmacie + Status)</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -21,7 +11,7 @@ function baseComuneName(s){
 html, body { margin:0; height:100%; background:#000; font-family:system-ui, sans-serif; }
 #map { position:absolute; inset:0; background:#050505; }
 
-/* BANNER ALTO COMUNE SELEZIONATO */
+/* Banner alto (comune selezionato) */
 #banner{
   position:fixed; top:0; left:50%; transform:translateX(-50%);
   background:rgba(0,0,0,.85);
@@ -33,107 +23,75 @@ html, body { margin:0; height:100%; background:#000; font-family:system-ui, sans
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-/* HUD */
+/* HUD colonna sinistra */
 #hud{
   position:fixed; top:18px; left:18px; z-index:9998;
   padding:14px 16px;
   background:rgba(5,5,5,.94);
   border-left:4px solid #00ff9c;
-  min-width:340px; max-width:440px;
+  min-width:330px; max-width:420px;
   box-shadow:0 0 20px rgba(0,0,0,.85);
   max-height: calc(100vh - 36px);
   overflow:auto;
 }
-
-.hud-title{ font-size:18px; font-weight:750; color:#fff; text-transform:uppercase; }
+.hud-title{ font-size:18px; font-weight:650; color:#fff; text-transform:uppercase; }
 .hud-sub{ margin-top:6px; font-size:13px; color:#bdbdbd; }
 
-.hud-chip{
-  display:inline-block; margin-top:10px;
-  font-size:10px; letter-spacing:.14em; text-transform:uppercase;
+/* Titoli sezione compatti ma più evidenti */
+.section-title{
+  margin-top:12px;
+  display:flex; align-items:center; gap:10px;
+}
+.section-title .tag{
+  font-size:10px; letter-spacing:.16em; text-transform:uppercase;
   color:#9ef5d9; background:#0e0e0e;
   padding:6px 8px; border:1px solid #1f1f1f;
+  border-radius:6px;
+}
+.section-title .line{
+  height:1px; flex:1;
+  background:linear-gradient(90deg, rgba(158,245,217,.55), rgba(158,245,217,0));
 }
 
+/* Stats globali */
 #stats{
   margin-top:10px;
   display:grid;
   grid-template-columns:1fr 1fr;
   gap:8px;
 }
-.stat{ background:#0e0e0e; padding:8px; border:1px solid #1f1f1f; }
+.stat{ background:#0e0e0e; padding:8px; border:1px solid #1f1f1f; border-radius:10px; }
 .stat-title{ font-size:10px; text-transform:uppercase; letter-spacing:.12em; color:#bdbdbd; }
-.stat-value{ font-size:24px; font-weight:800; }
+.stat-value{ font-size:26px; font-weight:750; }
 .stat-ok .stat-value{ color:#00ff9c; }
 .stat-warn .stat-value{ color:#ffaa00; }
 .stat-info .stat-value{ color:#4da6ff; }
-.stat-bad .stat-value{ color:#ff4d4d; }
 .stat-muted .stat-value{ color:#d0d0d0; }
 
-#debugBox{
-  margin-top:10px;
-  font-size:12px;
-  color:#bdbdbd;
-  line-height:1.35;
-}
-#debugBox .warn{ color:#ffaa00; }
-#debugBox .info{ color:#4da6ff; }
+#loadInfo{ margin-top:10px; font-size:11px; color:#bdbdbd; line-height:1.25; }
 
-#comuneBox{
-  margin-top:14px; padding-top:10px;
+/* Stats comune selezionato */
+#comune-box{
+  margin-top:12px; padding-top:10px;
   border-top:1px solid #222;
 }
-#comuneBox h4{
+#comune-box h4{
   margin:0 0 6px;
   font-size:11px; text-transform:uppercase; letter-spacing:.12em;
   color:#9ef5d9;
 }
-#farm-count, #pri-com-count{ font-size:12px; margin:4px 0 0; color:#e6e6e6; }
+#farm-count, #farm-private, #farm-comunal, #farm-closed, #farm-assigned {
+  font-size:12px; margin:4px 0 0; color:#e6e6e6;
+}
 
-#comuneStats{
-  margin-top:8px;
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
-}
-.small .stat-value{ font-size:18px; }
-
-#toolsBox{
-  margin-top:14px; padding-top:10px;
-  border-top:1px solid #222;
-}
-#toolsBox h4{
-  margin:0 0 8px;
-  font-size:11px; text-transform:uppercase; letter-spacing:.12em;
-  color:#9ef5d9;
-}
-.btnRow{ display:flex; gap:8px; flex-wrap:wrap; }
-button{
-  border:1px solid #00ff9c;
-  background:#041812; color:#eafff7;
-  font-size:11px; padding:8px 10px; cursor:pointer;
-}
-button:hover{ background:#00ff9c; color:#00110b; }
-button.danger{ border-color:#ff4d4d; background:#1b0505; }
-button.danger:hover{ background:#ff4d4d; color:#120000; }
-button.disabled{ opacity:.45; cursor:not-allowed; }
-#selectedPharmHint{ margin-top:8px; font-size:12px; color:#bdbdbd; }
-#selectedPharmHint b{ color:#fff; }
-
-#legend-box{
-  margin-top:14px; padding-top:10px;
-  border-top:1px solid #222;
-}
+/* Legenda */
+#legend-box{ margin-top:10px; padding-top:8px; border-top:1px solid #222; }
 #legend-box h4{
   margin:8px 0 6px;
   font-size:11px; text-transform:uppercase; letter-spacing:.12em;
   color:#cccccc;
 }
-.legend-row{
-  display:flex; align-items:center; gap:8px;
-  font-size:11px; margin-bottom:5px;
-  color:#e6e6e6;
-}
+.legend-row{ display:flex; align-items:center; gap:8px; font-size:11px; margin-bottom:6px; color:#e6e6e6; }
 .dot{ width:12px; height:12px; border-radius:50%; }
 .triangle{
   width:0; height:0;
@@ -143,14 +101,37 @@ button.disabled{ opacity:.45; cursor:not-allowed; }
 }
 .square{ width:12px; height:12px; border-radius:2px; }
 
-.s-noncont{ background:#ffaa00; border-bottom-color:#ffaa00; color:#ffaa00; }
-.s-tratt{ background:#4da6ff; border-bottom-color:#4da6ff; color:#4da6ff; }
-.s-ader{ background:#00ff9c; border-bottom-color:#00ff9c; color:#00ff9c; }
-.s-noader{ background:#ff4d4d; border-bottom-color:#ff4d4d; color:#ff4d4d; }
+/* colori stato (per ora: usiamo 4 classi base, e "chiusa" = opacità marker) */
+.aderisce{ background:#00ff9c; border-bottom-color:#00ff9c; }
+.trattativa{ background:#4da6ff; border-bottom-color:#4da6ff; }
+.contattare{ background:#ffaa00; border-bottom-color:#ffaa00; }
+.rifiuta{ background:#ff4d4d; border-bottom-color:#ff4d4d; }
 
 .leg-coperto{ background:#00ff9c; }
 .leg-orfano{ background:#ffaa00; }
 
+/* pulsanti referenti (sticky in basso) */
+.hud-buttons{
+  margin-top:12px;
+  display:flex; gap:6px; flex-wrap:wrap;
+  position:sticky; bottom:0;
+  padding-top:10px;
+  background: rgba(5,5,5,.96);
+  border-top: 1px solid #222;
+}
+.hud-btn{
+  border:1px solid #00ff9c;
+  background:#041812; color:#eafff7;
+  font-size:11px; padding:8px 10px; cursor:pointer;
+  border-radius:10px;
+}
+.hud-btn:hover{ background:#00ff9c; color:#00110b; }
+
+.hud-section{ margin-top:8px; display:none; padding: 6px 0 0; }
+.hud-section li{ font-size:12px; color:#fff; }
+.hud-empty{ font-size:12px; color:#bdbdbd; padding: 6px 0 2px; }
+
+/* label comuni */
 .label-comune{
   color:#ffffff; font-size:11px;
   text-shadow:0 0 6px rgba(0,0,0,.9);
@@ -159,72 +140,24 @@ button.disabled{ opacity:.45; cursor:not-allowed; }
 
 .leaflet-interactive{ cursor:pointer; }
 
-/* marker farmacia (divIcon) */
+/* Marker farmacia (divIcon) */
 .mrk{ width:14px; height:14px; display:flex; align-items:center; justify-content:center; }
 .mrk.dot{ border-radius:50%; }
-.mrk.dot span{ font-size:9px; font-weight:900; line-height:9px; color:rgba(0,0,0,.85); }
-.mrk.dot.s-noader span{ color:rgba(255,255,255,.95); }
-.mrk.dot.s-tratt span{ color:rgba(0,0,0,.85); }
-.mrk.dot.s-noncont span{ color:rgba(0,0,0,.85); }
-.mrk.dot.s-ader span{ color:rgba(0,0,0,.9); }
 
-/* chiusa temporaneamente */
-.mrk.closed{ opacity:.35; filter:grayscale(.4); }
-
-/* mobile */
-#hudMobileToggle{
-  position:fixed; right:14px; top:14px;
-  z-index:10000;
-  display:none;
-  border:1px solid rgba(255,255,255,.25);
-  background:rgba(0,0,0,.65);
-  color:#fff;
-}
+/* Mobile: HUD come bottom sheet */
 @media (max-width: 720px){
   #hud{
-    left:10px; right:10px; top:64px;
-    min-width:0; width:auto;
-    max-width:none;
-    max-height: calc(100vh - 80px);
+    left: 10px; right: 10px;
+    top: auto; bottom: 10px;
+    min-width: unset; max-width: unset;
+    width: auto;
+    max-height: 52vh;
+    border-left: none;
+    border-top: 3px solid #00ff9c;
+    border-radius: 14px;
   }
-  #hudMobileToggle{ display:block; }
+  #banner{ top: 6px; }
 }
-.hud-collapsed{
-  display:none;
-}
-
-/* popup editor */
-.pop-edit{
-  margin-top:10px;
-  padding-top:8px;
-  border-top:1px solid rgba(255,255,255,.12);
-  font-size:12px;
-}
-.pop-edit label{ display:block; margin-top:6px; opacity:.9; }
-.pop-edit select, .pop-edit input, .pop-edit textarea{
-  width:100%;
-  box-sizing:border-box;
-  margin-top:4px;
-  background:#0e0e0e;
-  border:1px solid #1f1f1f;
-  color:#fff;
-  padding:6px;
-  font-size:12px;
-}
-.pop-edit textarea{ min-height:54px; resize:vertical; }
-.pop-edit .row{ display:flex; gap:8px; }
-.pop-edit .row > div{ flex:1; }
-.pop-edit .save{
-  margin-top:8px;
-  border:1px solid #00ff9c;
-  background:#041812;
-  color:#eafff7;
-  padding:6px 10px;
-  cursor:pointer;
-  font-size:12px;
-}
-.pop-edit .save:hover{ background:#00ff9c; color:#00110b; }
-.pop-edit .tiny{ margin-top:6px; color:#bdbdbd; font-size:11px; line-height:1.25; }
 </style>
 </head>
 
@@ -232,105 +165,66 @@ button.disabled{ opacity:.45; cursor:not-allowed; }
 <div id="map"></div>
 <div id="banner"></div>
 
-<button id="hudMobileToggle">Pannello</button>
-
 <div id="hud">
   <div class="hud-title" id="hudTitle">Provincia di Verona</div>
   <div class="hud-sub" id="hudSub">Vista generale</div>
 
-  <div class="hud-chip">GLOBALI</div>
-
+  <div class="section-title"><span class="tag">Globali</span><span class="line"></span></div>
   <div id="stats">
-    <div class="stat stat-muted">
-      <div class="stat-title">Farmacie totali</div>
-      <div class="stat-value" id="gTot">0</div>
-    </div>
-    <div class="stat stat-info">
-      <div class="stat-title">Privata / Comunale</div>
-      <div class="stat-value" id="gPriCom">0 / 0</div>
+    <div class="stat stat-ok">
+      <div class="stat-title">Comuni coperti</div>
+      <div class="stat-value" id="cntOk">0</div>
     </div>
     <div class="stat stat-warn">
-      <div class="stat-title">Non contattate</div>
-      <div class="stat-value" id="gNonCont">0</div>
+      <div class="stat-title">Comuni orfani</div>
+      <div class="stat-value" id="cntOrfani">0</div>
+    </div>
+    <div class="stat stat-muted">
+      <div class="stat-title">Farmacie</div>
+      <div class="stat-value" id="cntFarm">0</div>
     </div>
     <div class="stat stat-info">
-      <div class="stat-title">In trattativa</div>
-      <div class="stat-value" id="gTratt">0</div>
-    </div>
-    <div class="stat stat-ok">
-      <div class="stat-title">Aderisce</div>
-      <div class="stat-value" id="gAder">0</div>
-    </div>
-    <div class="stat stat-bad">
-      <div class="stat-title">Non aderisce</div>
-      <div class="stat-value" id="gNoAder">0</div>
+      <div class="stat-title">Chiuse temp.</div>
+      <div class="stat-value" id="cntClosed">0</div>
     </div>
   </div>
 
-  <div id="debugBox"></div>
+  <div id="loadInfo"></div>
 
-  <div id="comuneBox">
-    <h4>Comune selezionato</h4>
+  <div class="section-title"><span class="tag">Comune selezionato</span><span class="line"></span></div>
+  <div id="comune-box">
+    <h4>Riepilogo</h4>
     <div id="farm-count">Farmacie: —</div>
-    <div id="pri-com-count">Privata / Comunale: —</div>
-
-    <div id="comuneStats" class="small">
-      <div class="stat stat-warn">
-        <div class="stat-title">Non contattate</div>
-        <div class="stat-value" id="cNonCont">—</div>
-      </div>
-      <div class="stat stat-info">
-        <div class="stat-title">In trattativa</div>
-        <div class="stat-value" id="cTratt">—</div>
-      </div>
-      <div class="stat stat-ok">
-        <div class="stat-title">Aderisce</div>
-        <div class="stat-value" id="cAder">—</div>
-      </div>
-      <div class="stat stat-bad">
-        <div class="stat-title">Non aderisce</div>
-        <div class="stat-value" id="cNoAder">—</div>
-      </div>
-    </div>
+    <div id="farm-private">Private: —</div>
+    <div id="farm-comunal">Comunali: —</div>
+    <div id="farm-closed">Chiuse temp.: —</div>
+    <div id="farm-assigned">In carico: —</div>
   </div>
 
-  <div id="toolsBox">
-    <h4>Strumenti</h4>
-    <div class="btnRow">
-      <button id="btnResetSel">Reset selezione</button>
-      <button id="btnResetUI">Reset UI</button>
-    </div>
-    <div style="height:8px"></div>
-    <div class="btnRow">
-      <button id="btnCloseTemp" class="danger disabled">Segna chiusa temporaneamente</button>
-      <button id="btnReopen" class="disabled">Segna riaperta</button>
-    </div>
-    <div id="selectedPharmHint">Farmacia selezionata: <b>nessuna</b></div>
-    <div style="margin-top:6px;font-size:11px;color:#bdbdbd;line-height:1.2">
-      Nota: in questa versione puoi solo segnare “chiusa temporaneamente” / “riaperta”.
-      Gli altri stati (contatto/adesione/notes) si impostano dal popup della farmacia.
-    </div>
-  </div>
-
+  <div class="section-title"><span class="tag">Legenda</span><span class="line"></span></div>
   <div id="legend-box">
-    <h4>Legenda gestione</h4>
-    <div class="legend-row"><span class="dot s-ader"></span> Privata (cerchio)</div>
-    <div class="legend-row"><span class="triangle s-ader"></span> Comunale (triangolo)</div>
+    <h4>Comuni</h4>
+    <div class="legend-row"><span class="square leg-coperto"></span> Comune con referenti (bordo pieno)</div>
+    <div class="legend-row"><span class="square leg-orfano"></span> Comune orfano (bordo tratteggiato)</div>
 
-    <h4>Legenda avanzamento</h4>
-    <div class="legend-row"><span class="dot s-noncont"></span> Non contattata</div>
-    <div class="legend-row"><span class="dot s-tratt"></span> In trattativa</div>
-    <div class="legend-row"><span class="dot s-ader"></span> Aderisce</div>
-    <div class="legend-row"><span class="dot s-noader"></span> Non aderisce</div>
+    <h4>Farmacie</h4>
+    <div class="legend-row"><span class="dot contattare"></span> Privata</div>
+    <div class="legend-row"><span class="triangle contattare"></span> Comunale</div>
+    <div class="legend-row"><span class="dot contattare" style="opacity:.35"></span> Chiusa temporaneamente (marker semitrasparente)</div>
 
-    <h4>Note marker</h4>
-    <div class="legend-row"><span class="dot s-ader" style="opacity:.35"></span> Chiusa temporaneamente</div>
-    <div class="legend-row"><span class="dot s-ader"><span>P</span></span> P = poster/visibile</div>
-    <div class="legend-row"><span class="dot s-ader"><span>I</span></span> I = informativa</div>
-    <div class="legend-row"><span class="dot s-ader"><span>B</span></span> B = boicotta (stop fornitura)</div>
+    <h4>Strumenti</h4>
+    <div class="legend-row" style="opacity:.9">Clicca una farmacia → modifica “In carico a” e stato “Chiusa temporaneamente”.</div>
   </div>
 
-  <div style="height:10px"></div>
+  <div class="hud-buttons">
+    <button class="hud-btn" id="btnAddRef">Aggiungi referente</button>
+    <button class="hud-btn" id="btnToggleRef">Vedi referenti</button>
+  </div>
+
+  <div class="hud-section" id="refPanel">
+    <ul id="refList"></ul>
+    <div id="refEmpty" class="hud-empty" style="display:none">Nessun referente inserito.</div>
+  </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -340,16 +234,66 @@ button.disabled{ opacity:.45; cursor:not-allowed; }
 /* ===============================
    CONFIG
 ================================ */
-const DATA_FARMACIE_CANDIDATES = ['data/farmacie.csv', 'DATA/farmacie.csv'];
-const DATA_STATS_CANDIDATES    = ['data/farmacie_stats_comune.csv', 'DATA/farmacie_stats_comune.csv'];
-
+const DATA_FARMACIE = 'data/farmacie.csv';               // header atteso: ['farmacia_id', 'descrizione_farmacia', 'gestione', 'indirizzo_full', 'cap', 'comune', 'latitudine', 'longitudine', 'maps_share_url', 'maps_url_addr', 'stato_attivita', 'tipo_punto', 'provincia', 'localita_frazione', 'telefono', 'email', 'data_verifica', 'note_statiche', 'maps_url_coords', 'coord_quality', 'n_farmacie_provincia', 'n_farmacie_comune', 'idx_comune', 'coord_valid']
+const DATA_STATS    = 'data/farmacie_stats_comune.csv';  // opzionale (debug)
 const DRIVE_MATERIALI = "https://drive.google.com/drive/folders/1f9JTPwuquc1epCO6rpsONh2fFes8yabm";
 
-/* stato persistente (localStorage) */
-const LS_KEY = 'spg_farmacie_status_v1';
+/* ===============================
+   STATE (RAM + localStorage)
+================================ */
+const STATUS_KEY = 'spg_farmacie_status_v1';
+function loadStatus(){
+  try { return JSON.parse(localStorage.getItem(STATUS_KEY) || '{}'); }
+  catch(e){ return {}; }
+}
+function saveStatus(obj){
+  try { localStorage.setItem(STATUS_KEY, JSON.stringify(obj)); } catch(e){}
+}
+let statusRAM = loadStatus(); // pharmacy_id -> {chiusa_temp, chiusa_override, incaricati:[]}
+
+const referenti = { "Verona": ["Vincenzo Russo"] }; // puoi cambiare in seguito
 
 /* ===============================
-   UTILS
+   MAPPA
+================================ */
+const map = L.map('map', { attributionControl:false, zoomControl:false }).setView([45.43,10.99], 10);
+L.control.zoom({ position:'topright' }).addTo(map);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom:18 }).addTo(map);
+
+const banner      = document.getElementById('banner');
+const hudTitle    = document.getElementById('hudTitle');
+const hudSub      = document.getElementById('hudSub');
+const loadInfo    = document.getElementById('loadInfo');
+
+const farmCountEl   = document.getElementById('farm-count');
+const farmPrivEl    = document.getElementById('farm-private');
+const farmComEl     = document.getElementById('farm-comunal');
+const farmClosedEl  = document.getElementById('farm-closed');
+const farmAssignEl  = document.getElementById('farm-assigned');
+
+const refPanel    = document.getElementById('refPanel');
+const refList     = document.getElementById('refList');
+const refEmpty    = document.getElementById('refEmpty');
+const btnToggleRef= document.getElementById('btnToggleRef');
+
+const nomeComune = p => p.nome || p.DENOM_COM || p.name || 'Comune';
+const hasRef     = n => referenti[n] && referenti[n].length > 0;
+
+let labels = [];
+let comuniSet = new Set();
+let layersByNome = {};
+let comuneCanonByNorm = {};
+let selectedLayer = null;
+let selectedNome = null;
+let refVisibili = false;
+let selectedZoomRef = null;
+
+const farmLayer = L.layerGroup().addTo(map);
+const farmMarkers = []; // { marker, comune, id, gestione, closed }
+
+/* ===============================
+   UTIL: normalizza comune (matching GeoJSON)
 ================================ */
 function normKey(s){
   return (s || '')
@@ -359,141 +303,79 @@ function normKey(s){
     .replace(/[\u0300-\u036f]/g,'')
     .replace(/\s+/g,' ');
 }
-function stableId(str){
-  let h = 0;
-  for (let i=0; i<str.length; i++){
-    h = ((h<<5) - h) + str.charCodeAt(i);
-    h |= 0;
-  }
-  return String(h);
-}
-function parseCoordPair(s){
-  if(!s) return null;
-  const m = String(s).trim().match(/(-?\d+(?:[.,]\d+)?)\s*[,; ]\s*(-?\d+(?:[.,]\d+)?)/);
-  if(!m) return null;
-  const lat = parseFloat(m[1].replace(',','.'));
-  const lon = parseFloat(m[2].replace(',','.'));
-  if(!isFinite(lat) || !isFinite(lon)) return null;
-  return {lat, lon};
-}
-function mapsLinkFromLatLng(lat,lng, label){
-  const q = encodeURIComponent((label ? label + ' ' : '') + lat + ',' + lng);
-  return `https://www.google.com/maps/search/?api=1&query=${q}`;
-}
-function pickFirstNonEmpty(obj, keys){
-  for(const k of keys){
-    if(obj && obj[k] !== undefined && obj[k] !== null){
-      const v = String(obj[k]).trim();
-      if(v) return v;
-    }
-  }
-  return '';
-}
-async function fetchFirstAvailable(urls){
-  for(const url of urls){
-    try{
-      const r = await fetch(url, { cache:'no-store' });
-      if(r.ok) return { url, text: await r.text() };
-    }catch(e){}
-  }
-  return null;
-}
-
-/* ===============================
-   STATUS STORE
-   struttura: { [pharmKey]: { st, sub, incaricato, note, closedTemp, updatedAt } }
-================================ */
-function loadStatus(){
-  try{
-    const raw = localStorage.getItem(LS_KEY);
-    return raw ? JSON.parse(raw) : {};
-  }catch(e){ return {}; }
-}
-function saveStatus(obj){
-  try{
-    localStorage.setItem(LS_KEY, JSON.stringify(obj));
-  }catch(e){}
-}
-const statusStore = loadStatus();
-
-function getPharmKey(pharm){
-  // priorità: farmacia_id dal CSV, poi hash stabile
-  const fid = (pharm.farmacia_id || '').toString().trim();
-  if(fid) return 'pharm::' + fid;
-  return 'pharm::' + stableId([pharm.nome, pharm.comune, pharm.indirizzo, pharm.maps_url].join('|'));
-}
-function getStatus(pharmKey){
-  return statusStore[pharmKey] || null;
-}
-function setStatus(pharmKey, patch){
-  const cur = statusStore[pharmKey] || {};
-  statusStore[pharmKey] = { ...cur, ...patch, updatedAt: Date.now() };
-  saveStatus(statusStore);
-}
-
-/* ===============================
-   MAP
-================================ */
-const map = L.map('map',{ attributionControl:false }).setView([45.43,10.99],10);
-map.zoomControl.setPosition('topright');
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom:18 }).addTo(map);
-
-const banner   = document.getElementById('banner');
-const hudTitle = document.getElementById('hudTitle');
-const hudSub   = document.getElementById('hudSub');
-
-const debugBox = document.getElementById('debugBox');
-
-/* comuni */
-const nomeComune = p => p.nome || p.DENOM_COM || p.name || 'Comune';
-let labels = [];
-let selectedLayer = null;
-let selectedNome = null;
-let selectedZoomRef = null;
-let comuniSet = new Set();
-let comuneCanonByNorm = {};
-let layersByNome = {};
-
-/* farmacie markers */
-const farmLayer = L.layerGroup().addTo(map);
-const farmMarkers = []; // { marker, comune, gestione, key, data }
-let selectedPharmKey = null;
-
 function canonComune(raw){
   const k = normKey(raw);
   return comuneCanonByNorm[k] || (raw || '').trim();
+}
 
-function comuneKeysSet(nome){
-  const k1 = normKey(nome);
-  const k2 = normKey(baseComuneName(nome));
-  const set = new Set([k1]);
-  if(k2 && k2 !== k1) set.add(k2);
-  return set;
+/* ===============================
+   CONTATORI
+================================ */
+function aggiornaContatoriGlobali(){
+  const comuni = Array.from(comuniSet);
+  const coperti = comuni.filter(n => hasRef(n)).length;
+  const orfani = comuni.length - coperti;
+
+  const totalFarm = farmMarkers.length;
+  const closed = farmMarkers.filter(x => x.closed).length;
+
+  document.getElementById('cntOk').innerText = coperti;
+  document.getElementById('cntOrfani').innerText = orfani;
+  document.getElementById('cntFarm').innerText = totalFarm;
+  document.getElementById('cntClosed').innerText = closed;
 }
-function matchComune(markerObj, selectedNome){
-  if(!markerObj || !selectedNome) return false;
-  const sel = comuneKeysSet(selectedNome);
-  return sel.has(markerObj.comuneKey) || sel.has(markerObj.comuneBaseKey);
-}
+
+function aggiornaContatoriComune(){
+  if(!selectedNome){
+    farmCountEl.textContent  = 'Farmacie: —';
+    farmPrivEl.textContent   = 'Private: —';
+    farmComEl.textContent    = 'Comunali: —';
+    farmClosedEl.textContent = 'Chiuse temp.: —';
+    farmAssignEl.textContent = 'In carico: —';
+    return;
+  }
+
+  const list = farmMarkers.filter(x => x.comune === selectedNome);
+  const tot = list.length;
+  const priv = list.filter(x => (x.gestione || '').toLowerCase().includes('priv')).length;
+  const comun = list.filter(x => (x.gestione || '').toLowerCase().includes('comun')).length;
+  const closed = list.filter(x => x.closed).length;
+  const assigned = list.filter(x => ((statusRAM[x.id]?.incaricati || []).length > 0)).length;
+
+  farmCountEl.textContent  = 'Farmacie: ' + tot;
+  farmPrivEl.textContent   = 'Private: ' + priv;
+  farmComEl.textContent    = 'Comunali: ' + comun;
+  farmClosedEl.textContent = 'Chiuse temp.: ' + closed;
+  farmAssignEl.textContent = 'In carico: ' + assigned;
 }
 
 /* ===============================
    STILI COMUNI
 ================================ */
 function styleComuneBase(nome){
-  // qui solo stile generale: tratteggio sempre arancio (non gestiamo referenti in questa versione)
-  return { color:'#ffaa00', weight:1, dashArray:'5 5', fillOpacity:0 };
+  const ref = hasRef(nome);
+  return {
+    color: ref ? '#00ff9c' : '#ffaa00',
+    weight: ref ? 2 : 1,
+    dashArray: ref ? null : '5 5',
+    fillColor: '#00ff9c',
+    fillOpacity: ref ? 0.10 : 0
+  };
 }
 function aggiornaStiliComuni(){
   Object.keys(layersByNome).forEach(n => {
     const layer = layersByNome[n];
     let st = styleComuneBase(n);
-    if(selectedLayer && layer === selectedLayer){
+    if (selectedLayer && layer === selectedLayer){
       st = { ...st, color:'#ffffff', weight:3, dashArray:null, fillOpacity:0 };
     }
     layer.setStyle(st);
   });
 }
+
+/* ===============================
+   LABEL COMUNI
+================================ */
 function aggiornaLabels(){
   const z = map.getZoom();
   labels.forEach(l => {
@@ -502,6 +384,22 @@ function aggiornaLabels(){
     else { if(map.hasLayer(l)) map.removeLayer(l); }
   });
 }
+
+/* ===============================
+   OPACITÀ MARKER (selected + chiusa)
+================================ */
+function applyMarkerOpacity(x){
+  const base = x.closed ? 0.35 : 1;
+  if(!selectedNome) {
+    x.marker.setOpacity(base);
+  } else {
+    x.marker.setOpacity(x.comune === selectedNome ? base : 0.18);
+  }
+}
+
+/* ===============================
+   RESET / SELEZIONE COMUNE
+================================ */
 function resetSelezione(){
   selectedLayer = null;
   selectedNome = null;
@@ -511,349 +409,276 @@ function resetSelezione(){
   hudSub.innerText   = 'Vista generale';
   banner.style.display = 'none';
 
-  // reset opacità marker
-  farmMarkers.forEach(x => x.marker.setOpacity(1));
+  farmMarkers.forEach(applyMarkerOpacity);
 
-  // reset comune box
-  document.getElementById('farm-count').innerText = 'Farmacie: —';
-  document.getElementById('pri-com-count').innerText = 'Privata / Comunale: —';
-  document.getElementById('cNonCont').innerText = '—';
-  document.getElementById('cTratt').innerText = '—';
-  document.getElementById('cAder').innerText = '—';
-  document.getElementById('cNoAder').innerText = '—';
+  refPanel.style.display = 'none';
+  refVisibili = false;
+  btnToggleRef.innerText = 'Vedi referenti';
 
   aggiornaStiliComuni();
   aggiornaLabels();
-
-  // selection farmacia
-  setSelectedPharmacy(null);
+  aggiornaContatoriComune();
 }
+
 function selezionaComune(layer, nome){
   selectedLayer = layer;
   selectedNome = nome;
 
   aggiornaStiliComuni();
+
   map.fitBounds(layer.getBounds(), { padding:[40,40] });
   map.once('moveend', () => { selectedZoomRef = map.getZoom(); });
 
+  const nRef = (referenti[nome] ? referenti[nome].length : 0);
   hudTitle.innerText = 'Comune di ' + nome;
-  hudSub.innerText = 'Filtrato per comune';
+  hudSub.innerText = hasRef(nome) ? ('Referenti presenti: ' + nRef) : '⚠ Comune orfano';
+
   banner.style.display = 'block';
-  banner.innerHTML = '↑ Comune di <b>' + nome + '</b>';
+  banner.innerHTML = '↑ Comune di <b>' + nome + '</b> – Referenti: ' + nRef;
 
   aggiornaLabels();
 
-  // dim marker
-  farmMarkers.forEach(x => x.marker.setOpacity(matchComune(x, nome) ? 1 : 0.18));
+  farmMarkers.forEach(applyMarkerOpacity);
+  aggiornaContatoriComune();
 
-  // counters comune
-  updateComuneCounters();
-}
-
-document.getElementById('btnResetSel').onclick = resetSelezione;
-document.getElementById('btnResetUI').onclick = () => {
-  // NON cancella lo stato (quello è lavoro reale). Resetta solo selezione e pannello.
-  resetSelezione();
-};
-
-/* mobile toggle */
-const hud = document.getElementById('hud');
-document.getElementById('hudMobileToggle').onclick = () => {
-  hud.classList.toggle('hud-collapsed');
-};
-
-/* ===============================
-   STATO -> UI (categorie)
-================================ */
-const ST_MAIN = {
-  NON_CONTATTATA: 'non_contattata',
-  IN_TRATTATIVA:  'in_trattativa',
-  ADERISCE:       'aderisce',
-  NON_ADERISCE:   'non_aderisce'
-};
-const ADER_SUB = {
-  INFORMATIVA: 'informativa',
-  POSTER:      'poster',
-  BOICOTTA:    'boicotta'
-};
-
-function effectiveStatus(pharmKey){
-  const st = getStatus(pharmKey) || {};
-  // default: non contattata
-  const main = st.st || ST_MAIN.NON_CONTATTATA;
-  const sub  = st.sub || '';
-  const closedTemp = !!st.closedTemp;
-  const incaricato = (st.incaricato || '').trim();
-  const note = (st.note || '').trim();
-  return { main, sub, closedTemp, incaricato, note };
-}
-function statusToCss(main){
-  switch(main){
-    case ST_MAIN.IN_TRATTATIVA: return 's-tratt';
-    case ST_MAIN.ADERISCE: return 's-ader';
-    case ST_MAIN.NON_ADERISCE: return 's-noader';
-    default: return 's-noncont';
-  }
-}
-function statusBadge(main, sub){
-  if(main !== ST_MAIN.ADERISCE) return '';
-  if(sub === ADER_SUB.POSTER) return 'P';
-  if(sub === ADER_SUB.BOICOTTA) return 'B';
-  if(sub === ADER_SUB.INFORMATIVA) return 'I';
-  return '';
+  if(refVisibili) mostraReferenti(nome);
 }
 
 /* ===============================
-   MARKER ICON
+   REFERENTI
 ================================ */
-function isComunale(gestioneRaw){
-  const g = (gestioneRaw || '').toString().toLowerCase();
-  return g.includes('comun');
-}
-function iconFarmacia(gestione, main, sub, closedTemp){
-  const cls = statusToCss(main);
-  const badge = statusBadge(main, sub);
-  const closedCls = closedTemp ? 'closed' : '';
-  if(isComunale(gestione)){
-    // triangolo: badge non facile, quindi lo omettiamo (resta colore)
-    return L.divIcon({
-      className:'',
-      html:`<div class="triangle ${cls} ${closedCls}"></div>`,
-      iconSize:[14,14],
-      iconAnchor:[7,7]
-    });
-  }
-  // privata: badge dentro dot
-  return L.divIcon({
-    className:'',
-    html:`<div class="mrk dot ${cls} ${closedCls}">${badge ? `<span>${badge}</span>` : ''}</div>`,
-    iconSize:[14,14],
-    iconAnchor:[7,7]
-  });
-}
-
-/* ===============================
-   COUNTERS
-================================ */
-function computeCounters(filterComune=null){
-  const items = farmMarkers.filter(x => !filterComune || x.comune === filterComune);
-  let tot = items.length;
-  let priv = 0, com = 0;
-  let nonc = 0, tratt = 0, ader = 0, noader = 0;
-
-  items.forEach(x => {
-    if(isComunale(x.gestione)) com++; else priv++;
-    const es = effectiveStatus(x.key);
-    switch(es.main){
-      case ST_MAIN.IN_TRATTATIVA: tratt++; break;
-      case ST_MAIN.ADERISCE: ader++; break;
-      case ST_MAIN.NON_ADERISCE: noader++; break;
-      default: nonc++; break;
-    }
-  });
-  return { tot, priv, com, nonc, tratt, ader, noader };
-}
-function updateGlobalCounters(){
-  const c = computeCounters(null);
-  document.getElementById('gTot').innerText = c.tot;
-  document.getElementById('gPriCom').innerText = `${c.priv} / ${c.com}`;
-  document.getElementById('gNonCont').innerText = c.nonc;
-  document.getElementById('gTratt').innerText = c.tratt;
-  document.getElementById('gAder').innerText = c.ader;
-  document.getElementById('gNoAder').innerText = c.noader;
-}
-function updateComuneCounters(){
-  if(!selectedNome) return;
-  const c = computeCounters(selectedNome);
-  document.getElementById('farm-count').innerText = `Farmacie: ${c.tot}`;
-  document.getElementById('pri-com-count').innerText = `Privata / Comunale: ${c.priv} / ${c.com}`;
-  document.getElementById('cNonCont').innerText = c.nonc;
-  document.getElementById('cTratt').innerText = c.tratt;
-  document.getElementById('cAder').innerText = c.ader;
-  document.getElementById('cNoAder').innerText = c.noader;
-}
-
-/* ===============================
-   SELEZIONE FARMACIA + TOOL
-================================ */
-const btnCloseTemp = document.getElementById('btnCloseTemp');
-const btnReopen = document.getElementById('btnReopen');
-const selectedPharmHint = document.getElementById('selectedPharmHint');
-
-function setSelectedPharmacy(pharmKey){
-  selectedPharmKey = pharmKey;
-
-  const has = !!pharmKey;
-  btnCloseTemp.classList.toggle('disabled', !has);
-  btnReopen.classList.toggle('disabled', !has);
-
-  if(!has){
-    selectedPharmHint.innerHTML = 'Farmacia selezionata: <b>nessuna</b>';
+function mostraReferenti(nome){
+  refList.innerHTML = '';
+  const lista = referenti[nome] || [];
+  if(!lista.length){
+    refEmpty.style.display = 'block';
+    refPanel.style.display = 'block';
     return;
   }
-  const obj = farmMarkers.find(x => x.key === pharmKey);
-  if(obj){
-    selectedPharmHint.innerHTML = `Farmacia selezionata: <b>${obj.data.nome}</b>`;
-    const es = effectiveStatus(pharmKey);
-    // abilita il bottone giusto
-    if(es.closedTemp){
-      btnCloseTemp.classList.add('disabled');
-      btnReopen.classList.remove('disabled');
-    } else {
-      btnCloseTemp.classList.remove('disabled');
-      btnReopen.classList.add('disabled');
-    }
-  }
+  refEmpty.style.display = 'none';
+  lista.forEach(r => {
+    const li = document.createElement('li');
+    li.textContent = r;
+    refList.appendChild(li);
+  });
+  refPanel.style.display = 'block';
 }
 
-btnCloseTemp.onclick = () => {
-  if(!selectedPharmKey || btnCloseTemp.classList.contains('disabled')) return;
-  setStatus(selectedPharmKey, { closedTemp:true });
-  refreshMarkerIcon(selectedPharmKey);
-  updateGlobalCounters();
-  updateComuneCounters();
-  setSelectedPharmacy(selectedPharmKey);
-};
-btnReopen.onclick = () => {
-  if(!selectedPharmKey || btnReopen.classList.contains('disabled')) return;
-  setStatus(selectedPharmKey, { closedTemp:false });
-  refreshMarkerIcon(selectedPharmKey);
-  updateGlobalCounters();
-  updateComuneCounters();
-  setSelectedPharmacy(selectedPharmKey);
+document.getElementById('btnAddRef').onclick = () => {
+  if(!selectedNome){ alert('Seleziona prima un comune sulla mappa'); return; }
+  const n = prompt('Inserisci il tuo nome (comparirà come referente)');
+  if(!n) return;
+  if(!referenti[selectedNome]) referenti[selectedNome] = [];
+  referenti[selectedNome].push(n);
+
+  const nRef = referenti[selectedNome].length;
+  hudSub.innerText = 'Referenti presenti: ' + nRef;
+  banner.style.display = 'block';
+  banner.innerHTML = '↑ Comune di <b>' + selectedNome + '</b> – Referenti: ' + nRef;
+
+  aggiornaStiliComuni();
+  aggiornaContatoriGlobali();
 };
 
-function refreshMarkerIcon(pharmKey){
-  const obj = farmMarkers.find(x => x.key === pharmKey);
-  if(!obj) return;
-  const es = effectiveStatus(pharmKey);
-  obj.marker.setIcon(iconFarmacia(obj.gestione, es.main, es.sub, es.closedTemp));
+document.getElementById('btnToggleRef').onclick = () => {
+  if(!selectedNome){ alert('Seleziona prima un comune sulla mappa'); return; }
+  refVisibili = !refVisibili;
+  btnToggleRef.innerText = refVisibili ? 'Nascondi referenti' : 'Vedi referenti';
+  if(refVisibili) mostraReferenti(selectedNome);
+  else refPanel.style.display = 'none';
+};
+
+/* ===============================
+   MARKER ICONS
+================================ */
+function iconFarmacia(gestione){
+  const g = (gestione || '').toLowerCase();
+  if(g.includes('comun')){
+    return L.divIcon({ className:'', html:`<div class="triangle contattare"></div>`, iconSize:[14,14], iconAnchor:[7,7] });
+  }
+  return L.divIcon({ className:'', html:`<div class="mrk dot contattare"></div>`, iconSize:[14,14], iconAnchor:[7,7] });
 }
 
 /* ===============================
-   POPUP HTML (con editor stato)
+   COORD PARSE (coordinate = "lat, lon")
 ================================ */
-function statusLabel(main, sub){
-  if(main === ST_MAIN.ADERISCE){
-    if(sub === ADER_SUB.POSTER) return 'Aderisce – poster/visibile';
-    if(sub === ADER_SUB.BOICOTTA) return 'Aderisce – boicotta (stop fornitura)';
-    if(sub === ADER_SUB.INFORMATIVA) return 'Aderisce – informativa';
-    return 'Aderisce';
-  }
-  if(main === ST_MAIN.IN_TRATTATIVA) return 'In trattativa';
-  if(main === ST_MAIN.NON_ADERISCE) return 'Non aderisce';
-  return 'Non contattata';
+function parseCoordinate(s){
+  if(s === null || s === undefined) return null;
+  const txt = String(s).trim();
+  // supporta "lat, lon" o "lat; lon"
+  const parts = txt.split(/[;,]/).map(x => x.trim()).filter(Boolean);
+  if(parts.length < 2) return null;
+  const lat = parseFloat(parts[0].replace(',', '.'));
+  const lon = parseFloat(parts[1].replace(',', '.'));
+  if(!isFinite(lat) || !isFinite(lon)) return null;
+  return { lat, lon };
 }
-function popupHtml(pharm){
-  const key = pharm.key;
-  const es = effectiveStatus(key);
 
-  const statoTxt = statusLabel(es.main, es.sub);
-  const chiusaTxt = es.closedTemp ? `<div style="margin-top:6px;color:#ffaa00"><b>⚠ Chiusa temporaneamente</b></div>` : '';
+/* ===============================
+   POPUP RENDER (incaricati + chiusa)
+================================ */
+function ensureStatus(id){
+  if(!statusRAM[id]) statusRAM[id] = { incaricati: [], chiusa_temp:false };
+  if(!Array.isArray(statusRAM[id].incaricati)) statusRAM[id].incaricati = [];
+}
 
-  // gestione
-  const gest = (pharm.gestione || '').toString().trim();
+function isClosed(id, rowClosed){
+  // rowClosed = boolean da CSV (stato_attivita)
+  ensureStatus(id);
+  if(statusRAM[id].chiusa_override === 'chiusa') return true;
+  if(statusRAM[id].chiusa_override === 'aperta') return false;
+  return !!rowClosed;
+}
 
-  const mapsUrl = pharm.maps_url || mapsLinkFromLatLng(pharm.lat, pharm.lon, pharm.nome);
+function setClosedOverride(id, closed){
+  ensureStatus(id);
+  statusRAM[id].chiusa_temp = !!closed;
+  statusRAM[id].chiusa_override = closed ? 'chiusa' : 'aperta';
+  saveStatus(statusRAM);
+}
 
-  // editor: select main+sub in un unico select
-  const selVal = (es.main === ST_MAIN.ADERISCE) ? `aderisce:${es.sub || ''}` : es.main;
+function popupHtml(row, id, closedNow){
+  const nome = String(row.descrizione_farmacia || 'Farmacia').trim();
+  const comune = canonComune(String(row.comune || '').trim());
+  const indirizzo = String(row.indirizzo_full || '').trim();
+  const cap = String(row.cap || '').trim();
+  const gestione = String(row.gestione || '').trim();
+  const statoAtt = String(row.stato_attivita || '').trim();
+  const mapsUrl = String(row.maps_url || '').trim();
+
+  ensureStatus(id);
+  const incaricati = statusRAM[id].incaricati || [];
+
+  const incarList = incaricati.length
+    ? incaricati.map(n => `<span style="display:inline-flex;align-items:center;gap:6px;margin:3px 6px 0 0;padding:4px 8px;border:1px solid #1f1f1f;border-radius:999px;background:#0e0e0e">
+        <span style="font-size:12px">${n}</span>
+        <button data-action="rm" data-name="${encodeURIComponent(n)}" style="all:unset;cursor:pointer;color:#ff4d4d;font-weight:800">×</button>
+      </span>`).join('')
+    : `<span style="color:#bdbdbd">Nessuno</span>`;
+
+  const closedBadge = closedNow
+    ? `<div style="margin-top:6px;color:#ffaa00;font-size:12px"><b>⚠ Chiusa temporaneamente</b></div>`
+    : '';
+
+  const statoCsvBadge = (statoAtt && statoAtt !== 'attiva' && !closedNow)
+    ? `<div style="margin-top:6px;color:#4da6ff;font-size:12px"><b>Stato (CSV):</b> ${statoAtt}</div>`
+    : '';
+
+  const tools = closedNow
+    ? `<button data-action="reopen" style="margin-top:10px;width:100%;border:1px solid #00ff9c;background:#041812;color:#eafff7;padding:8px 10px;border-radius:10px;cursor:pointer">Segna come RIAPERTA</button>`
+    : `<button data-action="close" style="margin-top:10px;width:100%;border:1px solid #ffaa00;background:#1a1204;color:#fff1d6;padding:8px 10px;border-radius:10px;cursor:pointer">Segna CHIUSA temporaneamente</button>`;
 
   return `
-    <strong>${pharm.nome}</strong><br/>
-    <div style="opacity:.9">${pharm.indirizzo_full ? pharm.indirizzo_full : ''}${pharm.cap ? ' – ' + pharm.cap : ''}${pharm.comune ? ' – ' + pharm.comune : ''}</div>
-    ${gest ? `<div style="opacity:.85;margin-top:4px">${gest}</div>` : ''}
-    <div style="margin-top:6px"><b>Stato:</b> ${statoTxt}${es.incaricato ? ` — <span style="opacity:.9">In carico: ${es.incaricato}</span>` : ''}</div>
-    ${chiusaTxt}
-    <div style="margin-top:8px">
+  <div id="popup-${id}" style="min-width:240px">
+    <strong>${nome}</strong><br/>
+    <div style="opacity:.9">${gestione ? gestione + ' – ' : ''}${indirizzo}${cap ? ', ' + cap : ''} – ${comune}</div>
+    ${closedBadge}
+    ${statoCsvBadge}
+
+    <div style="margin-top:10px">
       <a href="${mapsUrl}" target="_blank" rel="noopener">Apri in Google Maps</a><br/>
       <a href="${DRIVE_MATERIALI}" target="_blank" rel="noopener">Materiali campagna</a>
     </div>
 
-    <div class="pop-edit" data-key="${key}">
-      <div class="row">
-        <div>
-          <label>Avanzamento</label>
-          <select class="stSel">
-            <option value="non_contattata">Non contattata</option>
-            <option value="in_trattativa">In trattativa</option>
-            <option value="aderisce:informativa">Aderisce – informativa</option>
-            <option value="aderisce:poster">Aderisce – poster/visibile</option>
-            <option value="aderisce:boicotta">Aderisce – boicotta (stop fornitura)</option>
-            <option value="non_aderisce">Non aderisce</option>
-          </select>
-        </div>
-        <div>
-          <label>In carico a</label>
-          <input class="incInput" type="text" placeholder="Nome" value="${es.incaricato ? es.incaricato.replace(/"/g,'&quot;') : ''}">
-        </div>
-      </div>
-      <label>Note</label>
-      <textarea class="noteInput" placeholder="Es: espone poster BDS, parla ai pazienti, ecc.">${es.note ? es.note.replace(/</g,'&lt;') : ''}</textarea>
-      <button class="save">Salva</button>
-      <div class="tiny">Salvataggio locale nel browser (localStorage). In seguito aggiungeremo export/sync su file.</div>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid #222">
+      <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#9ef5d9">In carico a</div>
+      <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:0px 0px">${incarList}</div>
+      <button data-action="add" style="margin-top:8px;border:1px solid #00ff9c;background:#041812;color:#eafff7;padding:6px 10px;border-radius:10px;cursor:pointer">
+        + aggiungi
+      </button>
+      <button data-action="clear" style="margin-top:8px;margin-left:6px;border:1px solid #444;background:#0e0e0e;color:#e6e6e6;padding:6px 10px;border-radius:10px;cursor:pointer">
+        svuota
+      </button>
     </div>
+
+    ${tools}
+  </div>
   `;
 }
 
-/* ===============================
-   POPUP BIND EVENTS
-================================ */
-function attachPopupEvents(marker){
-  marker.on('popupopen', (ev) => {
-    // set selected pharmacy
-    const key = marker.__pharmKey;
-    setSelectedPharmacy(key);
+function wirePopup(markerObj, row){
+  const id = markerObj.id;
+  markerObj.marker.on('popupopen', (e) => {
+    const rowClosed = String(row.stato_attivita || '').trim() === 'chiusa_temporaneamente';
+    const closedNow = isClosed(id, rowClosed);
 
-    const container = ev.popup.getElement();
-    if(!container) return;
+    e.popup.setContent(popupHtml(row, id, closedNow));
 
-    const edit = container.querySelector('.pop-edit');
-    if(!edit) return;
+    // listeners
+    setTimeout(() => {
+      const root = document.getElementById('popup-' + id);
+      if(!root) return;
 
-    const key2 = edit.getAttribute('data-key');
-    const sel = edit.querySelector('.stSel');
-    const inc = edit.querySelector('.incInput');
-    const note = edit.querySelector('.noteInput');
-    const saveBtn = edit.querySelector('.save');
+      root.querySelectorAll('button[data-action]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const act = btn.dataset.action;
 
-    // init select to current
-    const es = effectiveStatus(key2);
-    const selVal = (es.main === ST_MAIN.ADERISCE) ? `aderisce:${es.sub || ''}` : es.main;
-    sel.value = selVal;
+          if(act === 'add'){
+            const n = prompt('Nome incaricato (puoi inserirne più di uno)');
+            if(!n) return;
+            ensureStatus(id);
+            const name = n.trim();
+            if(!name) return;
+            if(!statusRAM[id].incaricati.includes(name)) statusRAM[id].incaricati.push(name);
+            saveStatus(statusRAM);
+            // rerender
+            e.popup.setContent(popupHtml(row, id, isClosed(id, rowClosed)));
+            wirePopup(markerObj, row); // rewire after rerender
+            aggiornaContatoriComune();
+            return;
+          }
 
-    saveBtn.onclick = () => {
-      const v = sel.value;
-      let main = v;
-      let sub = '';
-      if(v.startsWith('aderisce:')){
-        main = ST_MAIN.ADERISCE;
-        sub = v.split(':')[1] || '';
-      }
-      setStatus(key2, {
-        st: main,
-        sub: sub,
-        incaricato: (inc.value || '').trim(),
-        note: (note.value || '').trim()
+          if(act === 'rm'){
+            const name = decodeURIComponent(btn.dataset.name || '');
+            ensureStatus(id);
+            statusRAM[id].incaricati = (statusRAM[id].incaricati || []).filter(x => x !== name);
+            saveStatus(statusRAM);
+            e.popup.setContent(popupHtml(row, id, isClosed(id, rowClosed)));
+            wirePopup(markerObj, row);
+            aggiornaContatoriComune();
+            return;
+          }
+
+          if(act === 'clear'){
+            if(!confirm('Vuoi rimuovere tutti gli incaricati?')) return;
+            ensureStatus(id);
+            statusRAM[id].incaricati = [];
+            saveStatus(statusRAM);
+            e.popup.setContent(popupHtml(row, id, isClosed(id, rowClosed)));
+            wirePopup(markerObj, row);
+            aggiornaContatoriComune();
+            return;
+          }
+
+          if(act === 'close'){
+            setClosedOverride(id, true);
+            markerObj.closed = true;
+            applyMarkerOpacity(markerObj);
+            aggiornaContatoriGlobali();
+            aggiornaContatoriComune();
+            e.popup.setContent(popupHtml(row, id, true));
+            wirePopup(markerObj, row);
+            return;
+          }
+
+          if(act === 'reopen'){
+            setClosedOverride(id, false);
+            markerObj.closed = false;
+            applyMarkerOpacity(markerObj);
+            aggiornaContatoriGlobali();
+            aggiornaContatoriComune();
+            e.popup.setContent(popupHtml(row, id, false));
+            wirePopup(markerObj, row);
+            return;
+          }
+        });
       });
-      refreshMarkerIcon(key2);
-      updateGlobalCounters();
-      updateComuneCounters();
-      // aggiorna popup testo stato: semplice, richiudendo/riaprendo
-      marker.closePopup();
-      marker.bindPopup(popupHtml(marker.__pharmData), { maxWidth: 360 });
-      marker.openPopup();
-    };
-  });
-
-  marker.on('click', () => {
-    const key = marker.__pharmKey;
-    setSelectedPharmacy(key);
+    }, 0);
   });
 }
 
 /* ===============================
-   LOAD COMUNI GEOJSON
+   LOAD: COMUNI (GeoJSON) + FARMACIE (CSV)
 ================================ */
 fetch('data/comuni_verona.json')
   .then(r => r.json())
@@ -862,15 +687,15 @@ fetch('data/comuni_verona.json')
       style: f => {
         const n = nomeComune(f.properties);
         comuniSet.add(n);
-        comuneCanonByNorm[normKey(n)] = n;
         return styleComuneBase(n);
       },
       onEachFeature: (f, layer) => {
         const nome = nomeComune(f.properties);
         layersByNome[nome] = layer;
+        comuneCanonByNorm[normKey(nome)] = nome;
 
         const center = layer.getBounds().getCenter();
-        const label = L.marker(center,{
+        const label = L.marker(center, {
           icon: L.divIcon({ className:'label-comune', html: nome, iconSize:[140,16] }),
           interactive:false
         }).addTo(map);
@@ -883,6 +708,8 @@ fetch('data/comuni_verona.json')
     map.fitBounds(geo.getBounds());
     aggiornaStiliComuni();
     aggiornaLabels();
+    aggiornaContatoriGlobali();
+    aggiornaContatoriComune();
 
     map.on('zoomend', () => {
       const z = map.getZoom();
@@ -891,131 +718,132 @@ fetch('data/comuni_verona.json')
       aggiornaLabels();
     });
 
-    // carica farmacie dopo comuni (serve canon comune)
-    loadFarmacieAndStats();
+    caricaFarmacieCSV();
+    caricaStatsSeDisponibili(); // debug / controllo qualità (opzionale)
   });
 
 /* ===============================
-   LOAD FARMACIE + STATS
+   LOAD: FARMACIE
+   - marker da "coordinate"
+   - popup link da "maps_url"
 ================================ */
-async function loadFarmacieAndStats(){
-  const farm = await fetchFirstAvailable(DATA_FARMACIE_CANDIDATES);
-  if(!farm){
-    debugBox.innerHTML = `<span class="warn">⚠ Impossibile caricare farmacie.csv</span>`;
-    return;
-  }
-
-  // parse CSV text (evita problemi path/case)
-  Papa.parse(farm.text, {
+function caricaFarmacieCSV(){
+  Papa.parse(DATA_FARMACIE, {
+    download: true,
     header: true,
     skipEmptyLines: true,
-    complete: async (res) => {
+    complete: (res) => {
       const rows = res.data || [];
-      let added = 0, skippedCoord = 0, noComuneMatch = 0;
+      let added = 0, skipped = 0, noComuneMatch = 0, closedCount = 0;
 
       rows.forEach(row => {
-        const comuneRaw = pickFirstNonEmpty(row, ['comune','Comune','COMUNE']);
-        if(!comuneRaw){ return; }
+        const id = String(row.farmacia_id || '').trim();
+        const comuneRaw = String(row.comune || '').trim();
+        const coordStr = row.coordinate || row.coordinate || row.coordinate; // placeholder
+
+        if(!id || !comuneRaw){ skipped++; return; }
+
         const comune = canonComune(comuneRaw);
         if(!comuneCanonByNorm[normKey(comuneRaw)]) noComuneMatch++;
 
-        const nome = pickFirstNonEmpty(row, ['descrizione_farmacia','denominazione','nome','farmacia','DESCRIZIONE_FARMACIA']) || 'Farmacia';
-        const indirizzoFull = pickFirstNonEmpty(row, ['indirizzo_full','indirizzo','INDIRIZZO']);
-        const cap = pickFirstNonEmpty(row, ['cap','CAP']);
-        const gestione = pickFirstNonEmpty(row, ['gestione','GESTIONE']);
+        const coord = parseCoordinate(row.coordinate || row.coordinate || row.coordinate || row.coordinate); // will be replaced below
+      });
 
-        const coordStr = pickFirstNonEmpty(row, ['coordinate','coords','coord']);
-        const coord = parseCoordPair(coordStr);
-        if(!coord){ skippedCoord++; return; }
+      // (We rebuild below to avoid accidental placeholder bugs.)
+    }
+  });
+}
 
-        const mapsUrl = pickFirstNonEmpty(row, ['maps_url','maps_share_url','maps_url_addr','maps']);
-        const pharm = {
-          farmacia_id: pickFirstNonEmpty(row, ['farmacia_id','id','ID']),
-          nome,
-          comune,
-          gestione,
-          indirizzo_full: indirizzoFull,
-          cap,
-          lat: coord.lat,
-          lon: coord.lon,
-          maps_url: mapsUrl || ''
-        };
-        const key = getPharmKey(pharm);
+// Re-define with correct parsing (avoid placeholder mistakes in the generated HTML)
+function caricaFarmacieCSV(){
+  Papa.parse(DATA_FARMACIE, {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    complete: (res) => {
+      const rows = res.data || [];
+      let added = 0, skipped = 0, noComuneMatch = 0, closedCount = 0;
 
-        // init status if missing? (no, default handled)
-        const es = effectiveStatus(key);
+      rows.forEach(row => {
+        const id = String(row.farmacia_id || '').trim();
+        const comuneRaw = String(row.comune || '').trim();
+        const coord = parseCoordinate(row.coordinate);
+        const mapsUrl = String(row.maps_url || '').trim();
+        if(!id || !comuneRaw || !coord || !mapsUrl){ skipped++; return; }
 
-        const marker = L.marker([pharm.lat, pharm.lon], { icon: iconFarmacia(gestione, es.main, es.sub, es.closedTemp) });
-        marker.__pharmKey = key;
-        marker.__pharmData = { ...pharm, key };
-        marker.bindPopup(popupHtml(marker.__pharmData), { maxWidth: 360 });
-        attachPopupEvents(marker);
+        const comune = canonComune(comuneRaw);
+        if(!comuneCanonByNorm[normKey(comuneRaw)]) noComuneMatch++;
 
+        ensureStatus(id);
+        const rowClosed = String(row.stato_attivita || '').trim() === 'chiusa_temporaneamente';
+        const closedNow = isClosed(id, rowClosed);
+        if(closedNow) closedCount++;
+
+        const gestione = String(row.gestione || '').trim();
+
+        const marker = L.marker([coord.lat, coord.lon], { icon: iconFarmacia(gestione) });
         marker.addTo(farmLayer);
-        farmMarkers.push({ marker, comune, gestione, key, data: marker.__pharmData });
+
+        const markerObj = { marker, comune, id, gestione, closed: closedNow };
+        farmMarkers.push(markerObj);
+
+        // opacità iniziale
+        applyMarkerOpacity(markerObj);
+
+        // popup + strumenti
+        wirePopup(markerObj, row);
+
         added++;
       });
 
-      updateGlobalCounters();
-      if(selectedNome){
-        // se qualcuno ha già selezionato un comune mentre caricava
-        farmMarkers.forEach(x => x.marker.setOpacity(matchComune(x, selectedNome) ? 1 : 0.18));
-        updateComuneCounters();
-      }
+      aggiornaContatoriGlobali();
+      aggiornaContatoriComune();
 
-      // carica stats e confronta
-      const st = await fetchFirstAvailable(DATA_STATS_CANDIDATES);
-      let mismatchMsg = '';
-      if(st){
-        Papa.parse(st.text, {
-          header:true,
-          skipEmptyLines:true,
-          complete:(sr)=>{
-            const srows = sr.data || [];
-            const expectedByComune = {};
-            srows.forEach(r=>{
-              const raw = pickFirstNonEmpty(r, ['comune','Comune','COMUNE']);
-              const exp = parseInt(pickFirstNonEmpty(r, ['n_farmacie','N_FARMACIE','farmacie']), 10);
-              if(raw && isFinite(exp)) expectedByComune[canonComune(raw)] = exp;
-            });
-            // compute actual
-            const actualByComune = {};
-            farmMarkers.forEach(x => { actualByComune[x.comune] = (actualByComune[x.comune]||0) + 1; });
+      // se un comune è selezionato, riapplico dim
+      farmMarkers.forEach(applyMarkerOpacity);
 
-            let mismatches = 0;
-            let example = '';
-            Object.keys(expectedByComune).forEach(c=>{
-              const a = actualByComune[c] || 0;
-              const e = expectedByComune[c] || 0;
-              if(a !== e){
-                mismatches++;
-                if(!example) example = `${c} attese ${e}, caricate ${a}`;
-              }
-            });
-            if(mismatches){
-              mismatchMsg = `<br/><span class="warn">⚠ Mismatch stats (debug): ${mismatches} comuni differiscono. Esempio: ${example}.</span>`;
-            }
-            debugBox.innerHTML =
-              `Farmacie caricate: <b>${added}</b> — comuni nel GeoJSON: <b>${comuniSet.size}</b>` +
-              ` — saltate (coord invalide): <b>${skippedCoord}</b>` +
-              ` — comune non riconosciuto: <b>${noComuneMatch}</b>` +
-              mismatchMsg;
-          }
-        });
-      } else {
-        debugBox.innerHTML =
-          `Farmacie caricate: <b>${added}</b> — comuni nel GeoJSON: <b>${comuniSet.size}</b>` +
-          ` — saltate (coord invalide): <b>${skippedCoord}</b>` +
-          ` — comune non riconosciuto: <b>${noComuneMatch}</b>`;
-      }
+      loadInfo.innerHTML =
+        `Farmacie caricate: <b>${added}</b> (saltate: ${skipped})` +
+        ` — comuni nel GeoJSON: ${comuniSet.size}` +
+        (noComuneMatch ? `<br/><span style="color:#ffaa00">⚠ Comune non riconosciuto (nome diverso dal GeoJSON): ${noComuneMatch}</span>` : '') +
+        (closedCount ? `<br/>Chiuse temporaneamente (attuali): <b>${closedCount}</b>` : '');
     }
   });
 }
 
 /* ===============================
-   INITIAL
+   LOAD: STATS (opzionale, per QA)
 ================================ */
-resetSelezione();
+let statsByComune = null;
+function caricaStatsSeDisponibili(){
+  Papa.parse(DATA_STATS, {
+    download:true,
+    header:true,
+    skipEmptyLines:true,
+    complete:(res)=>{
+      const rows = res.data || [];
+      if(!rows.length) return;
+      statsByComune = {};
+      rows.forEach(r=>{
+        const cRaw = String(r.comune || '').trim();
+        const c = canonComune(cRaw);
+        const n = parseInt(String(r.n_farmacie || '0').trim(),10) || 0;
+        statsByComune[c] = n;
+      });
+      // confronto leggero (solo debug in loadInfo)
+      const mismatch = [];
+      Object.keys(statsByComune).forEach(c=>{
+        const actual = farmMarkers.filter(x=>x.comune===c).length;
+        const exp = statsByComune[c];
+        if(actual !== exp) mismatch.push([c, exp, actual]);
+      });
+      if(mismatch.length){
+        const ex = mismatch[0];
+        loadInfo.innerHTML += `<br/><span style="color:#ffaa00">⚠ Mismatch stats (debug): ${mismatch.length} comuni differiscono. Esempio: ${ex[0]} attese ${ex[1]}, caricate ${ex[2]}.</span>`;
+      }
+    }
+  });
+}
 </script>
 </body>
 </html>
