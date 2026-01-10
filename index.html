@@ -144,10 +144,11 @@ html, body { margin:0; height:100%; background:#000; font-family:system-ui, -app
 /* === Marker farmacia (divIcon) === */
 .mrk{
   width:14px; height:14px;
-  border-radius:50%;
   border:1px solid rgba(255,255,255,.18);
   box-shadow: 0 0 12px rgba(0,0,0,.35);
 }
+.mrk.dot{}
+.mrk.sq{border-radius:2px;}
 .mrk.contattare{ background:#ffaa00; }
 .mrk.trattativa{ background:#4da6ff; }
 .mrk.aderisce{ background:#00ff9c; }
@@ -160,6 +161,8 @@ html, body { margin:0; height:100%; background:#000; font-family:system-ui, -app
   color:#0b0b0b;
   font-size:13px;
 }
+.tipoTag{font-size:11px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#ff4d4d;}
+
 .popupWrap h3{
   margin:0 0 6px;
   font-size:14px;
@@ -418,36 +421,14 @@ function aggiornaStiliComuni(){
 /* ===============================
    MARKER ICON
 ================================ */
-function iconFarmacia(state, closed){
-  const cls = (state || "contattare");
-  const closeCls = closed ? " chiusa" : "";
-  return L.divIcon({
-    className:"",
-    html:`<div class="mrk ${cls}${closeCls}"></div>`,
-    iconSize:[14,14],
-    iconAnchor:[7,7]
-  });
+function iconFarmacia(stato, closed, gestione){
+  const cls = statusClass(stato);
+  const closeCls = closed ? ' closed' : '';
+  const g = (gestione||'').toString().toLowerCase();
+  const shape = (g.includes('comunal') || g.includes('pubblic')) ? 'sq' : 'dot';
+  return L.divIcon({className:'',html:`<div class="mrk ${shape} ${cls}${closeCls}"></div>`,iconSize:[14,14],iconAnchor:[7,7]});
 }
 
-/* ===============================
-   PARSE COORDINATE
-   coordinate = "lat, lon"
-================================ */
-function parseCoordinateCell(v){
-  if(v===null || v===undefined) return null;
-  const s = String(v).trim();
-  if(!s) return null;
-  const parts = s.split(",").map(x=>x.trim().replace(",","."));
-  if(parts.length<2) return null;
-  const lat = parseFloat(parts[0]);
-  const lon = parseFloat(parts[1]);
-  if(!isFinite(lat) || !isFinite(lon)) return null;
-  return { lat, lon };
-}
-
-/* ===============================
-   ID STABILE (fallback)
-================================ */
 function stableId(str){
   let h = 0;
   const s = String(str||"");
@@ -482,6 +463,7 @@ function buildPopupHtml(row, farmaciaId){
   return `
   <div class="popupWrap" data-farm-id="${esc(farmaciaId)}">
     <h3>${esc(nome)}</h3>
+    <div class="tipoTag">${isComunale ? "COMUNALE" : "PRIVATA"}</div>
     <div class="popupMeta">${esc(indirizzo)}${cap?` – ${esc(cap)}`:""} – <b>${esc(comune)}</b>${gestione?` · ${esc(gestione)}`:""}</div>
 
     <div class="popupDivider"></div>
@@ -510,7 +492,7 @@ function buildPopupHtml(row, farmaciaId){
     <div style="font-size:12px; color:#3b3b3b; margin-bottom:6px"><b>Incaricati</b> (puoi aggiungere più nomi)</div>
     <input class="inlineInput" type="text" data-role="ownersInput" placeholder="Es: Marco, Lucia" />
     <div class="chipBar" data-role="ownersChips">
-      ${owners.map(o => `<span class="chip">${esc(o)} <span class="xbtn" data-role="rmOwner" data-owner="${esc(o)}">×</span></span>`).join("")}
+      ${owners.map(o => '<span class="chip">'+esc(o)+' <span class="xbtn" data-role="rmOwner" data-owner="'+esc(o)+'">×</span></span>').join("")}
     </div>
 
     <div class="popupDivider"></div>
@@ -541,7 +523,7 @@ function buildPopupHtml(row, farmaciaId){
 
 function applyStatusToMarker(marker, farmaciaId, row){
   const st = getSt(farmaciaId);
-  marker.setIcon(iconFarmacia(st.state, st.closed));
+  marker.setIcon(iconFarmacia(st.state, st.closed, row.gestione));
   marker.setOpacity(st.closed ? 0.35 : 1);
 
   // tooltip rapido
@@ -894,7 +876,7 @@ function loadFarmacie(){
 
         const st = getSt(farmaciaId);
         const marker = L.marker([coord.lat, coord.lon], {
-          icon: iconFarmacia(st.state, st.closed),
+          icon: iconFarmacia(st.state, st.closed, row.gestione),
           opacity: st.closed ? 0.35 : 1
         });
 
