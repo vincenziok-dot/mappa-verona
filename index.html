@@ -160,6 +160,36 @@ html, body { margin:0; height:100%; background:#000; font-family:system-ui, -app
   color:#0b0b0b;
   font-size:13px;
 }
+.popupHeaderRow{ display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+.popupHeaderRow h3{ margin:0; font-size:14px; font-weight:900; color:#111; line-height:1.2; }
+.popupTypeTag{
+  display:inline-block;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.12em;
+  padding:3px 6px;
+  border-radius:8px;
+  border:1px solid rgba(255,77,77,.55);
+  color:#ff4d4d;
+  text-transform:uppercase;
+  white-space:nowrap;
+  margin-top:1px;
+}
+.popupLinks{ display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+.popupLinkBtn{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:7px 10px;
+  border-radius:10px;
+  border:1px solid #d7d7d7;
+  background:#f7f7f7;
+  color:#111;
+  font-weight:800;
+  text-decoration:none;
+}
+.popupLinkBtn:hover{ background:#efefef; }
+
 .popupWrap h3{
   margin:0 0 6px;
   font-size:14px;
@@ -284,6 +314,10 @@ textarea.inlineInput{ min-height: 64px; resize: vertical; }
     <div style="margin-top:12px">
       <div class="section-chip">Legenda <small>mappa</small></div>
       <div class="legend-row"><span class="square c-comune-coperto"></span> Comune con referente</div>
+      <div class="legend-row" style="margin-top:6px"><span class="section-chip" style="padding:3px 6px; font-size:9px">Forma marker</span></div>
+      <div class="legend-row"><span class="dot c-contattare"></span> Privata (cerchio)</div>
+      <div class="legend-row"><span class="square c-contattare"></span> Comunale (quadrato)</div>
+
       <div class="legend-row"><span class="square c-comune-orfano"></span> Comune orfano</div>
       <div class="legend-row"><span class="dot c-contattare"></span> Da contattare</div>
       <div class="legend-row"><span class="dot c-trattativa"></span> In trattativa</div>
@@ -418,12 +452,14 @@ function aggiornaStiliComuni(){
 /* ===============================
    MARKER ICON
 ================================ */
-function iconFarmacia(state, closed){
-  const cls = (state || "contattare");
-  const closeCls = closed ? " chiusa" : "";
+function iconFarmacia(state, closed, gestione){
+  const cls = stateClass(state);
+  const isComunale = (gestione || '').toString().toLowerCase().includes('comunal');
+  const shape = isComunale ? 'square' : 'dot';
+  const extra = closed ? ' chiusa' : '';
   return L.divIcon({
-    className:"",
-    html:`<div class="mrk ${cls}${closeCls}"></div>`,
+    className:'',
+    html:`<div class="mrk ${shape} ${cls}${extra}"></div>`,
     iconSize:[14,14],
     iconAnchor:[7,7]
   });
@@ -525,10 +561,9 @@ function buildPopupHtml(row, farmaciaId){
         <input type="checkbox" data-role="closed" ${closed?"checked":""}/>
         Chiusa temporaneamente
       </label>
-      <div class="smallLink">
-        <a href="${esc(maps)}" target="_blank" rel="noopener">Apri in Maps</a>
-        &nbsp;·&nbsp;
-        <a href="${esc(DRIVE_MATERIALI)}" target="_blank" rel="noopener">Materiali</a>
+      <div class="popupLinks">
+        <a class="popupLinkBtn" href="${esc(maps)}" target="_blank" rel="noopener">📍 Apri in Maps</a>
+        <a class="popupLinkBtn" href="${esc(DRIVE_MATERIALI)}" target="_blank" rel="noopener">📁 Materiali</a>
       </div>
     </div>
 
@@ -541,7 +576,7 @@ function buildPopupHtml(row, farmaciaId){
 
 function applyStatusToMarker(marker, farmaciaId, row){
   const st = getSt(farmaciaId);
-  marker.setIcon(iconFarmacia(st.state, st.closed));
+  marker.setIcon(iconFarmacia(st.state, st.closed, row.gestione));
   marker.setOpacity(st.closed ? 0.35 : 1);
 
   // tooltip rapido
@@ -595,6 +630,7 @@ function attachPopupHandlers(marker, row, farmaciaId){
 
       marker.setPopupContent(buildPopupHtml(row, farmaciaId));
       marker.openPopup();
+      attachPopupHandlers(marker, row, farmaciaId);
     }
   });
 
@@ -638,6 +674,7 @@ function attachPopupHandlers(marker, row, farmaciaId){
 
       marker.setPopupContent(buildPopupHtml(row, farmaciaId));
       marker.openPopup();
+      attachPopupHandlers(marker, row, farmaciaId);
     });
   }
 }
@@ -894,7 +931,7 @@ function loadFarmacie(){
 
         const st = getSt(farmaciaId);
         const marker = L.marker([coord.lat, coord.lon], {
-          icon: iconFarmacia(st.state, st.closed),
+          icon: iconFarmacia(st.state, st.closed, row.gestione),
           opacity: st.closed ? 0.35 : 1
         });
 
