@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Mappa Verona – SpG (rev2.1.2)</title>
+<title>Mappa Verona – SpG (rev2.1.3)</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -411,6 +411,10 @@ textarea.inlineInput{ min-height: 64px; resize: vertical; }
     <button class="hud-btn" id="btnAddRef">Aggiungi referente</button>
     <button class="hud-btn" id="btnToggleRef">Vedi referenti</button>
     <button class="hud-btn" id="btnClearFilter" title="Rimuovi filtro stati" style="display:none">Reset filtro stati</button>
+  
+    <button class="hud-btn" id="btnExportXLSX" title="Scarica un file Excel con statistiche + liste per stato">Esporta Excel</button>
+    <button class="hud-btn" id="btnExportCSV" title="Scarica un CSV (apribile in Excel) con tutte le farmacie e i campi campagna">Esporta CSV</button>
+    <button class="hud-btn" id="btnPrintReport" title="Apri una pagina stampabile con statistiche + liste per stato">Stampa</button>
   </div>
 
   <div id="refPanel">
@@ -434,6 +438,7 @@ textarea.inlineInput{ min-height: 64px; resize: vertical; }
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <script>
 /* ===============================
@@ -442,8 +447,8 @@ textarea.inlineInput{ min-height: 64px; resize: vertical; }
 const DRIVE_MATERIALI = "https://drive.google.com/drive/folders/1oMqJ_6ZLthMK73FkpirBtvQ_Ycif4OYS";
 
 /* Path robusti: prova prima DATA/ (GitHub case-sensitive), poi data/ */
-const PATHS_FARMACIE = ["DATA/farmacie.csv", "data/farmacie.csv"];
-const PATHS_COMUNI   = ["DATA/comuni_verona.json", "data/comuni_verona.json"];
+const PATHS_FARMACIE = ["data/farmacie.csv", "DATA/farmacie.csv"];
+const PATHS_COMUNI   = ["data/comuni_verona.json", "DATA/comuni_verona.json"];
 
 /* ===============================
    HELPERS
@@ -802,6 +807,8 @@ function applyDraftToStore(marker, row, farmaciaId, isComunale, draft){
   const prev = getSt(farmaciaId);
   const next = { ...prev, ...draft };
   next.flags = draft.flags || prev.flags || { poster:false, boicotta:false, promo:false, info:false };
+  // timestamp ultimo aggiornamento (utile anche per export)
+  next.updatedAt = new Date().toISOString();
   setSt(farmaciaId, next);
 
   applyStatusToMarker(marker, farmaciaId, row, isComunale);
@@ -1295,6 +1302,7 @@ async function loadAll(){
 
     // farmacie
     const parsed = Papa.parse(csvRes.data, { header:true, skipEmptyLines:true });
+    window.__farmacieFields = (parsed.meta && parsed.meta.fields) ? parsed.meta.fields.slice() : [];
     const rows = parsed.data || [];
 
     rows.forEach(row => {
@@ -1348,6 +1356,376 @@ async function loadAll(){
     alert("Errore nel caricamento dati (controlla cartelle DATA/data e i file).");
   }
 }
+
+
+/* ===============================
+   EXPORT / PRINT (Excel/CSV + stampa)
+================================ */
+function getExportScope(){
+  // se un comune è selezionato, proponi export locale (utile sul campo)
+  if(selectedComuneNome){
+    try{
+      return confirm(`Esportare SOLO il comune selezionato (“${selectedComuneNome}”)?\n\nOK = solo comune\nAnnulla = tutta la provincia`) ? selectedComuneNome : null;
+    }catch(e){
+      return null;
+    }
+  }
+  return null;
+}
+
+function buildExportRows(scopeComune=null){
+  const rows = farmMarkers
+    .filter(f => !scopeComune || f.comune === scopeComune)
+    .map(f => {
+      const st = getSt(f.id) || defaultStatus();
+      const base = { ...(f.row || {}) };
+
+      // campi "campagna" + utilità
+      base.__id = f.id;
+      base.comune_canon = f.comune;
+      base.stato_campagna = st.state || "contattare";
+      base.chiusa_temporaneamente = !!st.closed;
+      base.incaricati = (st.owners || []).join("; ");
+      base.note = st.note || "";
+      const fl = st.flags || {};
+      base.flag_poster = !!fl.poster;
+      base.flag_boicotta = !!fl.boicotta;
+      base.flag_promo = !!fl.promo;
+      base.flag_info = !!fl.info;
+      base.updatedAt = st.updatedAt || "";
+
+      return base;
+    });
+
+  return rows;
+}
+
+function computeExportStats(scopeComune=null){
+  const ids = farmMarkers.filter(f => !scopeComune || f.comune === scopeComune).map(f => f.id);
+  const s = computeStats(ids);
+
+  // flags tra gli "aderisce"
+  let poster=0, boicotta=0, promo=0, info=0;
+  ids.forEach(id => {
+    const st = getSt(id);
+    if((st.state||"contattare") !== "aderisce") return;
+    const f = st.flags || {};
+    if(f.poster) poster++;
+    if(f.boicotta) boicotta++;
+    if(f.promo) promo++;
+    if(f.info) info++;
+  });
+
+  // comuni coperti/orfani (ridimensionati ma utili in export)
+  let coperti=0;
+  const comuniInScope = new Set();
+  farmMarkers.forEach(f => { if(!scopeComune || f.comune === scopeComune) comuniInScope.add(f.comune); });
+  comuniInScope.forEach(c => { if(hasRef(c)) coperti++; });
+  const orfani = Math.max(0, comuniInScope.size - coperti);
+
+  const aderisce = s.counts.aderisce;
+  const pct = s.total ? Math.round((aderisce/s.total)*100) : 0;
+
+  return {
+    ambito: scopeComune ? scopeComune : "Provincia di Verona",
+    data_export: new Date().toISOString(),
+    totale: s.total,
+    aderisce,
+    aderisce_pct: pct,
+    trattativa: s.counts.trattativa,
+    rifiuta: s.counts.rifiuta,
+    contattare: s.counts.contattare,
+    private: s.priv,
+    comunali: s.comu,
+    comuni_coperti: coperti,
+    comuni_orfani: orfani,
+    flags: { poster, boicotta, promo, info }
+  };
+}
+
+function groupRowsByState(rows){
+  const g = { contattare:[], trattativa:[], aderisce:[], rifiuta:[] };
+  rows.forEach(r => {
+    const st = (r.stato_campagna || "contattare");
+    if(g[st]) g[st].push(r);
+    else g.contattare.push(r);
+  });
+  return g;
+}
+
+function downloadBlob(filename, mime, content){
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+function csvEscape(v){
+  const s = (v===null || v===undefined) ? "" : String(v);
+  if(/[",\n\r;]/.test(s)){
+    return '"' + s.replace(/"/g,'""') + '"';
+  }
+  return s;
+}
+
+function rowsToCSV(rows, cols){
+  const header = cols.map(csvEscape).join(",");
+  const lines = rows.map(r => cols.map(c => csvEscape(r[c])).join(","));
+  return [header, ...lines].join("\n");
+}
+
+function getExportColumns(){
+  const base = (window.__farmacieFields && window.__farmacieFields.length) ? window.__farmacieFields.slice() : [];
+  // fallback: usa le chiavi del primo record
+  if(base.length === 0 && farmMarkers[0] && farmMarkers[0].row){
+    base.push(...Object.keys(farmMarkers[0].row));
+  }
+
+  // colonne "campagna" (in fondo)
+  const extra = ["__id","comune_canon","stato_campagna","chiusa_temporaneamente","incaricati","note","flag_poster","flag_boicotta","flag_promo","flag_info","updatedAt"];
+  const cols = [];
+  base.forEach(c => { if(!cols.includes(c)) cols.push(c); });
+  extra.forEach(c => { if(!cols.includes(c)) cols.push(c); });
+  return cols;
+}
+
+function exportCSV(){
+  if(!farmMarkers.length){ alert("Nessuna farmacia caricata."); return; }
+
+  const scope = getExportScope();
+  const stats = computeExportStats(scope);
+  const rows = buildExportRows(scope);
+  const grouped = groupRowsByState(rows);
+  const cols = getExportColumns();
+
+  // 1) CSV farmacie (tutte, con colonna stato_campagna)
+  const csvFarm = rowsToCSV(rows, cols);
+  const baseName = scope ? `export_${normKey(scope).replace(/\s+/g,'_')}` : "export_provincia_verona";
+  downloadBlob(`${baseName}_farmacie.csv`, "text/csv;charset=utf-8", csvFarm);
+
+  // 2) CSV statistiche (key-value)
+  const statsRows = [
+    { metrica:"Ambito", valore: stats.ambito },
+    { metrica:"Data export", valore: stats.data_export },
+    { metrica:"Totale farmacie", valore: stats.totale },
+    { metrica:"Aderiscono", valore: stats.aderisce },
+    { metrica:"Aderiscono (%)", valore: stats.aderisce_pct },
+    { metrica:"Trattativa", valore: stats.trattativa },
+    { metrica:"Non aderisce", valore: stats.rifiuta },
+    { metrica:"Da contattare", valore: stats.contattare },
+    { metrica:"Private", valore: stats.private },
+    { metrica:"Comunali", valore: stats.comunali },
+    { metrica:"Comuni coperti", valore: stats.comuni_coperti },
+    { metrica:"Comuni orfani", valore: stats.comuni_orfani },
+    { metrica:"Aderisce: Poster", valore: stats.flags.poster },
+    { metrica:"Aderisce: Boicotta", valore: stats.flags.boicotta },
+    { metrica:"Aderisce: Promo", valore: stats.flags.promo },
+    { metrica:"Aderisce: Info", valore: stats.flags.info },
+  ];
+  const csvStats = rowsToCSV(statsRows, ["metrica","valore"]);
+  downloadBlob(`${baseName}_statistiche.csv`, "text/csv;charset=utf-8", csvStats);
+
+  // 3) opzionale: CSV divisi per stato (4 file)
+  let wantSplit = false;
+  try{
+    wantSplit = confirm("Vuoi scaricare anche 4 CSV separati (uno per stato: Aderisce/Trattativa/Non aderisce/Da contattare)?");
+  }catch(e){ wantSplit = false; }
+
+  if(wantSplit){
+    const order = [
+      ["aderisce","aderisce"],
+      ["trattativa","trattativa"],
+      ["rifiuta","non_aderisce"],
+      ["contattare","da_contattare"],
+    ];
+    order.forEach(([k, suffix]) => {
+      const csv = rowsToCSV(grouped[k], cols);
+      downloadBlob(`${baseName}_${suffix}.csv`, "text/csv;charset=utf-8", csv);
+    });
+  }
+}
+
+function exportXLSX(){
+  if(!farmMarkers.length){ alert("Nessuna farmacia caricata."); return; }
+  if(!window.XLSX){
+    alert("Libreria Excel non caricata. Uso CSV.");
+    exportCSV();
+    return;
+  }
+
+  const scope = getExportScope();
+  const stats = computeExportStats(scope);
+  const rows = buildExportRows(scope);
+  const grouped = groupRowsByState(rows);
+  const cols = getExportColumns();
+
+  // Statistiche (key-value)
+  const statsAOA = [
+    ["Ambito", stats.ambito],
+    ["Data export", stats.data_export],
+    ["Totale farmacie", stats.totale],
+    ["Aderiscono", stats.aderisce],
+    ["Aderiscono (%)", stats.aderisce_pct],
+    ["Trattativa", stats.trattativa],
+    ["Non aderisce", stats.rifiuta],
+    ["Da contattare", stats.contattare],
+    ["Private", stats.private],
+    ["Comunali", stats.comunali],
+    ["Comuni coperti", stats.comuni_coperti],
+    ["Comuni orfani", stats.comuni_orfani],
+    ["Aderisce: Poster", stats.flags.poster],
+    ["Aderisce: Boicotta", stats.flags.boicotta],
+    ["Aderisce: Promo", stats.flags.promo],
+    ["Aderisce: Info", stats.flags.info],
+  ];
+
+  // Statistiche per comune (sempre utile, anche se scope=null)
+  const comuniSet = new Set();
+  farmMarkers.forEach(f => { if(!scope || f.comune === scope) comuniSet.add(f.comune); });
+  const comuniArr = Array.from(comuniSet).sort((a,b)=>a.localeCompare(b));
+  const comuniAOA = [["Comune","Totale","Aderisce","Aderisce (%)","Trattativa","Non aderisce","Da contattare","Private","Comunali","Referenti"]];
+  comuniArr.forEach(c => {
+    const ids = farmMarkers.filter(f => f.comune===c && (!scope || f.comune===scope)).map(f=>f.id);
+    const s = computeStats(ids);
+    const ader = s.counts.aderisce;
+    const pct = s.total ? Math.round((ader/s.total)*100) : 0;
+    const refs = (referentiComune[c] || []).join(", ");
+    comuniAOA.push([c, s.total, ader, pct, s.counts.trattativa, s.counts.rifiuta, s.counts.contattare, s.priv, s.comu, refs]);
+  });
+
+  function sheetFromAOA(aoa){ return XLSX.utils.aoa_to_sheet(aoa); }
+  function sheetFromRows(rs){
+    const aoa = [cols];
+    rs.forEach(r => aoa.push(cols.map(c => (r[c]===undefined? "" : r[c]))));
+    return XLSX.utils.aoa_to_sheet(aoa);
+  }
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, sheetFromAOA(statsAOA), "Statistiche");
+  XLSX.utils.book_append_sheet(wb, sheetFromAOA(comuniAOA), "Statistiche comuni");
+  XLSX.utils.book_append_sheet(wb, sheetFromRows(rows), "Tutte");
+
+  // divise per stato (sheet separati)
+  XLSX.utils.book_append_sheet(wb, sheetFromRows(grouped.aderisce), "Aderisce");
+  XLSX.utils.book_append_sheet(wb, sheetFromRows(grouped.trattativa), "Trattativa");
+  XLSX.utils.book_append_sheet(wb, sheetFromRows(grouped.rifiuta), "Non aderisce");
+  XLSX.utils.book_append_sheet(wb, sheetFromRows(grouped.contattare), "Da contattare");
+
+  const file = scope ? `export_spg_${normKey(scope).replace(/\s+/g,'_')}.xlsx` : "export_spg_provincia_verona.xlsx";
+  XLSX.writeFile(wb, file);
+}
+
+function printReport(){
+  if(!farmMarkers.length){ alert("Nessuna farmacia caricata."); return; }
+
+  const scope = getExportScope();
+  const stats = computeExportStats(scope);
+  const rows = buildExportRows(scope);
+  const grouped = groupRowsByState(rows);
+
+  const nice = {
+    contattare: "Da contattare",
+    trattativa: "Trattativa",
+    aderisce: "Aderisce",
+    rifiuta: "Non aderisce"
+  };
+
+  const cols = [
+    "comune_canon","descrizione_farmacia","gestione","indirizzo_full","telefono",
+    "stato_campagna","chiusa_temporaneamente","incaricati","note","flag_poster","flag_boicotta","flag_promo","flag_info","updatedAt","maps_url"
+  ];
+
+  function td(v){
+    const s = (v===null||v===undefined) ? "" : String(v);
+    return `<td>${esc(s)}</td>`;
+  }
+  function tableFor(list){
+    const head = `<tr>${cols.map(c=>`<th>${esc(c)}</th>`).join("")}</tr>`;
+    const body = list.map(r=>`<tr>${cols.map(c=>td(r[c])).join("")}</tr>`).join("");
+    return `<table><thead>${head}</thead><tbody>${body}</tbody></table>`;
+  }
+
+  const html = `
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Report SpG - ${esc(stats.ambito)}</title>
+<style>
+  body{ font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:18px; color:#111; }
+  h1{ margin:0 0 8px; font-size:20px; }
+  .meta{ color:#444; font-size:12px; margin-bottom:14px; }
+  .cards{ display:grid; grid-template-columns:repeat(4,minmax(150px,1fr)); gap:10px; margin:12px 0 16px; }
+  .card{ border:1px solid #ddd; border-radius:10px; padding:10px; }
+  .card .k{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#666; }
+  .card .v{ font-size:22px; font-weight:800; margin-top:2px; }
+  .bar{ height:10px; border:1px solid #ddd; border-radius:999px; overflow:hidden; background:#f4f4f4; }
+  .bar > div{ height:100%; width:${stats.aderisce_pct}%; background:#00c37a; }
+  h2{ margin:18px 0 8px; font-size:16px; page-break-after: avoid; }
+  table{ width:100%; border-collapse:collapse; font-size:11px; }
+  th, td{ border:1px solid #e3e3e3; padding:6px 6px; vertical-align:top; }
+  th{ background:#f5f5f5; text-align:left; }
+  .pb{ page-break-before: always; }
+  @media print{
+    body{ margin:10mm; }
+    .cards{ grid-template-columns:repeat(4,minmax(0,1fr)); }
+    a{ color:inherit; text-decoration:none; }
+  }
+</style>
+</head>
+<body>
+  <h1>Report campagna SpG — ${esc(stats.ambito)}</h1>
+  <div class="meta">Export: ${esc(stats.data_export)} · Totale: ${stats.totale} · Aderiscono: ${stats.aderisce} (${stats.aderisce_pct}%)</div>
+  <div class="bar"><div></div></div>
+
+  <div class="cards">
+    <div class="card"><div class="k">Aderiscono</div><div class="v">${stats.aderisce}/${stats.totale}</div></div>
+    <div class="card"><div class="k">Trattativa</div><div class="v">${stats.trattativa}</div></div>
+    <div class="card"><div class="k">Non aderisce</div><div class="v">${stats.rifiuta}</div></div>
+    <div class="card"><div class="k">Da contattare</div><div class="v">${stats.contattare}</div></div>
+  </div>
+
+  <div class="cards" style="grid-template-columns:repeat(4,minmax(150px,1fr)); margin-top:0">
+    <div class="card"><div class="k">Private</div><div class="v">${stats.private}</div></div>
+    <div class="card"><div class="k">Comunali</div><div class="v">${stats.comunali}</div></div>
+    <div class="card"><div class="k">Comuni coperti</div><div class="v">${stats.comuni_coperti}</div></div>
+    <div class="card"><div class="k">Comuni orfani</div><div class="v">${stats.comuni_orfani}</div></div>
+  </div>
+
+  <div class="cards" style="grid-template-columns:repeat(4,minmax(150px,1fr)); margin-top:0">
+    <div class="card"><div class="k">Poster</div><div class="v">${stats.flags.poster}</div></div>
+    <div class="card"><div class="k">Boicotta</div><div class="v">${stats.flags.boicotta}</div></div>
+    <div class="card"><div class="k">Promo</div><div class="v">${stats.flags.promo}</div></div>
+    <div class="card"><div class="k">Info</div><div class="v">${stats.flags.info}</div></div>
+  </div>
+
+  ${["aderisce","trattativa","rifiuta","contattare"].map((k, idx)=>`
+    <h2 class="${idx? "pb":""}">${nice[k]} — ${grouped[k].length}</h2>
+    ${tableFor(grouped[k])}
+  `).join("")}
+
+  <script>window.onload = () => setTimeout(()=>window.print(), 50);<\/script>
+</body>
+</html>`;
+
+  const w = window.open("", "_blank");
+  if(!w){ alert("Popup bloccato dal browser."); return; }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+}
+
+// wiring bottoni
+document.getElementById("btnExportXLSX")?.addEventListener("click", exportXLSX);
+document.getElementById("btnExportCSV")?.addEventListener("click", exportCSV);
+document.getElementById("btnPrintReport")?.addEventListener("click", printReport);
+
 
 // START
 loadAll();
