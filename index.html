@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Mappa Verona – SpG (rev2.1)</title>
+<title>Mappa Verona – SpG (rev2.1.1.1)</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -357,6 +357,44 @@ function hasRef(nome){ return (referentiComune[nome] && referentiComune[nome].le
 const map = L.map("map", { attributionControl:false }).setView([45.43, 10.99], 10);
 L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { maxZoom:18 }).addTo(map);
 
+/* ===============================
+   FIT BOUNDS "SMART" (rispetta HUD/legenda)
+   - Sposta il centro visivo verso destra quando l'HUD è a sinistra
+================================ */
+function fitBoundsSmart(bounds){
+  const base = 40;
+  let padLeft = base, padTop = base, padRight = base, padBottom = base;
+
+  const hud = document.getElementById("hud");
+  if(hud){
+    const r = hud.getBoundingClientRect();
+    const vw = window.innerWidth || document.documentElement.clientWidth;
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+
+    // HUD a sinistra (desktop)
+    const hudLeft = (r.left <= 12) && (r.top < vh - 80) && (r.width > 120) && (r.right < vw * 0.75);
+    if(hudLeft){
+      padLeft = Math.max(padLeft, Math.round(r.width + 24));
+    }
+
+    // HUD in basso (mobile)
+    const hudBottom = (r.bottom >= vh - 12) && (r.height > 120) && (r.top > vh * 0.35);
+    if(hudBottom){
+      padBottom = Math.max(padBottom, Math.round(r.height + 24));
+    }
+  }
+
+  map.fitBounds(bounds, {
+    paddingTopLeft: [padLeft, padTop],
+    paddingBottomRight: [padRight, padBottom]
+  });
+}
+
+// Per capire se l'utente sta facendo zoom-in o zoom-out
+let lastZoomLevel = null;
+
+
+
 const banner   = document.getElementById("banner");
 const hudTitle = document.getElementById("hudTitle");
 const hudSub   = document.getElementById("hudSub");
@@ -550,41 +588,128 @@ function applyStatusToMarker(marker, farmaciaId, row){
   marker.bindTooltip(`${nome}${extra}`, { direction:"top", opacity:0.9, offset:[0,-8] });
 }
 
+
+/* ===============================
+   POPUP: autosave + refresh + binding robusto
+================================ */
+const POPUP_BINDERS = new WeakMap();
+
+function collectPopupDraft(wrap){
+  const onBtn = wrap.querySelector('button[data-role="state"][data-on="1"]');
+  const state = onBtn ? (onBtn.getAttribute("data-value") || "contattare") : "contattare";
+
+  // owners già presenti nei chip
+  const ownersFromChips = Array.from(wrap.querySelectorAll('[data-role="rmOwner"]'))
+    .map(el => (el.getAttribute("data-owner") || "").trim())
+    .filter(Boolean);
+
+  // owners nuovi dall'input
+  const raw = (wrap.querySelector('[data-role="ownersInput"]')?.value || "").trim();
+  const ownersFromInput = raw
+    ? raw.split(",").map(s => s.trim()).filter(Boolean)
+    : [];
+
+  // merge unico (preserva ordine: chip -> input)
+  const owners = [];
+  [...ownersFromChips, ...ownersFromInput].forEach(n => {
+    if(!owners.includes(n)) owners.push(n);
+  });
+
+  const note = wrap.querySelector('[data-role="note"]')?.value || "";
+  const closed = !!wrap.querySelector('[data-role="closed"]')?.checked;
+
+  const flags = { poster:false, boicotta:false, promo:false, info:false };
+  wrap.querySelectorAll("input[type=checkbox][data-flag]").forEach(cb => {
+    const k = cb.getAttribute("data-flag");
+    if(k) flags[k] = cb.checked;
+  });
+
+  return { state, owners, note, flags, closed };
+}
+
+function applyDraftToStore(marker, row, farmaciaId, draft){
+  const prev = getSt(farmaciaId);
+  const next = { ...prev, ...draft };
+  next.flags = draft.flags || prev.flags || { poster:false, boicotta:false, promo:false, info:false };
+
+  setSt(farmaciaId, next);
+
+  applyStatusToMarker(marker, farmaciaId, row);
+  aggiornaHUD();
+  aggiornaComuneSelezionato();
+}
+
+function autoSavePopup(marker, row, farmaciaId){
+  const root = marker.getPopup()?.getElement();
+  if(!root) return;
+  const wrap = root.querySelector(".popupWrap");
+  if(!wrap) return;
+  const draft = collectPopupDraft(wrap);
+  applyDraftToStore(marker, row, farmaciaId, draft);
+}
+
+function refreshPopup(marker, row, farmaciaId, reopen=true){
+  const wasOpen = marker.isPopupOpen && marker.isPopupOpen();
+  marker.setPopupContent(buildPopupHtml(row, farmaciaId));
+  if(reopen || wasOpen) marker.openPopup();
+  // ri-binda dopo che Leaflet ha aggiornato il DOM
+  setTimeout(() => attachPopupHandlers(marker, row, farmaciaId), 0);
+}
+
+function handlePopupClose(marker, row, farmaciaId){
+  if(marker._skipAutosave){
+    marker._skipAutosave = false;
+    return;
+  }
+  autoSavePopup(marker, row, farmaciaId);
+}
+
+
+
+
 function attachPopupHandlers(marker, row, farmaciaId){
   const root = marker.getPopup()?.getElement();
   if(!root) return;
-  if(root.dataset.bound === "1") return;
-  root.dataset.bound = "1";
+
+  // evita duplicazioni: rimuove tutti i listener precedenti legati a questo DOM
+  const prev = POPUP_BINDERS.get(root);
+  if(prev) prev.abort();
+  const ac = new AbortController();
+  POPUP_BINDERS.set(root, ac);
+  const { signal } = ac;
 
   const wrap = root.querySelector(".popupWrap");
   if(!wrap) return;
 
-  const ownersInput = wrap.querySelector('[data-role="ownersInput"]');
-  const noteEl = wrap.querySelector('[data-role="note"]');
-  const closedEl = wrap.querySelector('[data-role="closed"]');
   const flagsBox = wrap.querySelector('[data-role="aderisceFlags"]');
 
   const getCurrentState = () => {
     const onBtn = wrap.querySelector('button[data-role="state"][data-on="1"]');
-    return onBtn ? onBtn.getAttribute("data-value") : "contattare";
+    return onBtn ? (onBtn.getAttribute("data-value") || "contattare") : "contattare";
   };
 
   // state buttons
   wrap.querySelectorAll('button[data-role="state"]').forEach(btn => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
       wrap.querySelectorAll('button[data-role="state"]').forEach(b => b.setAttribute("data-on","0"));
       btn.setAttribute("data-on","1");
       const st = getCurrentState();
       if(flagsBox) flagsBox.style.display = (st==="aderisce") ? "" : "none";
-    });
+    }, { signal });
   });
 
-  // remove owner chip (event delegation)
+  // remove owner chip (delegation)
   wrap.addEventListener("click", (ev) => {
     const t = ev.target;
     if(!(t instanceof HTMLElement)) return;
+
     if(t.getAttribute("data-role") === "rmOwner"){
-      const who = t.getAttribute("data-owner") || "";
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      const who = (t.getAttribute("data-owner") || "").trim();
       const st = getSt(farmaciaId);
       st.owners = (st.owners || []).filter(x => x !== who);
       setSt(farmaciaId, st);
@@ -593,52 +718,33 @@ function attachPopupHandlers(marker, row, farmaciaId){
       aggiornaHUD();
       aggiornaComuneSelezionato();
 
-      marker.setPopupContent(buildPopupHtml(row, farmaciaId));
-      marker.openPopup();
+      refreshPopup(marker, row, farmaciaId, true);
     }
-  });
+  }, { signal });
 
-  // reset button
+  // reset button (chiudi SENZA salvare)
   const btnReset = wrap.querySelector('[data-role="reset"]');
   if(btnReset){
-    btnReset.addEventListener("click", () => marker.closePopup());
+    btnReset.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      marker._skipAutosave = true;
+      marker.closePopup();
+    }, { signal });
   }
 
   // save button
   const btnSave = wrap.querySelector('[data-role="save"]');
   if(btnSave){
-    btnSave.addEventListener("click", () => {
-      const prev = getSt(farmaciaId);
-      const next = { ...prev };
+    btnSave.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
 
-      next.state = getCurrentState();
+      const draft = collectPopupDraft(wrap);
+      applyDraftToStore(marker, row, farmaciaId, draft);
 
-      // owners: merge input
-      const raw = (ownersInput && ownersInput.value) ? ownersInput.value : "";
-      const add = raw.split(",").map(s=>s.trim()).filter(Boolean);
-      const merged = [...(next.owners||[])];
-      add.forEach(n => { if(!merged.includes(n)) merged.push(n); });
-      next.owners = merged;
-
-      next.note = noteEl ? noteEl.value : (next.note||"");
-      next.closed = !!(closedEl && closedEl.checked);
-
-      const flags = { ...(next.flags||{poster:false, boicotta:false, promo:false, info:false}) };
-      wrap.querySelectorAll('input[type="checkbox"][data-flag]').forEach(cb => {
-        const k = cb.getAttribute("data-flag");
-        if(k) flags[k] = cb.checked;
-      });
-      next.flags = flags;
-
-      setSt(farmaciaId, next);
-
-      applyStatusToMarker(marker, farmaciaId, row);
-      aggiornaHUD();
-      aggiornaComuneSelezionato();
-
-      marker.setPopupContent(buildPopupHtml(row, farmaciaId));
-      marker.openPopup();
-    });
+      refreshPopup(marker, row, farmaciaId, true);
+    }, { signal });
   }
 }
 
@@ -730,7 +836,7 @@ function selezionaComune(layer, nome){
   selectedComuneNome = nome;
 
   aggiornaStiliComuni();
-  map.fitBounds(layer.getBounds(), { padding:[40,40] });
+  fitBoundsSmart(layer.getBounds());
 
   banner.style.display="block";
   banner.innerHTML = `↑ Comune di <b>${esc(nome)}</b>`;
@@ -854,9 +960,28 @@ function loadComuni(){
       // labels on zoom
       map.on("zoomend", () => {
         const z = map.getZoom();
+
+        // capire se è zoom-out (ruota verso il basso)
+        const prev = (lastZoomLevel === null) ? z : lastZoomLevel;
+        const zoomedOut = z < (prev - 1e-9);
+        lastZoomLevel = z;
+
+        // Se sto guardando un comune e faccio zoom-out:
+        // 1) chiudo eventuali popup (salvando) 2) reset selezione 3) tornano i nomi comuni
+        if(selectedComuneNome && zoomedOut){
+          farmMarkers.forEach(f => {
+            const m = f.marker;
+            if(m && m.isPopupOpen && m.isPopupOpen()){
+              autoSavePopup(m, f.row, f.id);
+              m._skipAutosave = true; // già salvato manualmente
+              m.closePopup();
+            }
+          });
+          resetSelezione();
+        }
+
         const show = (!selectedComuneNome && z>=9 && z<=13);
         labels.forEach(l => { show ? map.addLayer(l) : map.removeLayer(l); });
-        if(selectedComuneNome && z < 9.5) resetSelezione();
       });
 
       aggiornaStiliComuni();
@@ -900,9 +1025,10 @@ function loadFarmacie(){
 
         marker.bindPopup(buildPopupHtml(row, farmaciaId), { maxWidth: 420 });
         marker.on("popupopen", () => attachPopupHandlers(marker, row, farmaciaId));
+        marker.on("popupclose", () => handlePopupClose(marker, row, farmaciaId));
 
         marker.addTo(farmLayer);
-        farmMarkers.push({ id: farmaciaId, comune, gestione: (row.gestione||""), marker });
+        farmMarkers.push({ id: farmaciaId, comune, gestione: (row.gestione||""), marker, row });
 
         applyStatusToMarker(marker, farmaciaId, row);
         added++;
