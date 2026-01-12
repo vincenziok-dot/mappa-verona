@@ -155,49 +155,6 @@ html, body { margin:0; height:100%; background:#000; font-family:system-ui, -app
 .mrk.chiusa{ opacity:.35; filter: grayscale(1); }
 
 /* === Popup farmacia === */
-
-.typeTag{
-  display:inline-block;
-  margin-left:8px;
-  padding:3px 8px;
-  border-radius:999px;
-  font-size:10px;
-  font-weight:900;
-  letter-spacing:.10em;
-  text-transform:uppercase;
-  vertical-align:middle;
-}
-.typeTag.priv{
-  background: rgba(0,255,156,.12);
-  color:#00a86b;
-  border:1px solid rgba(0,255,156,.35);
-}
-.typeTag.com{
-  background: rgba(255,77,77,.12);
-  color:#c91c1c;
-  border:1px solid rgba(255,77,77,.35);
-}
-.popupLinks{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
-.popupLinkBtn{
-  display:inline-block;
-  padding:8px 10px;
-  border-radius:10px;
-  border:1px solid #d6d6d6;
-  text-decoration:none;
-  font-size:12px;
-  font-weight:850;
-}
-.popupLinkBtn.maps{
-  background:#0e0e0e;
-  border-color:#0e0e0e;
-  color:#ffffff;
-}
-.popupLinkBtn.materiali{
-  background:#f2f2f2;
-  border-color:#d6d6d6;
-  color:#0e0e0e;
-}
-
 .popupWrap{
   min-width: 260px;
   color:#0b0b0b;
@@ -461,13 +418,12 @@ function aggiornaStiliComuni(){
 /* ===============================
    MARKER ICON
 ================================ */
-function iconFarmacia(state, closed, gestione){
-  const cls = stateClass(state);
-  const isCom = /comun/i.test((gestione||'').toString());
-  const shape = isCom ? 'sq' : 'dot';
+function iconFarmacia(state, closed){
+  const cls = (state || "contattare");
+  const closeCls = closed ? " chiusa" : "";
   return L.divIcon({
-    className:'',
-    html:`<div class="mrk ${shape} ${cls} ${closed ? 'closed':''}"></div>`,
+    className:"",
+    html:`<div class="mrk ${cls}${closeCls}"></div>`,
     iconSize:[14,14],
     iconAnchor:[7,7]
   });
@@ -569,10 +525,11 @@ function buildPopupHtml(row, farmaciaId){
         <input type="checkbox" data-role="closed" ${closed?"checked":""}/>
         Chiusa temporaneamente
       </label>
-      <div class="popupLinks">
-  <a class="popupLinkBtn maps" href="${escapeAttr(mapsUrl)}" target="_blank" rel="noopener">Apri in Maps</a>
-  <a class="popupLinkBtn materiali" href="${escapeAttr(DRIVE_MATERIALI)}" target="_blank" rel="noopener">Materiali campagna</a>
-</div>
+      <div class="smallLink">
+        <a href="${esc(maps)}" target="_blank" rel="noopener">Apri in Maps</a>
+        &nbsp;·&nbsp;
+        <a href="${esc(DRIVE_MATERIALI)}" target="_blank" rel="noopener">Materiali</a>
+      </div>
     </div>
 
     <div class="popupActions">
@@ -584,7 +541,7 @@ function buildPopupHtml(row, farmaciaId){
 
 function applyStatusToMarker(marker, farmaciaId, row){
   const st = getSt(farmaciaId);
-  marker.setIcon(iconFarmacia(st.state, st.closed, row.gestione));
+  marker.setIcon(iconFarmacia(st.state, st.closed));
   marker.setOpacity(st.closed ? 0.35 : 1);
 
   // tooltip rapido
@@ -937,7 +894,7 @@ function loadFarmacie(){
 
         const st = getSt(farmaciaId);
         const marker = L.marker([coord.lat, coord.lon], {
-          icon: iconFarmacia(st.state, st.closed, row.gestione),
+          icon: iconFarmacia(st.state, st.closed),
           opacity: st.closed ? 0.35 : 1
         });
 
