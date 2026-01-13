@@ -172,6 +172,41 @@ html, body { margin:0; height:100%; background:#000; font-family:system-ui, -app
 }
 
 .leaflet-control-zoom{ margin-top: 88px !important; } /* evita sovrapposizione col HUD */
+
+/* === Barra non contattate (arancione) === */
+.ms-bar2{
+  margin-top:6px;
+  height:8px;
+  border-radius:999px;
+  overflow:hidden;
+  background: rgba(255, 176, 0, .18);
+  border:1px solid rgba(255,176,0,.35);
+}
+#ms_bar_nc{
+  height:100%;
+  width:0%;
+  background: #ffb000;
+  border-radius:999px;
+}
+.ms-mini .nc-label{ color:#ffb000; font-weight:900; }
+/* === Incaricati: riga input + pulsante aggiungi === */
+.ownersRow{
+  display:flex;
+  gap:8px;
+  align-items:stretch;
+}
+.ownersRow .inlineInput{ flex:1; }
+.miniBtn{
+  width:40px;
+  border-radius:12px;
+  border:1px solid #2a2a2a;
+  background:#00ff9c;
+  color:#111;
+  font-weight:1000;
+  cursor:pointer;
+}
+.miniBtn:active{ transform: translateY(1px); }
+
 @media (max-width: 720px){
   #hud{ top:auto; bottom:12px; left:12px; right:12px; width:auto; max-height: 58vh; }
   .leaflet-control-zoom{ margin-top: 12px !important; }
@@ -430,10 +465,12 @@ textarea.inlineInput{ min-height: 64px; resize: vertical; }
     <div class="ms-pct" id="ms_pct">0%</div>
   </div>
   <div class="ms-bar"><div id="ms_bar"></div></div>
-  <div class="ms-mini">
+    <div class="ms-bar2"><div id="ms_bar_nc"></div></div>
+<div class="ms-mini">
     Trattativa: <b id="ms_trattativa">0</b> · Non aderisce: <b id="ms_rifiuta">0</b> · Da contattare: <b id="ms_contattare">0</b>
   </div>
-  <div class="ms-mini" id="ms_filter" style="display:none"></div>
+    <div class="ms-mini"><span class="nc-label">Non contattate</span>: <b id="ms_nc">0</b> · <span id="ms_nc_pct">0%</span></div>
+<div class="ms-mini" id="ms_filter" style="display:none"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -505,6 +542,22 @@ function saveStatusStore(obj){
   catch(e){}
 }
 const statusStore = loadStatusStore();
+
+function normalizeOwners(val){
+  if(Array.isArray(val)){
+    return val.map(x=>String(x||"").trim()).filter(Boolean);
+  }
+  if(typeof val === "string"){
+    return val.split(/[,;\n]+/).map(s=>s.trim()).filter(Boolean);
+  }
+  return [];
+}
+function uniq(arr){
+  const out=[];
+  (arr||[]).forEach(x=>{ const v=String(x||"").trim(); if(v && !out.includes(v)) out.push(v); });
+  return out;
+}
+
 function defaultStatus(){
   return { state:"contattare", owners:[], note:"", flags:{poster:false, boicotta:false, promo:false, info:false}, closed:false };
 }
@@ -555,8 +608,8 @@ function getSmartPadding(){
   const hud = document.getElementById("hud");
   if(hud){
     const r = hud.getBoundingClientRect();
-    const hudLeft = (r.left <= 12) && (r.top < vh - 80) && (r.width > 120) && (r.right < vw * 0.8);
-    if(hudLeft) padLeft = Math.max(padLeft, Math.round(r.width + 24));
+    const hudLeft = (r.left <= 60) && (r.top < vh - 60) && (r.width > 140) && (r.right < vw * 0.92);
+if(hudLeft) padLeft = Math.max(padLeft, Math.round(r.width + 24));
 
     const hudBottom = (r.bottom >= vh - 12) && (r.height > 120) && (r.top > vh * 0.35);
     if(hudBottom) padBottom = Math.max(padBottom, Math.round(r.height + 24));
@@ -699,7 +752,7 @@ function buildPopupHtml(row, farmaciaId){
   const maps = row.maps_url || "";
 
   const state = st.state || "contattare";
-  const owners = Array.isArray(st.owners) ? st.owners : [];
+  const owners = uniq(normalizeOwners(st.owners));
   const note = st.note || "";
   const flags = st.flags || { poster:false, boicotta:false, promo:false, info:false };
   const closed = !!st.closed;
@@ -735,7 +788,10 @@ function buildPopupHtml(row, farmaciaId){
     </div>
 
     <div style="font-size:12px; color:#3b3b3b; margin-bottom:6px"><b>Incaricati</b> (puoi aggiungere più nomi)</div>
-    <input class="inlineInput" type="text" data-role="ownersInput" placeholder="Es: Marco, Lucia" />
+    <div class="ownersRow">
+      <input class="inlineInput" type="text" data-role="ownersInput" placeholder="Es: Marco, Lucia" />
+      <button class="miniBtn" type="button" data-role="ownersAdd" title="Aggiungi">+</button>
+    </div>
     <div class="chipBar" data-role="ownersChips">
       ${owners.map(o => `<span class="chip">${esc(o)} <span class="xbtn" data-role="rmOwner" data-owner="${encodeURIComponent(o)}">×</span></span>`).join("")}
     </div>
@@ -788,10 +844,8 @@ function collectPopupDraft(wrap){
   const ownersFromInput = raw ? raw.split(",").map(s => s.trim()).filter(Boolean) : [];
 
   // merge unico (preserva ordine: chip -> input)
-  const owners = [];
-  [...ownersFromChips, ...ownersFromInput].forEach(n => { if(!owners.includes(n)) owners.push(n); });
-
-  const note = wrap.querySelector('[data-role="note"]')?.value || "";
+  const owners = uniq([ ...ownersFromChips, ...ownersFromInput ]);
+const note = wrap.querySelector('[data-role="note"]')?.value || "";
   const closed = !!wrap.querySelector('[data-role="closed"]')?.checked;
 
   const flags = { poster:false, boicotta:false, promo:false, info:false };
@@ -807,7 +861,8 @@ function applyDraftToStore(marker, row, farmaciaId, isComunale, draft){
   const prev = getSt(farmaciaId);
   const next = { ...prev, ...draft };
   next.flags = draft.flags || prev.flags || { poster:false, boicotta:false, promo:false, info:false };
-  // timestamp ultimo aggiornamento (utile anche per export)
+  next.owners = uniq(normalizeOwners(next.owners));
+// timestamp ultimo aggiornamento (utile anche per export)
   next.updatedAt = new Date().toISOString();
   setSt(farmaciaId, next);
 
@@ -920,13 +975,43 @@ function attachPopupHandlers(marker, row, farmaciaId){
     }, { signal });
   }
 
-  // Enter su input incaricati => non chiude, ma evita submit/scroll
+  // Incaricati: aggiungi come chip (Enter o pulsante +)
   const ownersInput = wrap.querySelector('[data-role="ownersInput"]');
+  const ownersChips = wrap.querySelector('[data-role="ownersChips"]');
+
+  const addOwnersFromInput = () => {
+    if(!ownersInput || !ownersChips) return;
+    const raw = (ownersInput.value || "").trim();
+    if(!raw) return;
+    const names = uniq(raw.split(/[,;\n]+/).map(s=>s.trim()).filter(Boolean));
+    if(!names.length) return;
+
+    const existing = Array.from(ownersChips.querySelectorAll('[data-role="rmOwner"]'))
+      .map(el => {
+        const enc = (el.getAttribute("data-owner") || "").trim();
+        try { return decodeURIComponent(enc); } catch(e){ return enc; }
+      })
+      .filter(Boolean);
+
+    const merged = uniq([...existing, ...names]);
+    ownersChips.innerHTML = merged.map(o => `<span class="chip">${esc(o)} <span class="xbtn" data-role="rmOwner" data-owner="${encodeURIComponent(o)}">×</span></span>`).join("");
+    ownersInput.value = "";
+  };
+
+  const btnAdd = wrap.querySelector('[data-role="ownersAdd"]');
+  if(btnAdd){
+    btnAdd.addEventListener("click", (ev) => {
+      ev.preventDefault(); ev.stopPropagation();
+      addOwnersFromInput();
+    }, { signal });
+  }
+
   if(ownersInput){
     ownersInput.addEventListener("keydown", (ev) => {
       if(ev.key === "Enter"){
         ev.preventDefault();
         ev.stopPropagation();
+        addOwnersFromInput();
       }
     }, { signal });
   }
@@ -1076,7 +1161,10 @@ function aggiornaMapStats(){
   const elT = document.getElementById("ms_total");
   const elP = document.getElementById("ms_pct");
   const elB = document.getElementById("ms_bar");
-  const elTr = document.getElementById("ms_trattativa");
+  const elBnc = document.getElementById("ms_bar_nc");
+  const elNC = document.getElementById("ms_nc");
+  const elNCpct = document.getElementById("ms_nc_pct");
+const elTr = document.getElementById("ms_trattativa");
   const elR = document.getElementById("ms_rifiuta");
   const elC = document.getElementById("ms_contattare");
   const elF = document.getElementById("ms_filter");
@@ -1097,7 +1185,11 @@ function aggiornaMapStats(){
   elP.textContent = `${pct}%`;
   elB.style.width = `${pct}%`;
 
-  elTr.textContent = String(counts.trattativa);
+  const pctNc = total ? Math.round((counts.contattare/total)*100) : 0;
+  if(elBnc) elBnc.style.width = `${pctNc}%`;
+  if(elNC) elNC.textContent = String(counts.contattare);
+  if(elNCpct) elNCpct.textContent = `${pctNc}%`;
+elTr.textContent = String(counts.trattativa);
   elR.textContent = String(counts.rifiuta);
   elC.textContent = String(counts.contattare);
 
@@ -1385,7 +1477,7 @@ function buildExportRows(scopeComune=null){
       base.comune_canon = f.comune;
       base.stato_campagna = st.state || "contattare";
       base.chiusa_temporaneamente = !!st.closed;
-      base.incaricati = (st.owners || []).join("; ");
+      base.incaricati = uniq(normalizeOwners(st.owners)).join("; ");
       base.note = st.note || "";
       const fl = st.flags || {};
       base.flag_poster = !!fl.poster;
@@ -1620,6 +1712,96 @@ function exportXLSX(){
   XLSX.writeFile(wb, file);
 }
 
+
+function exportSoloAderisce(){
+  if(!farmMarkers.length){ alert("Nessuna farmacia caricata."); return; }
+
+  const scope = getExportScope();
+  const stats = computeExportStats(scope);
+  const rows = buildExportRows(scope);
+  const aderisceRows = rows.filter(r => (r.stato_campagna || "contattare") === "aderisce");
+
+  // Se non c'è XLSX => CSV
+  if(!window.XLSX){
+    const cols = getExportColumns();
+    const csv = rowsToCSV(aderisceRows, cols);
+    const baseName = scope ? `export_${normKey(scope).replace(/\s+/g,'_')}` : "export_provincia_verona";
+    downloadBlob(`${baseName}_solo_aderisce.csv`, "text/csv;charset=utf-8", csv);
+    return;
+  }
+
+  const wb = XLSX.utils.book_new();
+  const statsAOA = [
+    ["Campo","Valore"],
+    ["Ambito", scope ? scope : "Provincia di Verona"],
+    ["Data export", stats.data_export],
+    ["Totale farmacie", stats.totale],
+    ["Aderiscono", stats.aderisce],
+    ["Aderiscono (%)", stats.aderisce_pct + "%"],
+    ["Trattativa", stats.trattativa],
+    ["Non aderisce", stats.rifiuta],
+    ["Da contattare", stats.contattare],
+  ];
+  XLSX.utils.book_append_sheet(wb, sheetFromAOA(statsAOA), "Statistiche");
+  XLSX.utils.book_append_sheet(wb, sheetFromRows(aderisceRows), "Aderisce");
+
+  const file = scope ? `solo_aderisce_spg_${normKey(scope).replace(/\s+/g,'_')}.xlsx`
+                     : "solo_aderisce_spg_provincia_verona.xlsx";
+  XLSX.writeFile(wb, file);
+}
+
+function printSoloAderisce(){
+  if(!farmMarkers.length){ alert("Nessuna farmacia caricata."); return; }
+
+  const scope = getExportScope();
+  const stats = computeExportStats(scope);
+  const rows = buildExportRows(scope).filter(r => (r.stato_campagna || "contattare") === "aderisce");
+
+  const cols = [
+    { key:"descrizione_farmacia", label:"Farmacia" },
+    { key:"gestione", label:"Gestione" },
+    { key:"indirizzo_full", label:"Indirizzo" },
+    { key:"cap", label:"CAP" },
+    { key:"comune", label:"Comune" },
+    { key:"telefono", label:"Telefono" },
+    { key:"email", label:"Email" },
+    { key:"maps_url", label:"Maps" },
+    { key:"incaricati", label:"Incaricati" },
+    { key:"note", label:"Note" },
+  ];
+
+  const header = cols.map(c => `<th>${esc(c.label)}</th>`).join("");
+  const body = rows.map(r => `<tr>${cols.map(c => {
+    let v = r[c.key] ?? "";
+    if(c.key==="maps_url" && v) return `<td><a href="${esc(String(v))}" target="_blank" rel="noopener">Apri</a></td>`;
+    return `<td>${esc(String(v))}</td>`;
+  }).join("")}</tr>`).join("");
+
+  const title = scope ? `Solo aderisce — ${scope}` : "Solo aderisce — Provincia di Verona";
+
+  const html = `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"/>
+  <title>${esc(title)}</title>
+  <style>
+    body{ font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin:18px; }
+    h1{ margin:0 0 6px; font-size:20px; }
+    .meta{ color:#333; font-size:12px; margin:0 0 14px; }
+    .pill{ display:inline-block; background:#00ff9c; color:#111; padding:2px 10px; border-radius:999px; font-weight:900; }
+    table{ width:100%; border-collapse:collapse; font-size:12px; }
+    th,td{ border:1px solid #ddd; padding:6px 8px; vertical-align:top; }
+    th{ background:#f4f4f4; text-align:left; }
+    a{ color:#111; font-weight:800; }
+  </style></head><body>
+    <h1>${esc(title)}</h1>
+    <div class="meta">Export: ${esc(stats.data_export)} · <span class="pill">Aderiscono: ${stats.aderisce}/${stats.totale} (${stats.aderisce_pct}%)</span></div>
+    <table><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table>
+    <script>window.onload = () => setTimeout(()=>window.print(), 50);<\/script>
+  </body></html>`;
+
+  const w = window.open("", "_blank");
+  if(!w){ alert("Popup bloccato dal browser."); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+}
+
 function printReport(){
   if(!farmMarkers.length){ alert("Nessuna farmacia caricata."); return; }
 
@@ -1725,8 +1907,10 @@ function printReport(){
 document.getElementById("btnExportXLSX")?.addEventListener("click", exportXLSX);
 document.getElementById("btnExportCSV")?.addEventListener("click", exportCSV);
 document.getElementById("btnPrintReport")?.addEventListener("click", printReport);
-
-
+document.getElementById("btnExportAderisce")?.addEventListener("click", () => {
+  const ok = confirm("SOLO ADERISCE\n\nOK = scarica file (Excel se disponibile, altrimenti CSV)\nAnnulla = stampa elenco");
+  if(ok) exportSoloAderisce(); else printSoloAderisce();
+});
 // START
 loadAll();
 </script>
