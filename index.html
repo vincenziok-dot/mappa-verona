@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Campagna SpG Verona – Mappa (rev2.1.6)</title>
+<title>Campagna SpG Verona – Mappa (rev 2.1.6.2)</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -596,7 +596,7 @@ body.ui-mobile .leaflet-popup-content{
 body.ui-mobile .leaflet-popup-content-wrapper{ border-radius: 14px; }
 
 body.ui-mobile #banner{ top:10px; }
-body.ui-mobile .leaflet-control-zoom{ margin-top: 12px !important; }
+body.ui-mobile .leaflet-control-zoom{ display:none; }
 
 body.ui-mobile #hud.is-collapsed{
   transform: translateY(calc(100% - 74px));
@@ -618,12 +618,86 @@ body.ui-mobile #hud.is-collapsed #hudScroll{
   body.ui-desktop #hud{ top:auto; bottom:12px; left:12px; right:12px; width:auto; max-height: 58vh; }
 }
 
+
+/* === Quando il selettore UI è aperto, nascondi overlay per evitare confusione === */
+body.chooser-open #hud,
+body.chooser-open #hudFab,
+body.chooser-open #modeToggle,
+body.chooser-open #mapStats,
+body.chooser-open #banner{
+  display:none !important;
+}
+
+/* === Mobile: overlay avanzamento in alto, più compatto === */
+body.ui-mobile #mapStats{
+  top:58px;
+  bottom:auto;
+  right:12px;
+  left:auto;
+  width: min(300px, calc(100vw - 24px));
+  padding:10px 10px 8px;
+}
+body.ui-mobile .ms-main{ font-size:15px; }
+body.ui-mobile .ms-line{ margin-top:4px; }
+body.ui-mobile .ms-bar{ height:8px; }
+body.ui-mobile .ms-bar2{ height:6px; }
+body.ui-mobile .ms-mini{ font-size:11px; }
+body.ui-mobile .ms-tag{ font-size:10px; }
+
+/* === Mobile: toggle modalità in alto per non sovrapporsi === */
+body.ui-mobile #modeToggle{
+  top:12px;
+  bottom:auto;
+  left:12px;
+  transform:none;
+  border-radius: 16px;
+}
+
+/* === Popup: sempre dentro lo schermo su mobile === */
+body.ui-mobile .leaflet-popup{
+  max-width: calc(100vw - 24px) !important;
+}
+body.ui-mobile .leaflet-popup-content-wrapper{
+  max-width: calc(100vw - 24px) !important;
+}
+body.ui-mobile .leaflet-popup-content{
+  max-width: calc(100vw - 48px) !important;
+}
+
+
+/* === Mobile hint toast === */
+#mobileHint{
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:96px;
+  z-index:10006;
+  background:rgba(0,0,0,.72);
+  border:1px solid rgba(0,255,156,.22);
+  color:#eafff7;
+  padding:10px 12px;
+  border-radius: 14px;
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.02em;
+  max-width: calc(100vw - 24px);
+  box-shadow: 0 0 18px rgba(0,0,0,.55);
+  backdrop-filter: blur(3px);
+  opacity:0;
+  transition: opacity .2s ease;
+  pointer-events:none;
+  display:none;
+}
+body.ui-mobile #mobileHint{ display:block; }
+#mobileHint.show{ opacity:1; }
+
 </style>
 </head>
 
 <body>
 <div id="map"></div>
 <div id="banner"></div>
+<div id="mobileHint" aria-hidden="true"></div>
 
 <div id="uiChooser" aria-hidden="true">
   <button class="x" id="btnUiChooserClose" title="Chiudi">×</button>
@@ -829,8 +903,7 @@ async function fetchFirst(paths, type){
 const UI_MODE_KEY = "spg_ui_mode_rev2";
 const AUTO_MOBILE = window.matchMedia("(max-width: 720px)").matches || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 let uiMode = localStorage.getItem(UI_MODE_KEY) || (AUTO_MOBILE ? "mobile" : "desktop");
-let showChooser = !localStorage.getItem(UI_MODE_KEY);
-
+let showChooser = true;
 function setUiMode(mode){
   uiMode = (mode === "desktop") ? "desktop" : "mobile";
   localStorage.setItem(UI_MODE_KEY, uiMode);
@@ -850,17 +923,40 @@ function applyUiMode(){
     if(fab) fab.style.display = "";
     if(modeToggle) modeToggle.style.display = "";
     setInteractionMode("comuni"); // su mobile: priorità comuni
+    setTimeout(() => showMobileHintOnce(), 600);
   }else{
     hud.classList.remove("is-collapsed");
     if(fab) fab.style.display = "none";
     if(modeToggle) modeToggle.style.display = "none";
     setInteractionMode("farmacie");
+    // su desktop niente hint
+
   }
+  if(typeof updateHudChrome==="function") updateHudChrome();
 }
+
+
+function showMobileHintOnce(){
+  if(uiMode !== "mobile") return;
+  const key = "spg_mobile_hint_seen_rev2";
+  try{
+    if(sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+  }catch(e){}
+  const el = document.getElementById("mobileHint");
+  if(!el) return;
+  el.textContent = (interactionMode === "comuni")
+    ? "Suggerimento: sei in modalità COMUNI. Tocca un comune o usa la ricerca. Passa a FARMACIE per aprire i popup."
+    : "Suggerimento: sei in modalità FARMACIE. Tocca i marker per aprire i popup.";
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 4200);
+}
+
 
 function openUiChooser(){
   const el = document.getElementById("uiChooser");
   if(!el) return;
+  document.body.classList.add("chooser-open");
   el.style.display = "flex";
   el.setAttribute("aria-hidden","false");
 }
@@ -869,6 +965,7 @@ function closeUiChooser(){
   if(!el) return;
   el.style.display = "none";
   el.setAttribute("aria-hidden","true");
+  document.body.classList.remove("chooser-open");
 }
 
 let interactionMode = "farmacie"; // "comuni" | "farmacie"
@@ -886,6 +983,12 @@ function setInteractionMode(mode){
     if(el) el.style.pointerEvents = enableFarm ? "auto" : "none";
   });
   // Suggerimento banner
+  const mh = document.getElementById("mobileHint");
+  if(mh && uiMode==="mobile" && mh.classList.contains("show")){
+    mh.textContent = (interactionMode === "comuni")
+      ? "Suggerimento: sei in modalità COMUNI. Tocca un comune o usa la ricerca. Passa a FARMACIE per aprire i popup."
+      : "Suggerimento: sei in modalità FARMACIE. Tocca i marker per aprire i popup.";
+  }
   const hint = document.getElementById("g_hint");
   if(hint && uiMode==="mobile"){
     hint.textContent = (interactionMode==="comuni")
@@ -969,42 +1072,63 @@ function getSmartPadding(opts){
   const options = opts || {};
   const includeHud = options.includeHud !== false;
   const includeStats = options.includeStats !== false;
+
   const base = 40;
   let padLeft = base, padTop = base, padRight = base, padBottom = base;
 
   const vw = window.innerWidth || document.documentElement.clientWidth;
   const vh = window.innerHeight || document.documentElement.clientHeight;
 
+  // --- HUD (può essere: sidebar desktop, o bottom-sheet mobile) ---
   const hud = document.getElementById("hud");
   if(includeHud && hud){
     const r = hud.getBoundingClientRect();
-    // HUD tipicamente a sinistra: conta sempre il suo ingombro per centrare nell'area mappa
-    const hudVisible = (r.width > 120) && (r.height > 120) && (r.right > 0) && (r.bottom > 0);
-    const hudLeft = hudVisible && (r.left <= 80);
-    if(hudLeft) padLeft = Math.max(padLeft, Math.round(r.width + 24));
+    const visible = (r.right > 0 && r.left < vw && r.bottom > 0 && r.top < vh);
 
-    // HUD eventualmente in basso (mobile)
-    const hudBottom = hudVisible && (r.bottom >= vh - 12) && (r.height > 120) && (r.top > vh * 0.35);
-    if(hudBottom) padBottom = Math.max(padBottom, Math.round(r.height + 24));
+    if(visible){
+      const isBottomSheet = (r.width >= vw*0.65) && (r.left <= 24) && (r.right >= vw-24) && (r.top > vh*0.25);
+      if(isBottomSheet){
+        // quanto "mangia" davvero dal basso (se è collassato, è ~maniglia)
+        const overlapBottom = Math.max(0, vh - Math.max(r.top, 0));
+        if(overlapBottom > 0){
+          padBottom = Math.max(padBottom, Math.round(overlapBottom + 18));
+        }
+      }else{
+        // sidebar (desktop)
+        const isLeft = (r.left <= 80);
+        if(isLeft){
+          padLeft = Math.max(padLeft, Math.round(r.width + 24));
+        }
+      }
+    }
   }
 
+  // --- Overlay mapStats (desktop: bottom-right, mobile: top-right) ---
   const ms = document.getElementById("mapStats");
   if(includeStats && ms){
     const r = ms.getBoundingClientRect();
-    const msVisible = (r.width > 120) && (r.height > 40) && (r.left < vw) && (r.top < vh);
-    const msRight = msVisible && (r.right >= vw - 12);
-    if(msRight) padRight = Math.max(padRight, Math.round(r.width + 18));
-    const msBottom = msVisible && (r.bottom >= vh - 12);
-    if(msBottom) padBottom = Math.max(padBottom, Math.round(r.height + 18));
+    const visible = (r.right > 0 && r.left < vw && r.bottom > 0 && r.top < vh);
+    if(visible){
+      const msRight = (r.right >= vw - 12);
+      const msBottom = (r.bottom >= vh - 12);
+      const msTop = (r.top <= 12);
+
+      if(msRight) padRight = Math.max(padRight, Math.round(r.width + 18));
+      if(msBottom) padBottom = Math.max(padBottom, Math.round(r.height + 18));
+      if(msTop) padTop = Math.max(padTop, Math.round(r.height + 18));
+    }
   }
+
   return { padLeft, padTop, padRight, padBottom };
 }
 function fitBoundsSmart(bounds){
-  // Per il "centro" del comune: privilegia l'HUD, ignora l'overlay bottom-right
+  // Centro del comune nella *porzione visibile* della mappa (esclude HUD, ignora overlay stats)
   const p = getSmartPadding({ includeStats:false });
+  const maxZ = (uiMode === "mobile") ? 12 : 14;
   map.fitBounds(bounds, {
     paddingTopLeft: [p.padLeft, p.padTop],
-    paddingBottomRight: [p.padRight, p.padBottom]
+    paddingBottomRight: [p.padRight, p.padBottom],
+    maxZoom: maxZ
   });
 }
 function applyPopupAutoPan(popup){
@@ -1947,17 +2071,30 @@ async function loadAll(){
 
       // Contenuto popup: viene rigenerato ad ogni apertura per riflettere SEMPRE lo stato salvato
       // (evita che i chip/nomi "spariscano" dopo Salva e ricompaiano solo dopo un refresh).
-      marker.bindPopup(buildPopupHtml(row, farmaciaId), { maxWidth: (uiMode==="mobile" ? 320 : 420), autoPan:true });
-      marker.on("popupopen", () => {
-        // rigenera contenuto dal data-store (localStorage)
+      marker.bindPopup(buildPopupHtml(row, farmaciaId), {
+        maxWidth: (uiMode==="mobile" ? 320 : 420),
+        autoPan: true,
+        keepInView: true
+      });
+
+      // Prima dell'apertura: rigenera contenuto + imposta autoPan padding (così Leaflet panora correttamente)
+      marker.on("click", () => {
         marker.setPopupContent(buildPopupHtml(row, farmaciaId));
-        applyPopupAutoPan(marker.getPopup());
-        // i listener vanno attaccati dopo che Leaflet ha inserito il DOM del popup
+        const pop = marker.getPopup();
+        if(pop) applyPopupAutoPan(pop);
+      });
+
+      marker.on("popupopen", (ev) => {
+        // Aggiorna layout del popup (dopo eventuale setPopupContent)
+        if(ev && ev.popup){
+          ev.popup.options.keepInView = true;
+          ev.popup.update();
+        }
         setTimeout(() => attachPopupHandlers(marker, row, farmaciaId), 0);
       });
-      marker.on("popupclose", () => handlePopupClose(marker, row, farmaciaId, isComunale));
 
-      marker.addTo(farmLayer);
+      marker.on("popupclose", () => handlePopupClose(marker, row, farmaciaId, isComunale));
+marker.addTo(farmLayer);
 
       farmMarkers.push({ id: farmaciaId, comune, gestione: (row.gestione||""), isComunale, marker, row });
 
@@ -2321,7 +2458,80 @@ function printSoloAderisce(){
     th,td{ border:1px solid #ddd; padding:6px 8px; vertical-align:top; }
     th{ background:#f4f4f4; text-align:left; }
     a{ color:#111; font-weight:800; }
-  </style></head><body>
+  
+/* === Quando il selettore UI è aperto, nascondi overlay per evitare confusione === */
+body.chooser-open #hud,
+body.chooser-open #hudFab,
+body.chooser-open #modeToggle,
+body.chooser-open #mapStats,
+body.chooser-open #banner{
+  display:none !important;
+}
+
+/* === Mobile: overlay avanzamento in alto, più compatto === */
+body.ui-mobile #mapStats{
+  top:58px;
+  bottom:auto;
+  right:12px;
+  left:auto;
+  width: min(300px, calc(100vw - 24px));
+  padding:10px 10px 8px;
+}
+body.ui-mobile .ms-main{ font-size:15px; }
+body.ui-mobile .ms-line{ margin-top:4px; }
+body.ui-mobile .ms-bar{ height:8px; }
+body.ui-mobile .ms-bar2{ height:6px; }
+body.ui-mobile .ms-mini{ font-size:11px; }
+body.ui-mobile .ms-tag{ font-size:10px; }
+
+/* === Mobile: toggle modalità in alto per non sovrapporsi === */
+body.ui-mobile #modeToggle{
+  top:12px;
+  bottom:auto;
+  left:12px;
+  transform:none;
+  border-radius: 16px;
+}
+
+/* === Popup: sempre dentro lo schermo su mobile === */
+body.ui-mobile .leaflet-popup{
+  max-width: calc(100vw - 24px) !important;
+}
+body.ui-mobile .leaflet-popup-content-wrapper{
+  max-width: calc(100vw - 24px) !important;
+}
+body.ui-mobile .leaflet-popup-content{
+  max-width: calc(100vw - 48px) !important;
+}
+
+
+/* === Mobile hint toast === */
+#mobileHint{
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:96px;
+  z-index:10006;
+  background:rgba(0,0,0,.72);
+  border:1px solid rgba(0,255,156,.22);
+  color:#eafff7;
+  padding:10px 12px;
+  border-radius: 14px;
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.02em;
+  max-width: calc(100vw - 24px);
+  box-shadow: 0 0 18px rgba(0,0,0,.55);
+  backdrop-filter: blur(3px);
+  opacity:0;
+  transition: opacity .2s ease;
+  pointer-events:none;
+  display:none;
+}
+body.ui-mobile #mobileHint{ display:block; }
+#mobileHint.show{ opacity:1; }
+
+</style></head><body>
     <h1>${esc(title)}</h1>
     <div class="meta">Export: ${esc(stats.data_export)} · <span class="pill">Aderiscono: ${stats.aderisce}/${stats.totale} (${stats.aderisce_pct}%)</span></div>
     <table><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table>
@@ -2390,6 +2600,79 @@ function printReport(){
     .cards{ grid-template-columns:repeat(4,minmax(0,1fr)); }
     a{ color:inherit; text-decoration:none; }
   }
+
+/* === Quando il selettore UI è aperto, nascondi overlay per evitare confusione === */
+body.chooser-open #hud,
+body.chooser-open #hudFab,
+body.chooser-open #modeToggle,
+body.chooser-open #mapStats,
+body.chooser-open #banner{
+  display:none !important;
+}
+
+/* === Mobile: overlay avanzamento in alto, più compatto === */
+body.ui-mobile #mapStats{
+  top:58px;
+  bottom:auto;
+  right:12px;
+  left:auto;
+  width: min(300px, calc(100vw - 24px));
+  padding:10px 10px 8px;
+}
+body.ui-mobile .ms-main{ font-size:15px; }
+body.ui-mobile .ms-line{ margin-top:4px; }
+body.ui-mobile .ms-bar{ height:8px; }
+body.ui-mobile .ms-bar2{ height:6px; }
+body.ui-mobile .ms-mini{ font-size:11px; }
+body.ui-mobile .ms-tag{ font-size:10px; }
+
+/* === Mobile: toggle modalità in alto per non sovrapporsi === */
+body.ui-mobile #modeToggle{
+  top:12px;
+  bottom:auto;
+  left:12px;
+  transform:none;
+  border-radius: 16px;
+}
+
+/* === Popup: sempre dentro lo schermo su mobile === */
+body.ui-mobile .leaflet-popup{
+  max-width: calc(100vw - 24px) !important;
+}
+body.ui-mobile .leaflet-popup-content-wrapper{
+  max-width: calc(100vw - 24px) !important;
+}
+body.ui-mobile .leaflet-popup-content{
+  max-width: calc(100vw - 48px) !important;
+}
+
+
+/* === Mobile hint toast === */
+#mobileHint{
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:96px;
+  z-index:10006;
+  background:rgba(0,0,0,.72);
+  border:1px solid rgba(0,255,156,.22);
+  color:#eafff7;
+  padding:10px 12px;
+  border-radius: 14px;
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.02em;
+  max-width: calc(100vw - 24px);
+  box-shadow: 0 0 18px rgba(0,0,0,.55);
+  backdrop-filter: blur(3px);
+  opacity:0;
+  transition: opacity .2s ease;
+  pointer-events:none;
+  display:none;
+}
+body.ui-mobile #mobileHint{ display:block; }
+#mobileHint.show{ opacity:1; }
+
 </style>
 </head>
 <body>
@@ -2459,9 +2742,16 @@ document.getElementById("btnExportAderisce")?.addEventListener("click", () => {
   const btnModeFarmacie = document.getElementById("btnModeFarmacie");
 
   // Toggle pannello
+  const updateHudChrome = () => {
+    if(!hud) return;
+    const collapsed = hud.classList.contains("is-collapsed");
+    if(hudToggleBtn) hudToggleBtn.textContent = collapsed ? "⌃" : "⌄";
+    if(hudFab) hudFab.textContent = collapsed ? "☰" : "✕";
+  };
   const toggleHud = () => {
     if(!hud) return;
     hud.classList.toggle("is-collapsed");
+    updateHudChrome();
   };
   if(hudFab) hudFab.addEventListener("click", (e)=>{ e.preventDefault(); toggleHud(); });
   if(hudToggleBtn) hudToggleBtn.addEventListener("click", (e)=>{ e.preventDefault(); toggleHud(); });
