@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Campagna SpG Verona · rev2.1.6.4</title>
+<title>Campagna SpG Verona · rev2.1.6.5</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -791,54 +791,102 @@ body.ui-mobile .leaflet-popup-content{
 body.ui-mobile #mobileHint{ display:block; }
 #mobileHint.show{ opacity:1; }
 
-/* =========================================================
-   rev2.1.6.4 — MOBILE POLISH (non tocca il desktop)
-========================================================= */
-body.ui-mobile #hudScroll{ padding-bottom: 220px; }
 
-/* Raggruppi in colonna + collasso (solo mobile) */
-body.ui-mobile .hud-buttons{ flex-direction: column; align-items: stretch; gap: 10px; }
-body.ui-mobile .btnGroup{ width: 100%; min-width: 0; }
-body.ui-mobile .btnGroup .grpTitle{
-  display:flex; align-items:center; justify-content:space-between;
-  cursor:pointer; user-select:none;
-}
-body.ui-mobile .btnGroup .grpTitle::after{ content:"⌄"; opacity:.85; font-size: 14px; margin-left: 10px; }
-body.ui-mobile .btnGroup.is-open .grpTitle::after{ content:"⌃"; }
-body.ui-mobile .btnGroup .grpBtns{ display:none; }
-body.ui-mobile .btnGroup.is-open .grpBtns{
-  display:grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px; margin-top: 8px;
-}
-body.ui-mobile .btnGroup.is-open .grpBtns .btn{ width: 100%; }
+/* === PATCH mobile usability (rev2.1.6.5) === */
 
-/* Mode toggle più compatto + pulsante info */
-body.ui-mobile #modeToggle{ padding: 8px; gap: 6px; }
-body.ui-mobile #modeToggle .modeBtn{ padding: 8px 10px; font-size: 12px; border-radius: 12px; }
-body.ui-mobile #modeToggle .modeHelp{ display:none; }
-body.ui-mobile #btnModeHelp{
-  padding: 8px 10px;
-  min-width: 36px;
-  font-weight: 800;
+/* Center custom markers inside Leaflet div icon container */
+.leaflet-div-icon{
+  background: transparent !important;
+  border: none !important;
+  position: relative !important;
+}
+.leaflet-div-icon .mrk{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform: translate(-50%,-50%);
 }
 
-/* MapStats: più piccolo, in alto a sinistra, richiudibile */
+/* Mobile: render pharmacy markers as tiny dots (less “fat finger”) */
+body.ui-mobile .mrk{ width:9px; height:9px; }
+body.ui-mobile .mrk.square{ border-radius:2px; }
+
+/* Mobile: grouped HUD buttons become collapsible (titles only) */
+body.ui-mobile .hud-buttons{
+  position: static !important;
+  bottom: auto !important;
+  background: transparent !important;
+  border-top: none !important;
+  padding-top: 8px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+body.ui-mobile .btnGroup{
+  flex: none !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  padding: 10px 10px 8px !important;
+}
+body.ui-mobile .grpTitle{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  user-select:none;
+  cursor:pointer;
+}
+body.ui-mobile .grpTitle::after{
+  content:"⌄";
+  opacity:.85;
+  font-size:14px;
+}
+body.ui-mobile .btnGroup[data-open="1"] .grpTitle::after{
+  content:"⌃";
+}
+body.ui-mobile .btnGroup .grpBtns{ display:none !important; }
+body.ui-mobile .btnGroup[data-open="1"] .grpBtns{ display:flex !important; }
+
+/* Mobile: mode toggle smaller + never blocks popup close */
+body.ui-mobile #modeToggle{
+  padding:6px 8px !important;
+  gap:6px !important;
+  border-radius: 14px !important;
+}
+body.ui-mobile .modeBtn{
+  padding:6px 8px !important;
+  font-size:11px !important;
+  border-radius: 12px !important;
+}
+body.ui-mobile .modeHelp{ display:none !important; }
+
+/* Mobile: mapStats = compact pill by default; user can tap to expand, then auto-collapses */
 body.ui-mobile #mapStats{
-  left: 12px !important; right: auto !important;
-  top: 58px !important;
-  width: min(280px, calc(100vw - 24px)) !important;
-  padding: 9px 10px 8px !important;
+  pointer-events:auto !important;
+  left:12px !important;
+  right:auto !important;
+  top:60px !important;
+  width: min(320px, calc(100vw - 24px)) !important;
+}
+body.ui-mobile #mapStats.ms-collapsed{
+  padding:8px 10px !important;
+  border-radius: 999px !important;
+  width: auto !important;
+  max-width: calc(100vw - 24px) !important;
 }
 
-/* Popup: X più grande e facile da tappare */
+/* Mobile: make Leaflet popup close button truly tappable */
 body.ui-mobile .leaflet-popup-close-button{
-  width: 44px !important;
-  height: 44px !important;
-  line-height: 44px !important;
-  font-size: 30px !important;
-  padding: 0 !important;
+  width:44px !important;
+  height:44px !important;
+  line-height:44px !important;
+  font-size:30px !important;
+  margin:6px !important;
+  border-radius: 14px !important;
+  background: rgba(255,255,255,.10) !important;
 }
-body.ui-mobile .leaflet-popup-content-wrapper{ padding-top: 6px; }
+body.ui-mobile .leaflet-popup-content-wrapper{
+  padding-top: 2px !important;
+}
 
 </style>
 </head>
@@ -865,7 +913,6 @@ body.ui-mobile .leaflet-popup-content-wrapper{ padding-top: 6px; }
 <div id="modeToggle" role="group" aria-label="Modalità selezione">
   <button class="modeBtn modeComuni" id="btnModeComuni" data-on="0">👆 Comuni</button>
   <button class="modeBtn" id="btnModeFarmacie" data-on="1">🏥 Farmacie</button>
-  <button class="modeBtn modeInfo" id="btnModeHelp" title="Info modalità" aria-label="Info modalità">ℹ︎</button>
   <div class="modeHelp" id="modeHelp">Comuni: scegli un comune · Farmacie: tocchi i marker per aprire le schede</div>
 </div>
 
@@ -949,7 +996,7 @@ body.ui-mobile .leaflet-popup-content-wrapper{ padding-top: 6px; }
 
   
   <div class="hud-buttons">
-    <div class="btnGroup grpComune">
+    <div class="btnGroup grpComune" data-open="1">
       <div class="grpTitle">Comune & referenti</div>
       <div class="grpBtns">
         <button class="hud-btn" id="btnAddRef">Aggiungi referente</button>
@@ -957,7 +1004,7 @@ body.ui-mobile .leaflet-popup-content-wrapper{ padding-top: 6px; }
       </div>
     </div>
 
-    <div class="btnGroup grpExport">
+    <div class="btnGroup grpExport" data-open="0">
       <div class="grpTitle">Export & stampa</div>
       <div class="grpBtns">
         <button class="hud-btn" id="btnExportXLSX" title="Scarica un... Excel con statistiche + liste per stato">Esporta Excel</button>
@@ -967,7 +1014,7 @@ body.ui-mobile .leaflet-popup-content-wrapper{ padding-top: 6px; }
       </div>
     </div>
 
-    <div class="btnGroup grpTools">
+    <div class="btnGroup grpTools" data-open="0">
       <div class="grpTitle">Strumenti</div>
       <div class="grpBtns">
         <button class="hud-btn" id="btnClearFilter" title="Rimuovi filtro stati" style="display:none">Reset filtro stati</button>
@@ -1091,7 +1138,53 @@ let showChooser = true;
 function setUiMode(mode){
   uiMode = (mode === "desktop") ? "desktop" : "mobile";
   localStorage.setItem(UI_MODE_KEY, uiMode);
+  
+  /* === Mobile UX: mapStats auto-collapsing + gruppi pulsanti collassabili === */
+  function __initMobileUx(){
+    // Collapsible button groups (one open at a time)
+    document.querySelectorAll(".btnGroup .grpTitle").forEach(t=>{
+      t.addEventListener("click", (e)=>{
+        if(uiMode !== "mobile") return;
+        const g = t.closest(".btnGroup");
+        if(!g) return;
+        const wasOpen = g.getAttribute("data-open")==="1";
+        document.querySelectorAll(".btnGroup").forEach(x=>x.setAttribute("data-open","0"));
+        g.setAttribute("data-open", wasOpen ? "0" : "1");
+        // piccolo feedback
+        try{ navigator.vibrate && navigator.vibrate(8); }catch(_){}
+      });
+    });
+
+    // MapStats: start collapsed, tap to expand (auto collapse after 3s)
+    const ms = document.getElementById("mapStats");
+    if(ms){
+      const collapse = ()=> ms.classList.add("ms-collapsed");
+      const expand = ()=> ms.classList.remove("ms-collapsed");
+      const scheduleCollapse = ()=>{
+        clearTimeout(window.__msAutoTimer);
+        window.__msAutoTimer = setTimeout(()=>{ collapse(); }, 3000);
+      };
+
+      // Start collapsed immediately on mobile
+      collapse();
+
+      ms.addEventListener("click", ()=>{
+        if(uiMode !== "mobile") return;
+        if(ms.classList.contains("ms-collapsed")){
+          expand();
+          scheduleCollapse();
+        }else{
+          collapse();
+        }
+      });
+
+      // When user interacts with the map, keep it collapsed
+      map.on("movestart zoomstart", ()=>{ if(uiMode==="mobile") collapse(); });
+    }
+  }
+
   applyUiMode();
+  __initMobileUx();
 }
 
 function applyUiMode(){
@@ -1102,23 +1195,17 @@ function applyUiMode(){
   const fab = document.getElementById("hudFab");
   const modeToggle = document.getElementById("modeToggle");
 
-  // mobile groups + mapStats
-  initBtnGroupCollapsers();
-
   if(uiMode === "mobile"){
     hud.classList.add("is-collapsed"); // default: pannello chiuso
     if(fab) fab.style.display = "";
     if(modeToggle) modeToggle.style.display = "";
     setInteractionMode("comuni"); // su mobile: priorità comuni
-    setMobileGroupsDefault();
-    setMapStatsAutoCollapseForMode();
     setTimeout(() => showMobileHintOnce(), 600);
   }else{
     hud.classList.remove("is-collapsed");
     if(fab) fab.style.display = "none";
     if(modeToggle) modeToggle.style.display = "none";
     setInteractionMode("farmacie");
-    setMapStatsAutoCollapseForMode();
     // su desktop niente hint
 
   }
@@ -1141,81 +1228,6 @@ function showMobileHintOnce(){
   el.classList.add("show");
   setTimeout(() => el.classList.remove("show"), 4200);
 }
-
-
-// Helper: mostra hint (anche manuale) per qualche secondo
-function showMobileHint(msg, ms){
-  if(uiMode !== "mobile") return;
-  const el = document.getElementById("mobileHint");
-  if(!el) return;
-  el.textContent = String(msg || "");
-  el.classList.add("show");
-  clearTimeout(window.__mhTimer);
-  window.__mhTimer = setTimeout(() => el.classList.remove("show"), ms || 3200);
-}
-
-/* ===============================
-   MOBILE: GRUPPI PULSANTI (collassabili)
-================================ */
-let __btnGroupsInited = false;
-function initBtnGroupCollapsers(){
-  if(__btnGroupsInited) return;
-  __btnGroupsInited = true;
-  const groups = Array.from(document.querySelectorAll(".hud-buttons .btnGroup"));
-  groups.forEach(g=>{
-    const title = g.querySelector(".grpTitle");
-    if(!title) return;
-    // accessibilità minima
-    title.setAttribute("role","button");
-    title.tabIndex = 0;
-
-    const toggle = () => {
-      if(uiMode !== "mobile") return;
-      const isOpen = g.classList.contains("is-open");
-      if(!isOpen){
-        // per non creare "minestrone": apri uno alla volta
-        groups.forEach(gg => { if(gg !== g) gg.classList.remove("is-open"); });
-      }
-      g.classList.toggle("is-open", !isOpen);
-    };
-
-    title.addEventListener("click", (e)=>{ if(uiMode!=="mobile") return; e.preventDefault(); toggle(); });
-    title.addEventListener("keydown", (e)=>{ if(uiMode!=="mobile") return;
-      if(e.key==="Enter" || e.key===" "){ e.preventDefault(); toggle(); }
-    });
-  });
-}
-
-function setMobileGroupsDefault(){
-  const groups = Array.from(document.querySelectorAll(".hud-buttons .btnGroup"));
-  groups.forEach(g => g.classList.remove("is-open"));
-  const gComune = document.getElementById("grpComune");
-  if(gComune) gComune.classList.add("is-open"); // default: SOLO COMUNE aperto
-}
-
-function setMapStatsAutoCollapseForMode(){
-  const ms = document.getElementById("mapStats");
-  if(!ms) return;
-  clearTimeout(window.__msAutoTimer);
-
-  if(uiMode !== "mobile"){
-    ms.classList.remove("ms-collapsed");
-    return;
-  }
-
-  // mostra solo la prima volta per 3s, poi resta compatto (richiamabile con tap)
-  const key = "spg_ms_hint_seen_rev2";
-  let seen = false;
-  try{ seen = !!sessionStorage.getItem(key); }catch(e){}
-  if(seen){
-    ms.classList.add("ms-collapsed");
-    return;
-  }
-  ms.classList.remove("ms-collapsed");
-  window.__msAutoTimer = setTimeout(()=>{ ms.classList.add("ms-collapsed"); }, 3000);
-  try{ sessionStorage.setItem(key, "1"); }catch(e){}
-}
-
 
 
 function openUiChooser(){
@@ -1354,7 +1366,9 @@ function getSmartPadding(opts){
       const isBottomSheet = (r.width >= vw*0.65) && (r.left <= 24) && (r.right >= vw-24) && (r.top > vh*0.25);
       if(isBottomSheet){
         // quanto "mangia" davvero dal basso (se è collassato, è ~maniglia)
-        const overlapBottom = Math.max(0, vh - Math.max(r.top, 0));
+        let overlapBottom = Math.max(0, vh - Math.max(r.top, 0));
+        // clamp: evita padding enorme quando l'HUD è espanso (su mobile faceva zoom-out “infinito”)
+        overlapBottom = Math.min(overlapBottom, Math.round(vh * 0.32));
         if(overlapBottom > 0){
           padBottom = Math.max(padBottom, Math.round(overlapBottom + 18));
         }
@@ -1377,47 +1391,94 @@ function getSmartPadding(opts){
       const msRight = (r.right >= vw - 12);
       const msBottom = (r.bottom >= vh - 12);
       const msTop = (r.top <= 12);
-      const msLeft = (r.left <= 12);
 
       if(msRight) padRight = Math.max(padRight, Math.round(r.width + 18));
       if(msBottom) padBottom = Math.max(padBottom, Math.round(r.height + 18));
       if(msTop) padTop = Math.max(padTop, Math.round(r.height + 18));
-      if(msLeft) padLeft = Math.max(padLeft, Math.round(r.width + 18));
     }
   }
 
-
-// --- Overlay modeToggle (mobile, top-left) ---
-const mt = document.getElementById("modeToggle");
-if(mt && uiMode === "mobile"){
-  const r = mt.getBoundingClientRect();
-  const visible = (r.right > 0 && r.left < vw && r.bottom > 0 && r.top < vh);
-  if(visible){
-    const mtTop = (r.top <= 14);
-    const mtLeft = (r.left <= 14);
-    if(mtTop) padTop = Math.max(padTop, Math.round(r.height + 18));
-    if(mtLeft) padLeft = Math.max(padLeft, Math.round(r.width + 18));
-  }
-}
-
+  padLeft = Math.min(padLeft, Math.round(vw * 0.40));
+  padRight = Math.min(padRight, Math.round(vw * 0.40));
+  padTop = Math.min(padTop, Math.round(vh * 0.35));
+  padBottom = Math.min(padBottom, Math.round(vh * 0.35));
   return { padLeft, padTop, padRight, padBottom };
 }
 function fitBoundsSmart(bounds){
-  // Centro del comune nella *porzione visibile* della mappa (esclude HUD, ignora overlay stats)
-  const p = getSmartPadding({ includeStats:false });
-  const maxZ = (uiMode === "mobile") ? 11 : 14;
+  const maxZ = (uiMode === "mobile") ? 12 : 14;
+  // Desktop: usa padding “smart” completo (HUD a sinistra).
+  if(uiMode !== "mobile"){
+    const p = getSmartPadding({ includeHud:true, includeStats:false });
+    map.fitBounds(bounds, {
+      paddingTopLeft:[p.padLeft, p.padTop],
+      paddingBottomRight:[p.padRight, p.padBottom],
+      maxZoom:maxZ
+    });
+    return;
+  }
+
+  // Mobile: padding “sicuro” (evita zoom-out infinito quando l'HUD è aperto)
+  const vw = window.innerWidth || document.documentElement.clientWidth;
+  const vh = window.innerHeight || document.documentElement.clientHeight;
+
+  let topPad = 22;
+  ["modeToggle","mapStats","banner"].forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el || el.style.display==="none") return;
+    const r = el.getBoundingClientRect();
+    const visible = (r.right>0 && r.left<vw && r.bottom>0 && r.top<vh);
+    if(visible) topPad = Math.max(topPad, Math.round(r.bottom + 14));
+  });
+
+  let bottomPad = 22;
+  const hud = document.getElementById("hud");
+  if(hud && hud.style.display!=="none"){
+    const r = hud.getBoundingClientRect();
+    const overlap = Math.max(0, vh - Math.max(r.top, 0));
+    bottomPad = Math.max(bottomPad, Math.min(Math.round(overlap + 18), Math.round(vh * 0.22)));
+  }
+
   map.fitBounds(bounds, {
-    paddingTopLeft: [p.padLeft, p.padTop],
-    paddingBottomRight: [p.padRight, p.padBottom],
-    maxZoom: maxZ
+    paddingTopLeft:[22, topPad],
+    paddingBottomRight:[22, bottomPad],
+    maxZoom:maxZ
   });
 }
 function applyPopupAutoPan(popup){
-  // Per i popup: considera sia HUD che overlay
-  const p = getSmartPadding({ includeStats:true });
-  popup.options.autoPan = true;
-  popup.options.autoPanPaddingTopLeft = [p.padLeft, p.padTop];
-  popup.options.autoPanPaddingBottomRight = [p.padRight, p.padBottom];
+  if(!popup) return;
+  // Desktop: usa smart padding completo
+  if(uiMode !== "mobile"){
+    const p = getSmartPadding({ includeHud:true, includeStats:true });
+    popup.options.autoPanPaddingTopLeft = L.point(p.padLeft, p.padTop);
+    popup.options.autoPanPaddingBottomRight = L.point(p.padRight, p.padBottom);
+    popup.options.keepInView = true;
+    return;
+  }
+
+  // Mobile: evita che il popup finisca sotto il toggle in alto o dentro l'HUD in basso
+  const vw = window.innerWidth || document.documentElement.clientWidth;
+  const vh = window.innerHeight || document.documentElement.clientHeight;
+
+  let topPad = 20;
+  ["modeToggle","mapStats","banner"].forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el || el.style.display==="none") return;
+    const r = el.getBoundingClientRect();
+    const visible = (r.right>0 && r.left<vw && r.bottom>0 && r.top<vh);
+    if(visible) topPad = Math.max(topPad, Math.round(r.bottom + 14));
+  });
+
+  let bottomPad = 20;
+  const hud = document.getElementById("hud");
+  if(hud && hud.style.display!=="none"){
+    const r = hud.getBoundingClientRect();
+    const overlap = Math.max(0, vh - Math.max(r.top, 0));
+    bottomPad = Math.max(bottomPad, Math.min(Math.round(overlap + 18), Math.round(vh * 0.25)));
+  }
+
+  popup.options.autoPanPaddingTopLeft = L.point(22, topPad);
+  popup.options.autoPanPaddingBottomRight = L.point(22, bottomPad);
+  popup.options.keepInView = true;
 }
 
 /* Per capire se l'utente sta facendo zoom-in o zoom-out */
@@ -2830,55 +2891,6 @@ body.ui-mobile .leaflet-popup-content{
 body.ui-mobile #mobileHint{ display:block; }
 #mobileHint.show{ opacity:1; }
 
-/* =========================================================
-   rev2.1.6.4 — MOBILE POLISH (non tocca il desktop)
-========================================================= */
-body.ui-mobile #hudScroll{ padding-bottom: 220px; }
-
-/* Raggruppi in colonna + collasso (solo mobile) */
-body.ui-mobile .hud-buttons{ flex-direction: column; align-items: stretch; gap: 10px; }
-body.ui-mobile .btnGroup{ width: 100%; min-width: 0; }
-body.ui-mobile .btnGroup .grpTitle{
-  display:flex; align-items:center; justify-content:space-between;
-  cursor:pointer; user-select:none;
-}
-body.ui-mobile .btnGroup .grpTitle::after{ content:"⌄"; opacity:.85; font-size: 14px; margin-left: 10px; }
-body.ui-mobile .btnGroup.is-open .grpTitle::after{ content:"⌃"; }
-body.ui-mobile .btnGroup .grpBtns{ display:none; }
-body.ui-mobile .btnGroup.is-open .grpBtns{
-  display:grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px; margin-top: 8px;
-}
-body.ui-mobile .btnGroup.is-open .grpBtns .btn{ width: 100%; }
-
-/* Mode toggle più compatto + pulsante info */
-body.ui-mobile #modeToggle{ padding: 8px; gap: 6px; }
-body.ui-mobile #modeToggle .modeBtn{ padding: 8px 10px; font-size: 12px; border-radius: 12px; }
-body.ui-mobile #modeToggle .modeHelp{ display:none; }
-body.ui-mobile #btnModeHelp{
-  padding: 8px 10px;
-  min-width: 36px;
-  font-weight: 800;
-}
-
-/* MapStats: più piccolo, in alto a sinistra, richiudibile */
-body.ui-mobile #mapStats{
-  left: 12px !important; right: auto !important;
-  top: 58px !important;
-  width: min(280px, calc(100vw - 24px)) !important;
-  padding: 9px 10px 8px !important;
-}
-
-/* Popup: X più grande e facile da tappare */
-body.ui-mobile .leaflet-popup-close-button{
-  width: 44px !important;
-  height: 44px !important;
-  line-height: 44px !important;
-  font-size: 30px !important;
-  padding: 0 !important;
-}
-body.ui-mobile .leaflet-popup-content-wrapper{ padding-top: 6px; }
-
 </style></head><body>
     <h1>${esc(title)}</h1>
     <div class="meta">Export: ${esc(stats.data_export)} · <span class="pill">Aderiscono: ${stats.aderisce}/${stats.totale} (${stats.aderisce_pct}%)</span></div>
@@ -3021,55 +3033,6 @@ body.ui-mobile .leaflet-popup-content{
 body.ui-mobile #mobileHint{ display:block; }
 #mobileHint.show{ opacity:1; }
 
-/* =========================================================
-   rev2.1.6.4 — MOBILE POLISH (non tocca il desktop)
-========================================================= */
-body.ui-mobile #hudScroll{ padding-bottom: 220px; }
-
-/* Raggruppi in colonna + collasso (solo mobile) */
-body.ui-mobile .hud-buttons{ flex-direction: column; align-items: stretch; gap: 10px; }
-body.ui-mobile .btnGroup{ width: 100%; min-width: 0; }
-body.ui-mobile .btnGroup .grpTitle{
-  display:flex; align-items:center; justify-content:space-between;
-  cursor:pointer; user-select:none;
-}
-body.ui-mobile .btnGroup .grpTitle::after{ content:"⌄"; opacity:.85; font-size: 14px; margin-left: 10px; }
-body.ui-mobile .btnGroup.is-open .grpTitle::after{ content:"⌃"; }
-body.ui-mobile .btnGroup .grpBtns{ display:none; }
-body.ui-mobile .btnGroup.is-open .grpBtns{
-  display:grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px; margin-top: 8px;
-}
-body.ui-mobile .btnGroup.is-open .grpBtns .btn{ width: 100%; }
-
-/* Mode toggle più compatto + pulsante info */
-body.ui-mobile #modeToggle{ padding: 8px; gap: 6px; }
-body.ui-mobile #modeToggle .modeBtn{ padding: 8px 10px; font-size: 12px; border-radius: 12px; }
-body.ui-mobile #modeToggle .modeHelp{ display:none; }
-body.ui-mobile #btnModeHelp{
-  padding: 8px 10px;
-  min-width: 36px;
-  font-weight: 800;
-}
-
-/* MapStats: più piccolo, in alto a sinistra, richiudibile */
-body.ui-mobile #mapStats{
-  left: 12px !important; right: auto !important;
-  top: 58px !important;
-  width: min(280px, calc(100vw - 24px)) !important;
-  padding: 9px 10px 8px !important;
-}
-
-/* Popup: X più grande e facile da tappare */
-body.ui-mobile .leaflet-popup-close-button{
-  width: 44px !important;
-  height: 44px !important;
-  line-height: 44px !important;
-  font-size: 30px !important;
-  padding: 0 !important;
-}
-body.ui-mobile .leaflet-popup-content-wrapper{ padding-top: 6px; }
-
 </style>
 </head>
 <body>
@@ -3182,14 +3145,6 @@ document.getElementById("btnExportAderisce")?.addEventListener("click", () => {
   // Modalità selezione
   if(btnModeComuni) btnModeComuni.addEventListener("click", (e)=>{ e.preventDefault(); setInteractionMode("comuni"); });
   if(btnModeFarmacie) btnModeFarmacie.addEventListener("click", (e)=>{ e.preventDefault(); setInteractionMode("farmacie"); });
-
-const btnModeHelp = document.getElementById("btnModeHelp");
-if(btnModeHelp){
-  btnModeHelp.addEventListener("click", (e)=>{
-    e.preventDefault();
-    showMobileHint("Comuni: scegli un comune (mappa o ricerca). Farmacie: tocchi i marker per aprire le schede.", 4200);
-  });
-}
 
   // Applica UI mode iniziale (IMPORTANTE: dopo che farmMarkers è definito)
   applyUiMode();
