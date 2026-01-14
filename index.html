@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Mappa Verona – SpG (rev2.1.3)</title>
+<title>Mappa Verona – SpG (rev2.1.3.2)</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -175,20 +175,20 @@ html, body { margin:0; height:100%; background:#000; font-family:system-ui, -app
 
 /* === Barra non contattate (arancione) === */
 .ms-bar2{
-  margin-top:6px;
+  margin-top:12px; /* più distanza dalla barra verde */
   height:8px;
   border-radius:999px;
   overflow:hidden;
-  background: rgba(255, 176, 0, .18);
-  border:1px solid rgba(255,176,0,.35);
+  background: rgba(255, 191, 0, .10);
+  border:1px solid rgba(255,191,0,.28);
 }
 #ms_bar_nc{
   height:100%;
   width:0%;
-  background: #ffb000;
+  background: linear-gradient(90deg, rgba(255,191,0,.35), rgba(255,191,0,.85));
   border-radius:999px;
 }
-.ms-mini .nc-label{ color:#ffb000; font-weight:900; }
+.ms-mini .nc-label{ color:rgba(255,191,0,.95); font-weight:900; }
 /* === Incaricati: riga input + pulsante aggiungi === */
 .ownersRow{
   display:flex;
@@ -450,6 +450,7 @@ textarea.inlineInput{ min-height: 64px; resize: vertical; }
     <button class="hud-btn" id="btnExportXLSX" title="Scarica un file Excel con statistiche + liste per stato">Esporta Excel</button>
     <button class="hud-btn" id="btnExportCSV" title="Scarica un CSV (apribile in Excel) con tutte le farmacie e i campi campagna">Esporta CSV</button>
     <button class="hud-btn" id="btnPrintReport" title="Apri una pagina stampabile con statistiche + liste per stato">Stampa</button>
+    <button class="hud-btn" id="btnExportAderisce" title="Export rapido per coordinamento: elenco SOLO ADERISCE">Solo aderisce</button>
   </div>
 
   <div id="refPanel">
@@ -469,7 +470,7 @@ textarea.inlineInput{ min-height: 64px; resize: vertical; }
 <div class="ms-mini">
     Trattativa: <b id="ms_trattativa">0</b> · Non aderisce: <b id="ms_rifiuta">0</b> · Da contattare: <b id="ms_contattare">0</b>
   </div>
-    <div class="ms-mini"><span class="nc-label">Non contattate</span>: <b id="ms_nc">0</b> · <span id="ms_nc_pct">0%</span></div>
+    <div class="ms-mini"><span class="nc-label">Da contattare (non contattate)</span>: <b id="ms_nc">0</b> · <span id="ms_nc_pct">0%</span></div>
 <div class="ms-mini" id="ms_filter" style="display:none"></div>
 </div>
 
@@ -598,7 +599,10 @@ L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { m
 /* ===============================
    PADDING "SMART" (HUD + overlay)
 ================================ */
-function getSmartPadding(){
+function getSmartPadding(opts){
+  const options = opts || {};
+  const includeHud = options.includeHud !== false;
+  const includeStats = options.includeStats !== false;
   const base = 40;
   let padLeft = base, padTop = base, padRight = base, padBottom = base;
 
@@ -606,34 +610,40 @@ function getSmartPadding(){
   const vh = window.innerHeight || document.documentElement.clientHeight;
 
   const hud = document.getElementById("hud");
-  if(hud){
+  if(includeHud && hud){
     const r = hud.getBoundingClientRect();
-    const hudLeft = (r.left <= 60) && (r.top < vh - 60) && (r.width > 140) && (r.right < vw * 0.92);
-if(hudLeft) padLeft = Math.max(padLeft, Math.round(r.width + 24));
+    // HUD tipicamente a sinistra: conta sempre il suo ingombro per centrare nell'area mappa
+    const hudVisible = (r.width > 120) && (r.height > 120) && (r.right > 0) && (r.bottom > 0);
+    const hudLeft = hudVisible && (r.left <= 80);
+    if(hudLeft) padLeft = Math.max(padLeft, Math.round(r.width + 24));
 
-    const hudBottom = (r.bottom >= vh - 12) && (r.height > 120) && (r.top > vh * 0.35);
+    // HUD eventualmente in basso (mobile)
+    const hudBottom = hudVisible && (r.bottom >= vh - 12) && (r.height > 120) && (r.top > vh * 0.35);
     if(hudBottom) padBottom = Math.max(padBottom, Math.round(r.height + 24));
   }
 
   const ms = document.getElementById("mapStats");
-  if(ms){
+  if(includeStats && ms){
     const r = ms.getBoundingClientRect();
-    const msRight = (r.right >= vw - 12) && (r.width > 120);
-    if(msRight) padRight = Math.max(padRight, Math.round(r.width + 24));
-    const msBottom = (r.bottom >= vh - 12) && (r.height > 60);
-    if(msBottom) padBottom = Math.max(padBottom, Math.round(r.height + 24));
+    const msVisible = (r.width > 120) && (r.height > 40) && (r.left < vw) && (r.top < vh);
+    const msRight = msVisible && (r.right >= vw - 12);
+    if(msRight) padRight = Math.max(padRight, Math.round(r.width + 18));
+    const msBottom = msVisible && (r.bottom >= vh - 12);
+    if(msBottom) padBottom = Math.max(padBottom, Math.round(r.height + 18));
   }
   return { padLeft, padTop, padRight, padBottom };
 }
 function fitBoundsSmart(bounds){
-  const p = getSmartPadding();
+  // Per il "centro" del comune: privilegia l'HUD, ignora l'overlay bottom-right
+  const p = getSmartPadding({ includeStats:false });
   map.fitBounds(bounds, {
     paddingTopLeft: [p.padLeft, p.padTop],
     paddingBottomRight: [p.padRight, p.padBottom]
   });
 }
 function applyPopupAutoPan(popup){
-  const p = getSmartPadding();
+  // Per i popup: considera sia HUD che overlay
+  const p = getSmartPadding({ includeStats:true });
   popup.options.autoPan = true;
   popup.options.autoPanPaddingTopLeft = [p.padLeft, p.padTop];
   popup.options.autoPanPaddingBottomRight = [p.padRight, p.padBottom];
@@ -826,6 +836,8 @@ function buildPopupHtml(row, farmaciaId){
    POPUP: autosave + refresh + binding robusto
 ================================ */
 const POPUP_BINDERS = new WeakMap();
+// Cache "bozza" per autosave affidabile anche se il DOM del popup non è più disponibile al momento del close
+const POPUP_DRAFT_CACHE = new Map(); // farmaciaId -> { state, owners, note, flags, closed }
 
 function collectPopupDraft(wrap){
   const onBtn = wrap.querySelector('button[data-role="state"][data-on="1"]');
@@ -892,9 +904,22 @@ function refreshPopup(marker, row, farmaciaId, reopen=true){
 function handlePopupClose(marker, row, farmaciaId, isComunale){
   if(marker._skipAutosave){
     marker._skipAutosave = false;
+    POPUP_DRAFT_CACHE.delete(farmaciaId);
     return;
   }
-  autoSavePopup(marker, row, farmaciaId, isComunale);
+  // Autosave: prova dal DOM; se Leaflet ha già rimosso il nodo, usa la bozza cache.
+  const root = marker.getPopup()?.getElement();
+  const wrap = root ? root.querySelector(".popupWrap") : null;
+  if(wrap){
+    const draft = collectPopupDraft(wrap);
+    applyDraftToStore(marker, row, farmaciaId, isComunale, draft);
+  }else{
+    const cached = POPUP_DRAFT_CACHE.get(farmaciaId);
+    if(cached){
+      applyDraftToStore(marker, row, farmaciaId, isComunale, cached);
+    }
+  }
+  POPUP_DRAFT_CACHE.delete(farmaciaId);
 }
 
 function attachPopupHandlers(marker, row, farmaciaId){
@@ -909,6 +934,12 @@ function attachPopupHandlers(marker, row, farmaciaId){
 
   const wrap = root.querySelector(".popupWrap");
   if(!wrap) return;
+
+  // Mantieni una bozza aggiornata per autosave affidabile (anche se Leaflet rimuove il DOM al close)
+  const cacheNow = () => {
+    try { POPUP_DRAFT_CACHE.set(farmaciaId, collectPopupDraft(wrap)); } catch(e){}
+  };
+  cacheNow();
 
   const flagsBox = wrap.querySelector('[data-role="aderisceFlags"]');
 
@@ -925,28 +956,30 @@ function attachPopupHandlers(marker, row, farmaciaId){
       btn.setAttribute("data-on","1");
       const st = getCurrentState();
       if(flagsBox) flagsBox.style.display = (st==="aderisce") ? "" : "none";
+      cacheNow();
     }, { signal });
   });
 
+  // note + checkbox (closed + flags) -> aggiorna cache bozza
+  const noteEl = wrap.querySelector('[data-role="note"]');
+  if(noteEl){
+    noteEl.addEventListener("input", () => cacheNow(), { signal });
+  }
+  wrap.querySelectorAll('input[type=checkbox]').forEach(cb => {
+    cb.addEventListener("change", () => cacheNow(), { signal });
+  });
+
   // remove owner chip (delegation)
+  // IMPORTANTE: la X modifica SOLO la "bozza" (DOM). Il salvataggio avviene con Salva e chiudi
+  // o con autosave (chiusura popup). Questo evita effetti strani (nomi che spariscono/ricompaiono).
   wrap.addEventListener("click", (ev) => {
     const t = ev.target;
     if(!(t instanceof HTMLElement)) return;
     if(t.getAttribute("data-role") === "rmOwner"){
       ev.preventDefault(); ev.stopPropagation();
-      const enc = (t.getAttribute("data-owner") || "").trim();
-      let who = enc;
-      try { who = decodeURIComponent(enc); } catch(e){}
-      const st = getSt(farmaciaId);
-      st.owners = (st.owners || []).filter(x => x !== who);
-      setSt(farmaciaId, st);
-
-      // aggiorna marker e HUD senza ricaricare tutto
-      const rec = farmMarkers.find(x => x.id === farmaciaId);
-      if(rec) applyStatusToMarker(marker, farmaciaId, row, rec.isComunale);
-      aggiornaHUD(); aggiornaComuneSelezionato(); aggiornaMapStats(); applyMarkerVisibility();
-
-      refreshPopup(marker, row, farmaciaId, true);
+      const chip = t.closest(".chip");
+      if(chip) chip.remove();
+      cacheNow();
     }
   }, { signal });
 
@@ -956,6 +989,7 @@ function attachPopupHandlers(marker, row, farmaciaId){
     btnReset.addEventListener("click", (ev) => {
       ev.preventDefault(); ev.stopPropagation();
       marker._skipAutosave = true;
+      POPUP_DRAFT_CACHE.delete(farmaciaId);
       marker.closePopup();
     }, { signal });
   }
@@ -969,6 +1003,10 @@ function attachPopupHandlers(marker, row, farmaciaId){
       const rec = farmMarkers.find(x => x.id === farmaciaId);
       const isComunale = rec ? rec.isComunale : isComunaleFromGestione(row.gestione);
       applyDraftToStore(marker, row, farmaciaId, isComunale, draft);
+
+      // aggiorna contenuto "bound" per coerenza immediata
+      marker.setPopupContent(buildPopupHtml(row, farmaciaId));
+      POPUP_DRAFT_CACHE.delete(farmaciaId);
 
       marker._skipAutosave = true; // già salvato
       marker.closePopup();
@@ -996,6 +1034,7 @@ function attachPopupHandlers(marker, row, farmaciaId){
     const merged = uniq([...existing, ...names]);
     ownersChips.innerHTML = merged.map(o => `<span class="chip">${esc(o)} <span class="xbtn" data-role="rmOwner" data-owner="${encodeURIComponent(o)}">×</span></span>`).join("");
     ownersInput.value = "";
+    cacheNow();
   };
 
   const btnAdd = wrap.querySelector('[data-role="ownersAdd"]');
@@ -1419,10 +1458,15 @@ async function loadAll(){
         opacity: st.closed ? 0.35 : 1
       });
 
+      // Contenuto popup: viene rigenerato ad ogni apertura per riflettere SEMPRE lo stato salvato
+      // (evita che i chip/nomi "spariscano" dopo Salva e ricompaiano solo dopo un refresh).
       marker.bindPopup(buildPopupHtml(row, farmaciaId), { maxWidth: 420, autoPan:true });
       marker.on("popupopen", () => {
+        // rigenera contenuto dal data-store (localStorage)
+        marker.setPopupContent(buildPopupHtml(row, farmaciaId));
         applyPopupAutoPan(marker.getPopup());
-        attachPopupHandlers(marker, row, farmaciaId);
+        // i listener vanno attaccati dopo che Leaflet ha inserito il DOM del popup
+        setTimeout(() => attachPopupHandlers(marker, row, farmaciaId), 0);
       });
       marker.on("popupclose", () => handlePopupClose(marker, row, farmaciaId, isComunale));
 
