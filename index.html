@@ -1,12 +1,11 @@
 <!DOCTYPE html>
+
 <html lang="it">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Campagna SpG Verona – Mappa (rev2.1.4)</title>
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport">
+<title>Mappa Verona – SpG (rev2.1.5)</title>
+<link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
 <style>
 html, body { margin:0; height:100%; background:#000; font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
 #map { position:absolute; inset:0; background:#050505; }
@@ -380,278 +379,416 @@ textarea.inlineInput{ min-height: 64px; resize: vertical; }
 @media (max-width: 720px){
   #mapStats{ right:12px; bottom:12px; width: min(420px, calc(100vw - 24px)); }
 }
+
+
 /* ===============================
-   UI MODE: splash + mobile panel
+   UI MODE SPLASH + MOBILE CONTROLS
 ================================ */
 .uiSplash{
-  position:fixed;
-  inset:0;
-  z-index:10001;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  position:fixed; inset:0;
+  display:none;
+  align-items:center; justify-content:center;
+  background: radial-gradient(circle at 30% 20%, rgba(0,255,156,.18), rgba(0,0,0,0) 55%),
+              linear-gradient(180deg, rgba(0,0,0,.72), rgba(0,0,0,.92));
+  z-index:10050;
   padding:18px;
-  background:
-    radial-gradient(1200px 700px at 20% 10%, rgba(0,255,156,.18), rgba(0,0,0,0) 55%),
-    radial-gradient(900px 600px at 90% 90%, rgba(255,191,0,.10), rgba(0,0,0,0) 60%),
-    rgba(0,0,0,.92);
-  backdrop-filter: blur(3px);
 }
-.uiSplash.hidden{ display:none; }
-.uiCard{
-  width: min(520px, 100%);
-  background: rgba(5,5,5,.92);
-  border:1px solid rgba(0,255,156,.28);
-  box-shadow: 0 0 28px rgba(0,0,0,.75);
-  border-radius: 18px;
-  padding: 18px 16px 16px;
-}
-.uiKicker{
-  font-size:10px;
-  letter-spacing:.22em;
-  text-transform:uppercase;
-  color:#bfeee0;
-}
-.uiTitle{
-  margin-top:6px;
-  font-size:22px;
-  font-weight:900;
-  color:#fff;
-  letter-spacing:.02em;
-}
-.uiSub{
-  margin-top:8px;
-  color:#cfcfcf;
-  font-size:13px;
-  line-height:1.35;
-}
-.uiBtns{
-  margin-top:14px;
-  display:grid;
-  grid-template-columns: 1fr;
-  gap:10px;
-}
-.uiBtn{
-  width:100%;
-  padding:14px 14px;
-  border-radius: 16px;
-  border:1px solid rgba(255,255,255,.14);
-  background:#0e0e0e;
-  color:#fff;
-  font-size:15px;
-  font-weight:900;
-  cursor:pointer;
-}
-.uiBtn:hover{ border-color: rgba(0,255,156,.55); }
-.uiBtnMobile{
-  border-color: rgba(0,255,156,.35);
-  background: linear-gradient(180deg, rgba(0,255,156,.10), rgba(14,14,14,1));
-}
-.uiBtnDesktop{
-  border-color: rgba(77,166,255,.35);
-  background: linear-gradient(180deg, rgba(77,166,255,.10), rgba(14,14,14,1));
-}
-.uiHint{
-  margin-top:10px;
-  color:#9a9a9a;
-  font-size:12px;
-}
-
-/* Mobile HUD toggle + close */
-#hudToggle{
-  position:fixed;
-  left:14px;
-  bottom:14px;
-  z-index:9999;
-  display:none;
-  align-items:center;
-  justify-content:center;
-  gap:8px;
-  padding:12px 14px;
-  border-radius: 16px;
+.uiSplash.show{ display:flex; }
+.uiSplashCard{
+  width:min(520px, 100%);
+  border-radius:16px;
   border:1px solid rgba(0,255,156,.35);
-  background: rgba(0,0,0,.82);
-  color:#eafff7;
-  font-size:13px;
-  font-weight:950;
-  cursor:pointer;
-  box-shadow: 0 0 18px rgba(0,0,0,.6);
+  background: rgba(5,5,5,.92);
+  box-shadow: 0 0 28px rgba(0,0,0,.85);
+  padding:18px 16px;
 }
-#hudToggle:active{ transform: translateY(1px); }
+.uiSplashTitle{
+  font-size:22px; font-weight:850; letter-spacing:.02em;
+  color:#fff; text-transform:uppercase;
+}
+.uiSplashSub{ margin-top:6px; color:#bdbdbd; font-size:14px; }
+.uiSplashBtns{ display:flex; gap:12px; margin-top:14px; flex-wrap:wrap; }
+.uiBtn{
+  flex:1 1 190px;
+  padding:14px 14px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.22);
+  background: rgba(255,255,255,.08);
+  color:#fff;
+  font-weight:850;
+  font-size:16px;
+  cursor:pointer;
+}
+.uiBtnMobile{ border-color: rgba(0,255,156,.38); background: rgba(0,255,156,.10); }
+.uiBtnDesktop{ border-color: rgba(255,170,0,.35); background: rgba(255,170,0,.08); }
+.uiBtn:active{ transform: translateY(1px); }
+.uiSplashHint{ margin-top:12px; color:#9b9b9b; font-size:12px; }
 
-#hudClose{
-  position:absolute;
-  top:10px;
-  right:10px;
-  width:34px;
-  height:34px;
-  border-radius: 12px;
-  border:1px solid rgba(0,255,156,.55);
-  background:#0b0b0b;
-  color:#00ff9c;
-  font-size:20px;
-  font-weight:900;
+.mobileControls{
+  position:fixed;
+  left:12px; right:12px; bottom:12px;
   display:none;
   align-items:center;
-  justify-content:center;
-  cursor:pointer;
-}
-#hudClose:hover{ background:#00ff9c; color:#00110b; }
-
-/* Modalità mobile: HUD collassabile */
-body[data-uimode="mobile"] #hudToggle{ display:flex; }
-body[data-uimode="mobile"] #hudClose{ display:flex; }
-
-/* In mobile, se collassato lo nascondo */
-body[data-uimode="mobile"] #hud{
-  transition: transform .22s ease, opacity .22s ease;
-}
-body[data-uimode="mobile"] #hud.hud-collapsed{
-  transform: translateY(120%);
-  opacity: 0;
+  gap:10px;
+  z-index:10040;
   pointer-events:none;
 }
-
-/* Micro-leggenda dentro overlay (utile su smartphone) */
-.ms-legendline{
-  margin-top:8px;
+.mobileControls.show{ display:flex; }
+.fabBtn{
+  pointer-events:auto;
+  height:44px; width:54px;
+  border-radius:14px;
+  border:1px solid rgba(0,255,156,.35);
+  background: rgba(5,5,5,.88);
+  color:#fff;
+  font-size:20px;
+  font-weight:900;
+  box-shadow: 0 0 18px rgba(0,0,0,.65);
+}
+.seg2{
+  pointer-events:auto;
   display:flex;
-  gap:10px;
-  flex-wrap:wrap;
-  font-size:11px;
-  color:#e6e6e6;
+  border-radius:14px;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.18);
+  background: rgba(5,5,5,.78);
+  box-shadow: 0 0 18px rgba(0,0,0,.65);
+  flex: 1 1 auto;
 }
-.ms-legendline .k{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
+.segBtn{
+  flex:1 1 0;
+  padding:10px 10px;
+  border:0;
+  background: transparent;
+  color:#fff;
+  font-weight:850;
+  font-size:13px;
+  cursor:pointer;
 }
-.ms-legendline .b{
-  width:10px; height:10px; border-radius:3px;
-}
-.ms-legendline .b.round{ border-radius:50%; }
-</style>
-</head>
+.segBtn[data-on="1"]{ background: rgba(0,255,156,.16); border-right:1px solid rgba(255,255,255,.12); }
+.segBtn:last-child[data-on="1"]{ border-right:0; }
+.segBtn[data-mode="comuni"][data-on="1"]{ background: rgba(255,170,0,.16); }
 
+.toast{
+  position:fixed;
+  left:50%; bottom:74px;
+  transform: translateX(-50%) translateY(8px);
+  background: rgba(5,5,5,.92);
+  border:1px solid rgba(255,255,255,.18);
+  color:#fff;
+  padding:10px 12px;
+  border-radius:999px;
+  font-weight:750;
+  font-size:12px;
+  opacity:0;
+  pointer-events:none;
+  z-index:10060;
+  transition: opacity .18s ease, transform .18s ease;
+}
+.toast.show{
+  opacity:1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ===============================
+   HUD ACTION GROUPS
+================================ */
+.hud-actions{ margin-top:10px; display:flex; flex-direction:column; gap:10px; }
+.actionGroup{
+  border:1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.04);
+  border-radius:10px;
+  padding:10px;
+}
+.actionGroupTitle{
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:#fff;
+  margin-bottom:8px;
+}
+.actionGroup.g-comune{ border-color: rgba(0,255,156,.25); }
+.actionGroup.g-export{ border-color: rgba(255,170,0,.22); }
+.actionGroup.g-tools{ border-color: rgba(77,166,255,.22); }
+
+.actionRow{ display:flex; gap:8px; flex-wrap:wrap; }
+.actionRow .hud-btn{ flex:1 1 140px; }
+
+.comuneSearch{
+  display:none;
+  gap:8px;
+  margin: 6px 0 10px;
+}
+.comuneSearch input{
+  flex: 1 1 auto;
+  height:34px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.16);
+  background: rgba(0,0,0,.35);
+  color:#fff;
+  padding: 0 10px;
+  font-weight:650;
+}
+.miniBtn{
+  height:34px;
+  border-radius:10px;
+  border:1px solid rgba(0,255,156,.35);
+  background: rgba(0,255,156,.12);
+  color:#fff;
+  font-weight:900;
+  padding: 0 12px;
+  cursor:pointer;
+}
+
+/* ===============================
+   MOBILE OPTIMIZATION
+================================ */
+@media (max-width: 720px){
+  #hud{
+    left: 12px;
+    right: 12px;
+    top: auto;
+    bottom: 12px;
+    width: auto;
+    max-height: 62vh;
+    border-left: none;
+    border-top: 4px solid #00ff9c;
+    border-radius: 16px;
+    padding: 12px;
+    transition: transform .22s ease, opacity .22s ease;
+  }
+  body[data-hud="collapsed"] #hud{
+    transform: translateY(120%);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .comuneSearch{ display:flex; }
+
+  /* Lighter markers for performance */
+  .mrk{ box-shadow:none; }
+
+  /* Popup sizing: avoid full-screen */
+  .leaflet-popup{ max-width: min(92vw, 360px); }
+  .leaflet-popup-content-wrapper{ max-width: min(92vw, 360px); border-radius:14px; }
+  .leaflet-popup-content{ max-width: min(86vw, 340px); margin: 10px 12px; }
+  .popupWrap{ max-height: 58vh; overflow-y:auto; -webkit-overflow-scrolling: touch; }
+}
+</style>
+</meta></head>
 <body>
+<div aria-hidden="true" class="uiSplash" id="uiSplash">
+<div class="uiSplashCard">
+<div class="uiSplashTitle">Campagna SpG Verona</div>
+<div class="uiSplashSub">Scegli l'interfaccia</div>
+<div class="uiSplashBtns">
+<button class="uiBtn uiBtnMobile" id="btnModeMobile">📱 Smartphone</button>
+<button class="uiBtn uiBtnDesktop" id="btnModeDesktop">🖥️ Desktop</button>
+</div>
+<div class="uiSplashHint" id="uiSplashHint"></div>
+</div>
+</div>
+<div aria-hidden="true" class="mobileControls" id="mobileControls">
+<button class="fabBtn" id="btnHudFab" title="Apri/chiudi pannello">☰</button>
+<div aria-label="Modalità tap" class="seg2" id="segTapMode" role="group">
+<button class="segBtn" data-mode="farmacie" data-on="1">Farmacie</button>
+<button class="segBtn" data-mode="comuni" data-on="0">Comuni</button>
+</div>
+</div>
+<div aria-hidden="true" class="toast" id="toast"></div>
+
 <div id="map"></div>
 <div id="banner"></div>
-
-<!-- UI mode splash (smartphone / desktop) -->
-<div id="uiSplash" class="uiSplash hidden" role="dialog" aria-modal="true" aria-label="Scelta interfaccia">
-  <div class="uiCard">
-    <div class="uiKicker">Campagna</div>
-    <div class="uiTitle">SpG Verona</div>
-    <div class="uiSub">Scegli l’interfaccia. Puoi cambiarla in qualsiasi momento dal pannello.</div>
-    <div class="uiBtns">
-      <button type="button" id="btnModeMobile" class="uiBtn uiBtnMobile">📱 Smartphone</button>
-      <button type="button" id="btnModeDesktop" class="uiBtn uiBtnDesktop">🖥️ Desktop</button>
-    </div>
-    <div class="uiHint" id="uiHint"></div>
-  </div>
-</div>
-
-<button id="hudToggle" type="button" aria-label="Apri pannello">☰ Legenda</button>
-
 <div id="hud">
-  <button id="hudClose" type="button" aria-label="Chiudi pannello">×</button>
-  <div class="hud-title" id="hudTitle">Provincia di Verona</div>
-  <div class="hud-sub" id="hudSub">Vista generale</div>
-
-  <div class="section-chip">Avanzamento <small id="g_hint"></small></div>
-  <div class="progressBox">
-    <div class="p-main">
-      <div class="big">Aderiscono <span id="g_aderisce">0</span>/<span id="g_total">0</span></div>
-      <div class="pct" id="g_aderisce_pct">0%</div>
-    </div>
-    <div class="p-bar"><div id="g_bar"></div></div>
-    <div class="p-mini">
+<div class="hud-title" id="hudTitle">Provincia di Verona</div>
+<div class="hud-sub" id="hudSub">Vista generale · rev2.1.5</div>
+<div class="section-chip">Avanzamento <small id="g_hint"></small></div>
+<div class="progressBox">
+<div class="p-main">
+<div class="big">Aderiscono <span id="g_aderisce">0</span>/<span id="g_total">0</span></div>
+<div class="pct" id="g_aderisce_pct">0%</div>
+</div>
+<div class="p-bar"><div id="g_bar"></div></div>
+<div class="p-mini">
       Trattativa: <b id="g_trattativa">0</b> · Non aderisce: <b id="g_rifiuta">0</b> · Da contattare: <b id="g_contattare">0</b><br/>
       Private: <b id="g_private">0</b> · Comunali: <b id="g_comunali">0</b><br/>
       Comuni (coperti / orfani): <b id="g_comuni_coperti">0</b> / <b id="g_comuni_orfani">0</b>
-    </div>
-  </div>
-
-  <div id="miniLegend">
-    <div class="section-chip">Stati <small>clicca per filtrare la vista</small></div>
-    <div class="grid2" id="g_statusGrid"></div>
-
-    <div style="margin-top:10px">
-      <div class="section-chip">Aderisce <small>dettagli (facoltativi)</small></div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
-        <span class="badge">Poster <b id="g_poster" style="margin-left:6px">0</b></span>
-        <span class="badge">Boicotta <b id="g_boicotta" style="margin-left:6px">0</b></span>
-        <span class="badge">Promo <b id="g_promo" style="margin-left:6px">0</b></span>
-        <span class="badge">Info <b id="g_info" style="margin-left:6px">0</b></span>
-      </div>
-    </div>
-
-    <div style="margin-top:12px">
-      <div class="section-chip">Legenda <small>forme + colori</small></div>
-      <div class="legend-row"><span class="dot" style="background:#fff"></span> Privata (puntino)</div>
-      <div class="legend-row"><span class="square" style="background:#fff"></span> Comunale (quadratino)</div>
-      <div class="legend-row"><span class="dot c-contattare"></span> Da contattare</div>
-      <div class="legend-row"><span class="dot c-trattativa"></span> In trattativa</div>
-      <div class="legend-row"><span class="dot c-aderisce"></span> Aderisce</div>
-      <div class="legend-row"><span class="dot c-rifiuta"></span> Non aderisce</div>
-      <div class="legend-row"><span class="dot c-chiusa"></span> Chiusa temporaneamente (strumento)</div>
-      <div class="legend-row" style="margin-top:10px; color:#cfcfcf">
-        <span class="square c-comune-coperto"></span> Bordo verde = comune con referente
-      </div>
-      <div class="legend-row" style="color:#cfcfcf">
-        <span class="square c-comune-orfano"></span> Bordo ambra tratteggiato = senza referente
-      </div>
-    </div>
-  </div>
-
-  <div id="comuneBox">
-    <div class="section-chip">Comune selezionato <small id="sel_nome">—</small></div>
-    <div class="grid2" id="comuneCounts"></div>
-  </div>
-
-  <div class="hud-buttons">
-    <button class="hud-btn" id="btnAddRef">Aggiungi referente</button>
-    <button class="hud-btn" id="btnToggleRef">Vedi referenti</button>
-    <button class="hud-btn" id="btnClearFilter" title="Rimuovi filtro stati" style="display:none">Reset filtro stati</button>
-  
-    <button class="hud-btn" id="btnExportXLSX" title="Scarica un file Excel con statistiche + liste per stato">Esporta Excel</button>
-    <button class="hud-btn" id="btnExportCSV" title="Scarica un CSV (apribile in Excel) con tutte le farmacie e i campi campagna">Esporta CSV</button>
-    <button class="hud-btn" id="btnPrintReport" title="Apri una pagina stampabile con statistiche + liste per stato">Stampa</button>
-    <button class="hud-btn" id="btnExportAderisce" title="Export rapido per coordinamento: elenco SOLO ADERISCE">Solo aderisce</button>
-    <button class="hud-btn" id="btnUIMode" title="Cambia interfaccia (Smartphone/Desktop)">Cambia UI</button>
-  </div>
-
-  <div id="refPanel">
-    <ul id="refList"></ul>
-  </div>
 </div>
+</div>
+<div id="miniLegend">
+<div class="section-chip">Stati <small>clicca per filtrare la vista</small></div>
+<div class="grid2" id="g_statusGrid"></div>
+<div style="margin-top:10px">
+<div class="section-chip">Aderisce <small>dettagli (facoltativi)</small></div>
+<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
+<span class="badge">Poster <b id="g_poster" style="margin-left:6px">0</b></span>
+<span class="badge">Boicotta <b id="g_boicotta" style="margin-left:6px">0</b></span>
+<span class="badge">Promo <b id="g_promo" style="margin-left:6px">0</b></span>
+<span class="badge">Info <b id="g_info" style="margin-left:6px">0</b></span>
+</div>
+</div>
+<div style="margin-top:12px">
+<div class="section-chip">Legenda <small>forme + colori</small></div>
+<div class="legend-row"><span class="dot" style="background:#fff"></span> Privata (puntino)</div>
+<div class="legend-row"><span class="square" style="background:#fff"></span> Comunale (quadratino)</div>
+<div class="legend-row"><span class="dot c-contattare"></span> Da contattare</div>
+<div class="legend-row"><span class="dot c-trattativa"></span> In trattativa</div>
+<div class="legend-row"><span class="dot c-aderisce"></span> Aderisce</div>
+<div class="legend-row"><span class="dot c-rifiuta"></span> Non aderisce</div>
+<div class="legend-row"><span class="dot c-chiusa"></span> Chiusa temporaneamente (strumento)</div>
+<div class="legend-row" style="margin-top:10px; color:#cfcfcf">
+<span class="square c-comune-coperto"></span> Bordo verde = comune con referente
+      </div>
+<div class="legend-row" style="color:#cfcfcf">
+<span class="square c-comune-orfano"></span> Bordo ambra tratteggiato = senza referente
+      </div>
+</div>
+</div>
+<div id="comuneBox">
+<div class="section-chip">Comune selezionato <small id="sel_nome">—</small></div>
+<div class="grid2" id="comuneCounts"></div>
+</div>
+<div class="hud-actions"><div class="actionGroup g-comune"><div class="actionGroupTitle">Comune</div><div class="comuneSearch"><input autocomplete="off" id="comuneSearch" list="comuniList" placeholder="Cerca comune…"/><button class="miniBtn" id="btnGoComune" title="Vai al comune">Vai</button><datalist id="comuniList"></datalist></div><div class="actionRow"><button class="hud-btn" id="btnAddRef">Aggiungi referente</button><button class="hud-btn" id="btnToggleRef">Vedi referenti</button></div><div id="refPanel">
+<ul id="refList"></ul>
+</div></div><div class="actionGroup g-export"><div class="actionGroupTitle">Esporta &amp; stampa</div><div class="actionRow"><button class="hud-btn" id="btnExportXLSX" title="Scarica un file Excel con statistiche + liste per stato">Esporta Excel</button><button class="hud-btn" id="btnExportCSV" title="Scarica un CSV (apribile in Excel) con tutte le farmacie e i campi campagna">Esporta CSV</button><button class="hud-btn" id="btnPrintReport" title="Apri una pagina stampabile con statistiche + liste per stato">Stampa</button><button class="hud-btn" id="btnExportAderisce" title="Export rapido per coordinamento: elenco SOLO ADERISCE">Solo aderisce</button></div></div><div class="actionGroup g-tools"><div class="actionGroupTitle">Strumenti</div><div class="actionRow"><button class="hud-btn" id="btnClearFilter" style="display:none" title="Rimuovi filtro stati">Reset filtro stati</button><button class="hud-btn" id="btnChangeUI" title="Riapri la scelta Smartphone / Desktop">Cambia UI</button></div></div></div>
 
+</div>
 <!-- Overlay sempre visibile in mappa -->
-<div id="mapStats" aria-hidden="true">
-  <div class="ms-title" id="ms_title">Avanzamento campagna</div>
-  <div class="ms-line">
-    <div class="ms-main"><span id="ms_aderisce">0</span>/<span id="ms_total">0</span> aderisce</div>
-    <div class="ms-pct" id="ms_pct">0%</div>
-  </div>
-  <div class="ms-bar"><div id="ms_bar"></div></div>
-    <div class="ms-bar2"><div id="ms_bar_nc"></div></div>
+<div aria-hidden="true" id="mapStats">
+<div class="ms-title" id="ms_title">Avanzamento campagna</div>
+<div class="ms-line">
+<div class="ms-main"><span id="ms_aderisce">0</span>/<span id="ms_total">0</span> aderisce</div>
+<div class="ms-pct" id="ms_pct">0%</div>
+</div>
+<div class="ms-bar"><div id="ms_bar"></div></div>
+<div class="ms-bar2"><div id="ms_bar_nc"></div></div>
 <div class="ms-mini">
     Trattativa: <b id="ms_trattativa">0</b> · Non aderisce: <b id="ms_rifiuta">0</b> · Da contattare: <b id="ms_contattare">0</b>
-  </div>
-    <div class="ms-mini"><span class="nc-label">Da contattare (non contattate)</span>: <b id="ms_nc">0</b> · <span id="ms_nc_pct">0%</span></div>
-  <div class="ms-legendline" id="ms_legendline">
-    <span class="k"><span class="b round" style="background:#ffaa00"></span>Da contattare</span>
-    <span class="k"><span class="b round" style="background:#4da6ff"></span>Trattativa</span>
-    <span class="k"><span class="b round" style="background:#00ff9c"></span>Aderisce</span>
-    <span class="k"><span class="b round" style="background:#ff4d4d"></span>Non aderisce</span>
-  </div>
+</div>
+<div class="ms-mini"><span class="nc-label">Da contattare (non contattate)</span>: <b id="ms_nc">0</b> · <span id="ms_nc_pct">0%</span></div>
 <div class="ms-mini" id="ms_filter" style="display:none"></div>
 </div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+/* ===============================
+   UI MODE (Smartphone/Desktop)
+================================ */
+const UI_MODE_KEY = "spg_ui_mode_rev2";
+let TAP_MODE = "farmacie"; // "farmacie" | "comuni"
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+function recommendedMode(){
+  return window.matchMedia("(max-width: 720px)").matches ? "mobile" : "desktop";
+}
+function isMobileUI(){
+  return (document.body.dataset.uimode || recommendedMode()) === "mobile";
+}
+function setUIMode(mode){
+  document.body.dataset.uimode = mode;
+  localStorage.setItem(UI_MODE_KEY, mode);
+  if(mode === "mobile"){
+    document.body.dataset.hud = document.body.dataset.hud || "collapsed";
+  }else{
+    delete document.body.dataset.hud;
+  }
+  syncMobileChrome();
+}
+function showUIModeSplash(){
+  const splash = document.getElementById("uiSplash");
+  if(!splash) return;
+  const rec = recommendedMode();
+  const hint = document.getElementById("uiSplashHint");
+  if(hint) hint.textContent = `Suggerito: ${rec === "mobile" ? "Smartphone" : "Desktop"} (puoi cambiare dopo)`;
+  splash.classList.add("show");
+  splash.setAttribute("aria-hidden","false");
+}
+function hideUIModeSplash(){
+  const splash = document.getElementById("uiSplash");
+  if(!splash) return;
+  splash.classList.remove("show");
+  splash.setAttribute("aria-hidden","true");
+}
+function toggleHud(){
+  if(!isMobileUI()) return;
+  const cur = document.body.dataset.hud || "collapsed";
+  document.body.dataset.hud = (cur === "collapsed") ? "open" : "collapsed";
+}
+function showToast(msg, ms=1400){
+  const t = document.getElementById("toast");
+  if(!t) return;
+  t.textContent = msg;
+  t.classList.add("show");
+  t.setAttribute("aria-hidden","false");
+  clearTimeout(t._to);
+  t._to = setTimeout(() => {
+    t.classList.remove("show");
+    t.setAttribute("aria-hidden","true");
+  }, ms);
+}
+function syncMobileChrome(){
+  const mc = document.getElementById("mobileControls");
+  if(!mc) return;
+  if(isMobileUI()){
+    mc.classList.add("show");
+    mc.setAttribute("aria-hidden","false");
+  }else{
+    mc.classList.remove("show");
+    mc.setAttribute("aria-hidden","true");
+  }
+}
+function setTapMode(mode){
+  TAP_MODE = mode;
+  const seg = document.getElementById("segTapMode");
+  if(seg){
+    seg.querySelectorAll("button.segBtn").forEach(b => {
+      b.dataset.on = (b.dataset.mode === mode) ? "1" : "0";
+    });
+  }
+  syncMarkersPointerEvents();
+  if(isMobileUI()){
+    showToast(mode === "comuni" ? "Modalità COMUNI: tocca un comune" : "Modalità FARMACIE: tocca un marker");
+  }
+}
+function syncMarkersPointerEvents(){
+  const enable = (TAP_MODE !== "comuni");
+  farmMarkers.forEach(o => {
+    const el = o.marker.getElement ? o.marker.getElement() : null;
+    if(el) el.style.pointerEvents = enable ? "" : "none";
+  });
+}
+function initUIMode(){
+  const saved = localStorage.getItem(UI_MODE_KEY);
+  if(saved){
+    setUIMode(saved);
+    hideUIModeSplash();
+  }else{
+    setUIMode(recommendedMode());
+    showUIModeSplash();
+  }
+
+  document.getElementById("btnModeMobile")?.addEventListener("click", () => {
+    setUIMode("mobile"); hideUIModeSplash();
+  });
+  document.getElementById("btnModeDesktop")?.addEventListener("click", () => {
+    setUIMode("desktop"); hideUIModeSplash();
+  });
+  document.getElementById("btnChangeUI")?.addEventListener("click", () => showUIModeSplash());
+
+  document.getElementById("btnHudFab")?.addEventListener("click", () => toggleHud());
+  document.getElementById("segTapMode")?.addEventListener("click", (e) => {
+    const b = e.target.closest("button.segBtn");
+    if(!b) return;
+    setTapMode(b.dataset.mode);
+  });
+
+  window.addEventListener("resize", () => {
+    const current = localStorage.getItem(UI_MODE_KEY) || document.body.dataset.uimode || recommendedMode();
+    document.body.dataset.uimode = current;
+    syncMobileChrome();
+  });
+}
+
+</script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
 <script>
 /* ===============================
    CONFIG
@@ -661,91 +798,6 @@ const DRIVE_MATERIALI = "https://drive.google.com/drive/folders/1oMqJ_6ZLthMK73F
 /* Path robusti: prova prima DATA/ (GitHub case-sensitive), poi data/ */
 const PATHS_FARMACIE = ["data/farmacie.csv", "DATA/farmacie.csv"];
 const PATHS_COMUNI   = ["data/comuni_verona.json", "DATA/comuni_verona.json"];
-
-/* ===============================
-   UI MODE (Smartphone / Desktop)
-================================ */
-const UI_MODE_KEY = "spg_ui_mode_rev2";
-function recommendedMode(){
-  const vw = window.innerWidth || document.documentElement.clientWidth;
-  return (vw <= 820) ? "mobile" : "desktop";
-}
-function setUIMode(mode){
-  document.body.dataset.uimode = mode;
-  const hud = document.getElementById("hud");
-  const toggle = document.getElementById("hudToggle");
-  if(mode === "mobile"){
-    hud.classList.add("hud-collapsed"); // default chiuso
-    if(toggle) toggle.textContent = "☰ Legenda";
-  }else{
-    hud.classList.remove("hud-collapsed");
-  }
-  try{ map && map.invalidateSize(); }catch(e){}
-}
-function showUIModeSplash(){
-  const splash = document.getElementById("uiSplash");
-  const hint = document.getElementById("uiHint");
-  if(!splash) return;
-  splash.classList.remove("hidden");
-  const rec = recommendedMode();
-  if(hint){
-    hint.textContent = `Suggerito: ${rec === "mobile" ? "Smartphone" : "Desktop"} (in base allo schermo).`;
-  }
-}
-function hideUIModeSplash(){
-  const splash = document.getElementById("uiSplash");
-  if(splash) splash.classList.add("hidden");
-}
-function initUIMode(){
-  const saved = localStorage.getItem(UI_MODE_KEY);
-  if(saved){
-    setUIMode(saved);
-    hideUIModeSplash();
-  }else{
-    // pre-applica la modalità consigliata ma chiedi conferma
-    document.body.dataset.uimode = recommendedMode();
-    showUIModeSplash();
-  }
-
-  const bM = document.getElementById("btnModeMobile");
-  const bD = document.getElementById("btnModeDesktop");
-  if(bM) bM.addEventListener("click", () => {
-    localStorage.setItem(UI_MODE_KEY, "mobile");
-    setUIMode("mobile");
-    hideUIModeSplash();
-  });
-  if(bD) bD.addEventListener("click", () => {
-    localStorage.setItem(UI_MODE_KEY, "desktop");
-    setUIMode("desktop");
-    hideUIModeSplash();
-  });
-
-  const hud = document.getElementById("hud");
-  const toggle = document.getElementById("hudToggle");
-  const closeBtn = document.getElementById("hudClose");
-  const toggleHud = () => {
-    if(document.body.dataset.uimode !== "mobile") return;
-    hud.classList.toggle("hud-collapsed");
-    try{
-      farmMarkers.forEach(f => {
-        const m = f.marker;
-        if(m && m.isPopupOpen && m.isPopupOpen()){
-          applyPopupAutoPan(m.getPopup());
-        }
-      });
-    }catch(e){}
-  };
-  if(toggle) toggle.addEventListener("click", toggleHud);
-  if(closeBtn) closeBtn.addEventListener("click", (ev)=>{ ev.preventDefault(); ev.stopPropagation(); hud.classList.add("hud-collapsed"); });
-
-  const btnUIMode = document.getElementById("btnUIMode");
-  if(btnUIMode) btnUIMode.addEventListener("click", () => showUIModeSplash());
-
-  window.addEventListener("resize", () => {
-    const current = localStorage.getItem(UI_MODE_KEY) || document.body.dataset.uimode || recommendedMode();
-    document.body.dataset.uimode = current;
-  });
-}
 
 /* ===============================
    HELPERS
@@ -870,10 +922,9 @@ function getSmartPadding(opts){
 
   const hud = document.getElementById("hud");
   if(includeHud && hud){
-    const hudCollapsed = hud.classList.contains("hud-collapsed");
     const r = hud.getBoundingClientRect();
     // HUD tipicamente a sinistra: conta sempre il suo ingombro per centrare nell'area mappa
-    const hudVisible = (!hudCollapsed) && (r.width > 120) && (r.height > 120) && (r.right > 0) && (r.bottom > 0);
+    const hudVisible = (r.width > 120) && (r.height > 120) && (r.right > 0) && (r.bottom > 0);
     const hudLeft = hudVisible && (r.left <= 80);
     if(hudLeft) padLeft = Math.max(padLeft, Math.round(r.width + 24));
 
@@ -2216,7 +2267,6 @@ document.getElementById("btnExportAderisce")?.addEventListener("click", () => {
   if(ok) exportSoloAderisce(); else printSoloAderisce();
 });
 // START
-initUIMode();
 loadAll();
 </script>
 </body>
