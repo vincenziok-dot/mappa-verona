@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-
 <html lang="it">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1" name="viewport">
-<title>Mappa Verona – SpG (rev2.1.5)</title>
-<link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Campagna SpG Verona – Mappa (rev2.1.6)</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
 <style>
 html, body { margin:0; height:100%; background:#000; font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
 #map { position:absolute; inset:0; background:#050505; }
@@ -380,415 +381,386 @@ textarea.inlineInput{ min-height: 64px; resize: vertical; }
   #mapStats{ right:12px; bottom:12px; width: min(420px, calc(100vw - 24px)); }
 }
 
-
 /* ===============================
-   UI MODE SPLASH + MOBILE CONTROLS
+   UI MOBILE / DESKTOP (rev2.1.6)
 ================================ */
-.uiSplash{
-  position:fixed; inset:0;
+#hudFab{
+  position:fixed;
+  left:14px;
+  bottom:14px;
+  z-index:10005;
+  border:1px solid rgba(0,255,156,.65);
+  background:rgba(5,5,5,.86);
+  color:#eafff7;
+  padding:12px 14px;
+  border-radius: 14px;
+  font-weight:900;
+  letter-spacing:.04em;
   display:none;
-  align-items:center; justify-content:center;
-  background: radial-gradient(circle at 30% 20%, rgba(0,255,156,.18), rgba(0,0,0,0) 55%),
-              linear-gradient(180deg, rgba(0,0,0,.72), rgba(0,0,0,.92));
-  z-index:10050;
-  padding:18px;
+  box-shadow:0 0 18px rgba(0,0,0,.6);
 }
-.uiSplash.show{ display:flex; }
-.uiSplashCard{
-  width:min(520px, 100%);
-  border-radius:16px;
-  border:1px solid rgba(0,255,156,.35);
-  background: rgba(5,5,5,.92);
-  box-shadow: 0 0 28px rgba(0,0,0,.85);
-  padding:18px 16px;
+#hudFab:active{ transform: translateY(1px); }
+
+#hudHandle{
+  display:none;
+  padding:10px 10px 8px;
+  border-bottom: 1px solid #1b1b1b;
+  background: rgba(5,5,5,.96);
+  position: sticky;
+  top:0;
+  z-index:2;
 }
-.uiSplashTitle{
-  font-size:22px; font-weight:850; letter-spacing:.02em;
-  color:#fff; text-transform:uppercase;
+.hudGrab{
+  width:48px;
+  height:5px;
+  border-radius:999px;
+  margin:0 auto 8px;
+  background: rgba(255,255,255,.22);
 }
-.uiSplashSub{ margin-top:6px; color:#bdbdbd; font-size:14px; }
-.uiSplashBtns{ display:flex; gap:12px; margin-top:14px; flex-wrap:wrap; }
-.uiBtn{
-  flex:1 1 190px;
-  padding:14px 14px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.22);
-  background: rgba(255,255,255,.08);
-  color:#fff;
-  font-weight:850;
-  font-size:16px;
+.hudHandleRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.hudHandleTitle{
+  font-size:12px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:#bfeee0;
+  font-weight:900;
+}
+.hudIconBtn{
+  width:40px;
+  height:36px;
+  border-radius: 12px;
+  border:1px solid rgba(0,255,156,.65);
+  background: rgba(0,255,156,.12);
+  color:#eafff7;
+  font-weight:1000;
   cursor:pointer;
 }
-.uiBtnMobile{ border-color: rgba(0,255,156,.38); background: rgba(0,255,156,.10); }
-.uiBtnDesktop{ border-color: rgba(255,170,0,.35); background: rgba(255,170,0,.08); }
-.uiBtn:active{ transform: translateY(1px); }
-.uiSplashHint{ margin-top:12px; color:#9b9b9b; font-size:12px; }
 
-.mobileControls{
+#modeToggle{
   position:fixed;
-  left:12px; right:12px; bottom:12px;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:14px;
+  z-index:10004;
+  display:none;
+  gap:8px;
+  padding:6px;
+  border-radius: 16px;
+  background: rgba(5,5,5,.70);
+  border:1px solid rgba(255,255,255,.12);
+  box-shadow:0 0 18px rgba(0,0,0,.55);
+  backdrop-filter: blur(3px);
+}
+.modeBtn{
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color:#eaeaea;
+  padding:10px 12px;
+  border-radius: 14px;
+  font-weight:900;
+  font-size:12px;
+  cursor:pointer;
+  letter-spacing:.02em;
+}
+.modeBtn[data-on="1"]{
+  border-color:#00ff9c;
+  background: rgba(0,255,156,.22);
+  color:#eafff7;
+}
+.modeBtn.modeComuni[data-on="1"]{ border-color:#fff; background: rgba(255,255,255,.14); color:#fff; }
+
+#uiChooser{
+  position:fixed;
+  inset:0;
+  z-index:10010;
   display:none;
   align-items:center;
-  gap:10px;
-  z-index:10040;
-  pointer-events:none;
+  justify-content:center;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,.82), rgba(0,0,0,.96));
+  backdrop-filter: blur(4px);
 }
-.mobileControls.show{ display:flex; }
-.fabBtn{
-  pointer-events:auto;
-  height:44px; width:54px;
-  border-radius:14px;
-  border:1px solid rgba(0,255,156,.35);
-  background: rgba(5,5,5,.88);
-  color:#fff;
-  font-size:20px;
-  font-weight:900;
-  box-shadow: 0 0 18px rgba(0,0,0,.65);
+#uiChooser .box{
+  width:min(560px, calc(100vw - 28px));
+  border:1px solid rgba(255,255,255,.12);
+  background: rgba(5,5,5,.86);
+  border-radius: 18px;
+  padding:18px;
+  box-shadow: 0 0 30px rgba(0,0,0,.75);
 }
-.seg2{
-  pointer-events:auto;
-  display:flex;
-  border-radius:14px;
-  overflow:hidden;
-  border:1px solid rgba(255,255,255,.18);
-  background: rgba(5,5,5,.78);
-  box-shadow: 0 0 18px rgba(0,0,0,.65);
-  flex: 1 1 auto;
-}
-.segBtn{
-  flex:1 1 0;
-  padding:10px 10px;
-  border:0;
-  background: transparent;
-  color:#fff;
-  font-weight:850;
-  font-size:13px;
-  cursor:pointer;
-}
-.segBtn[data-on="1"]{ background: rgba(0,255,156,.16); border-right:1px solid rgba(255,255,255,.12); }
-.segBtn:last-child[data-on="1"]{ border-right:0; }
-.segBtn[data-mode="comuni"][data-on="1"]{ background: rgba(255,170,0,.16); }
-
-.toast{
-  position:fixed;
-  left:50%; bottom:74px;
-  transform: translateX(-50%) translateY(8px);
-  background: rgba(5,5,5,.92);
-  border:1px solid rgba(255,255,255,.18);
-  color:#fff;
-  padding:10px 12px;
-  border-radius:999px;
-  font-weight:750;
-  font-size:12px;
-  opacity:0;
-  pointer-events:none;
-  z-index:10060;
-  transition: opacity .18s ease, transform .18s ease;
-}
-.toast.show{
-  opacity:1;
-  transform: translateX(-50%) translateY(0);
-}
-
-/* ===============================
-   HUD ACTION GROUPS
-================================ */
-.hud-actions{ margin-top:10px; display:flex; flex-direction:column; gap:10px; }
-.actionGroup{
-  border:1px solid rgba(255,255,255,.10);
-  background: rgba(255,255,255,.04);
-  border-radius:10px;
-  padding:10px;
-}
-.actionGroupTitle{
-  font-size:11px;
-  font-weight:900;
+#uiChooser h1{
+  margin:0;
+  font-size:18px;
   letter-spacing:.06em;
   text-transform:uppercase;
   color:#fff;
-  margin-bottom:8px;
 }
-.actionGroup.g-comune{ border-color: rgba(0,255,156,.25); }
-.actionGroup.g-export{ border-color: rgba(255,170,0,.22); }
-.actionGroup.g-tools{ border-color: rgba(77,166,255,.22); }
-
-.actionRow{ display:flex; gap:8px; flex-wrap:wrap; }
-.actionRow .hud-btn{ flex:1 1 140px; }
-
-.comuneSearch{
-  display:none;
-  gap:8px;
-  margin: 6px 0 10px;
+#uiChooser p{
+  margin:8px 0 16px;
+  color:#bdbdbd;
+  font-size:13px;
+  line-height:1.35;
 }
-.comuneSearch input{
-  flex: 1 1 auto;
-  height:34px;
-  border-radius:10px;
-  border:1px solid rgba(255,255,255,.16);
-  background: rgba(0,0,0,.35);
+.uiBtns{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:12px;
+}
+.uiBtn{
+  border:1px solid rgba(0,255,156,.70);
+  background: rgba(0,255,156,.10);
+  color:#eafff7;
+  padding:14px 12px;
+  border-radius: 16px;
+  font-weight:1000;
+  cursor:pointer;
+  text-align:center;
+}
+.uiBtn b{ display:block; font-size:16px; }
+.uiBtn small{ display:block; margin-top:6px; color:#bfeee0; opacity:.9; font-weight:800; }
+.uiBtn:active{ transform: translateY(1px); }
+#uiChooser .x{
+  position:absolute;
+  top:14px;
+  right:14px;
+  width:44px;
+  height:44px;
+  border-radius: 16px;
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
   color:#fff;
-  padding: 0 10px;
-  font-weight:650;
-}
-.miniBtn{
-  height:34px;
-  border-radius:10px;
-  border:1px solid rgba(0,255,156,.35);
-  background: rgba(0,255,156,.12);
-  color:#fff;
-  font-weight:900;
-  padding: 0 12px;
+  font-size:18px;
   cursor:pointer;
 }
 
-/* ===============================
-   MOBILE OPTIMIZATION
-================================ */
-@media (max-width: 720px){
-  #hud{
-    left: 12px;
-    right: 12px;
-    top: auto;
-    bottom: 12px;
-    width: auto;
-    max-height: 62vh;
-    border-left: none;
-    border-top: 4px solid #00ff9c;
-    border-radius: 16px;
-    padding: 12px;
-    transition: transform .22s ease, opacity .22s ease;
-  }
-  body[data-hud="collapsed"] #hud{
-    transform: translateY(120%);
-    opacity: 0;
-    pointer-events: none;
-  }
-  .comuneSearch{ display:flex; }
-
-  /* Lighter markers for performance */
-  .mrk{ box-shadow:none; }
-
-  /* Popup sizing: avoid full-screen */
-  .leaflet-popup{ max-width: min(92vw, 360px); }
-  .leaflet-popup-content-wrapper{ max-width: min(92vw, 360px); border-radius:14px; }
-  .leaflet-popup-content{ max-width: min(86vw, 340px); margin: 10px 12px; }
-  .popupWrap{ max-height: 58vh; overflow-y:auto; -webkit-overflow-scrolling: touch; }
+/* Ricerca comune (suggerimenti) */
+.comuneSearchWrap{ margin-top:10px; position:relative; }
+.comuneSearchRow{ display:flex; gap:8px; align-items:stretch; }
+#btnComuneSearchGo{
+  width:64px;
+  border-radius: 12px;
+  border:1px solid rgba(0,255,156,.65);
+  background: rgba(0,255,156,.12);
+  color:#eafff7;
+  font-weight:1000;
+  cursor:pointer;
 }
-</style>
-</meta></head>
-<body>
-<div aria-hidden="true" class="uiSplash" id="uiSplash">
-<div class="uiSplashCard">
-<div class="uiSplashTitle">Campagna SpG Verona</div>
-<div class="uiSplashSub">Scegli l'interfaccia</div>
-<div class="uiSplashBtns">
-<button class="uiBtn uiBtnMobile" id="btnModeMobile">📱 Smartphone</button>
-<button class="uiBtn uiBtnDesktop" id="btnModeDesktop">🖥️ Desktop</button>
-</div>
-<div class="uiSplashHint" id="uiSplashHint"></div>
-</div>
-</div>
-<div aria-hidden="true" class="mobileControls" id="mobileControls">
-<button class="fabBtn" id="btnHudFab" title="Apri/chiudi pannello">☰</button>
-<div aria-label="Modalità tap" class="seg2" id="segTapMode" role="group">
-<button class="segBtn" data-mode="farmacie" data-on="1">Farmacie</button>
-<button class="segBtn" data-mode="comuni" data-on="0">Comuni</button>
-</div>
-</div>
-<div aria-hidden="true" class="toast" id="toast"></div>
+#comuneSearchSuggs{
+  position:absolute;
+  left:0; right:0;
+  top: calc(100% + 6px);
+  z-index: 10;
+  background: rgba(5,5,5,.96);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  overflow:hidden;
+  box-shadow: 0 0 18px rgba(0,0,0,.65);
+}
+.suggItem{
+  padding:10px 10px;
+  font-size:13px;
+  color:#fff;
+  cursor:pointer;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.suggItem:last-child{ border-bottom:none; }
+.suggItem:hover{ background: rgba(0,255,156,.12); }
 
+/* MOBILE: HUD come bottom-sheet collassabile */
+body.ui-mobile #hud{
+  top:auto;
+  left:12px;
+  right:12px;
+  bottom:12px;
+  width:auto;
+  max-height:none;
+  height: min(68vh, 520px);
+  border-radius: 18px;
+  transform: translateY(0);
+  transition: transform .20s ease;
+  will-change: transform;
+}
+body.ui-mobile #hudHandle{ display:block; }
+body.ui-mobile #hudFab{ display:block; }
+body.ui-mobile #modeToggle{ display:flex; }
+
+body.ui-mobile .leaflet-popup-content{
+  max-width: 320px;
+  max-height: 52vh;
+  overflow:auto;
+}
+body.ui-mobile .leaflet-popup-content-wrapper{ border-radius: 14px; }
+
+body.ui-mobile #banner{ top:10px; }
+body.ui-mobile .leaflet-control-zoom{ margin-top: 12px !important; }
+
+body.ui-mobile #hud.is-collapsed{
+  transform: translateY(calc(100% - 74px));
+}
+body.ui-mobile #hud.is-collapsed .hud-buttons{
+  position:static;
+  background: transparent;
+  border-top:none;
+  padding-top:10px;
+}
+body.ui-mobile #hud.is-collapsed #hudScroll{
+  display:none;
+}
+
+#hudScroll{ /* wrapper aggiunto via JS se non esiste */ }
+
+@media (max-width: 720px){
+  /* Evita che la vecchia media query sposti l'HUD se non siamo in ui-mobile */
+  body.ui-desktop #hud{ top:auto; bottom:12px; left:12px; right:12px; width:auto; max-height: 58vh; }
+}
+
+</style>
+</head>
+
+<body>
 <div id="map"></div>
 <div id="banner"></div>
-<div id="hud">
-<div class="hud-title" id="hudTitle">Provincia di Verona</div>
-<div class="hud-sub" id="hudSub">Vista generale · rev2.1.5</div>
-<div class="section-chip">Avanzamento <small id="g_hint"></small></div>
-<div class="progressBox">
-<div class="p-main">
-<div class="big">Aderiscono <span id="g_aderisce">0</span>/<span id="g_total">0</span></div>
-<div class="pct" id="g_aderisce_pct">0%</div>
+
+<div id="uiChooser" aria-hidden="true">
+  <button class="x" id="btnUiChooserClose" title="Chiudi">×</button>
+  <div class="box">
+    <h1>Campagna SpG Verona</h1>
+    <p>Scegli l’interfaccia migliore per questo dispositivo. Puoi cambiarla in qualsiasi momento da <b>Cambia UI</b>.</p>
+    <div class="uiBtns">
+      <button class="uiBtn" id="btnUiMobile"><b>📱 Smartphone</b><small>Touch + pannello collassabile</small></button>
+      <button class="uiBtn" id="btnUiDesktop"><b>🖥️ Desktop</b><small>HUD completo + precisione mouse</small></button>
+    </div>
+  </div>
 </div>
-<div class="p-bar"><div id="g_bar"></div></div>
-<div class="p-mini">
+
+<button id="hudFab" title="Apri/chiudi pannello">☰</button>
+
+<div id="modeToggle" role="group" aria-label="Modalità selezione">
+  <button class="modeBtn modeComuni" id="btnModeComuni" data-on="0">👆 Comuni</button>
+  <button class="modeBtn" id="btnModeFarmacie" data-on="1">🏥 Farmacie</button>
+</div>
+
+
+<div id="hud">
+  
+<div id="hudHandle">
+  <div class="hudGrab"></div>
+  <div class="hudHandleRow">
+    <div class="hudHandleTitle">Campagna SpG Verona</div>
+    <div style="display:flex; gap:8px">
+      <button id="hudUiBtn" class="hudIconBtn" title="Cambia interfaccia">UI</button>
+      <button id="hudToggleBtn" class="hudIconBtn" title="Apri/chiudi pannello">⌃</button>
+    </div>
+  </div>
+</div>
+<div id="hudScroll">
+
+  <div class="hud-title" id="hudTitle">Provincia di Verona</div>
+  <div class="hud-sub" id="hudSub">Vista generale</div>
+
+  <div class="section-chip">Avanzamento <small id="g_hint"></small></div>
+  <div class="progressBox">
+    <div class="p-main">
+      <div class="big">Aderiscono <span id="g_aderisce">0</span>/<span id="g_total">0</span></div>
+      <div class="pct" id="g_aderisce_pct">0%</div>
+    </div>
+    <div class="p-bar"><div id="g_bar"></div></div>
+    <div class="p-mini">
       Trattativa: <b id="g_trattativa">0</b> · Non aderisce: <b id="g_rifiuta">0</b> · Da contattare: <b id="g_contattare">0</b><br/>
       Private: <b id="g_private">0</b> · Comunali: <b id="g_comunali">0</b><br/>
       Comuni (coperti / orfani): <b id="g_comuni_coperti">0</b> / <b id="g_comuni_orfani">0</b>
-</div>
-</div>
-<div id="miniLegend">
-<div class="section-chip">Stati <small>clicca per filtrare la vista</small></div>
-<div class="grid2" id="g_statusGrid"></div>
-<div style="margin-top:10px">
-<div class="section-chip">Aderisce <small>dettagli (facoltativi)</small></div>
-<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
-<span class="badge">Poster <b id="g_poster" style="margin-left:6px">0</b></span>
-<span class="badge">Boicotta <b id="g_boicotta" style="margin-left:6px">0</b></span>
-<span class="badge">Promo <b id="g_promo" style="margin-left:6px">0</b></span>
-<span class="badge">Info <b id="g_info" style="margin-left:6px">0</b></span>
-</div>
-</div>
-<div style="margin-top:12px">
-<div class="section-chip">Legenda <small>forme + colori</small></div>
-<div class="legend-row"><span class="dot" style="background:#fff"></span> Privata (puntino)</div>
-<div class="legend-row"><span class="square" style="background:#fff"></span> Comunale (quadratino)</div>
-<div class="legend-row"><span class="dot c-contattare"></span> Da contattare</div>
-<div class="legend-row"><span class="dot c-trattativa"></span> In trattativa</div>
-<div class="legend-row"><span class="dot c-aderisce"></span> Aderisce</div>
-<div class="legend-row"><span class="dot c-rifiuta"></span> Non aderisce</div>
-<div class="legend-row"><span class="dot c-chiusa"></span> Chiusa temporaneamente (strumento)</div>
-<div class="legend-row" style="margin-top:10px; color:#cfcfcf">
-<span class="square c-comune-coperto"></span> Bordo verde = comune con referente
-      </div>
-<div class="legend-row" style="color:#cfcfcf">
-<span class="square c-comune-orfano"></span> Bordo ambra tratteggiato = senza referente
-      </div>
-</div>
-</div>
-<div id="comuneBox">
-<div class="section-chip">Comune selezionato <small id="sel_nome">—</small></div>
-<div class="grid2" id="comuneCounts"></div>
-</div>
-<div class="hud-actions"><div class="actionGroup g-comune"><div class="actionGroupTitle">Comune</div><div class="comuneSearch"><input autocomplete="off" id="comuneSearch" list="comuniList" placeholder="Cerca comune…"/><button class="miniBtn" id="btnGoComune" title="Vai al comune">Vai</button><datalist id="comuniList"></datalist></div><div class="actionRow"><button class="hud-btn" id="btnAddRef">Aggiungi referente</button><button class="hud-btn" id="btnToggleRef">Vedi referenti</button></div><div id="refPanel">
-<ul id="refList"></ul>
-</div></div><div class="actionGroup g-export"><div class="actionGroupTitle">Esporta &amp; stampa</div><div class="actionRow"><button class="hud-btn" id="btnExportXLSX" title="Scarica un file Excel con statistiche + liste per stato">Esporta Excel</button><button class="hud-btn" id="btnExportCSV" title="Scarica un CSV (apribile in Excel) con tutte le farmacie e i campi campagna">Esporta CSV</button><button class="hud-btn" id="btnPrintReport" title="Apri una pagina stampabile con statistiche + liste per stato">Stampa</button><button class="hud-btn" id="btnExportAderisce" title="Export rapido per coordinamento: elenco SOLO ADERISCE">Solo aderisce</button></div></div><div class="actionGroup g-tools"><div class="actionGroupTitle">Strumenti</div><div class="actionRow"><button class="hud-btn" id="btnClearFilter" style="display:none" title="Rimuovi filtro stati">Reset filtro stati</button><button class="hud-btn" id="btnChangeUI" title="Riapri la scelta Smartphone / Desktop">Cambia UI</button></div></div></div>
+    </div>
+  </div>
 
+  <div id="miniLegend">
+    <div class="section-chip">Stati <small>clicca per filtrare la vista</small></div>
+    <div class="grid2" id="g_statusGrid"></div>
+
+    <div style="margin-top:10px">
+      <div class="section-chip">Aderisce <small>dettagli (facoltativi)</small></div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
+        <span class="badge">Poster <b id="g_poster" style="margin-left:6px">0</b></span>
+        <span class="badge">Boicotta <b id="g_boicotta" style="margin-left:6px">0</b></span>
+        <span class="badge">Promo <b id="g_promo" style="margin-left:6px">0</b></span>
+        <span class="badge">Info <b id="g_info" style="margin-left:6px">0</b></span>
+      </div>
+    </div>
+
+    <div style="margin-top:12px">
+      <div class="section-chip">Legenda <small>forme + colori</small></div>
+      <div class="legend-row"><span class="dot" style="background:#fff"></span> Privata (puntino)</div>
+      <div class="legend-row"><span class="square" style="background:#fff"></span> Comunale (quadratino)</div>
+      <div class="legend-row"><span class="dot c-contattare"></span> Da contattare</div>
+      <div class="legend-row"><span class="dot c-trattativa"></span> In trattativa</div>
+      <div class="legend-row"><span class="dot c-aderisce"></span> Aderisce</div>
+      <div class="legend-row"><span class="dot c-rifiuta"></span> Non aderisce</div>
+      <div class="legend-row"><span class="dot c-chiusa"></span> Chiusa temporaneamente (strumento)</div>
+      <div class="legend-row" style="margin-top:10px; color:#cfcfcf">
+        <span class="square c-comune-coperto"></span> Bordo verde = comune con referente
+      </div>
+      <div class="legend-row" style="color:#cfcfcf">
+        <span class="square c-comune-orfano"></span> Bordo ambra tratteggiato = senza referente
+      </div>
+    </div>
+  </div>
+
+  <div id="comuneBox">
+    <div class="section-chip">Comune <small id="sel_nome">—</small></div>
+
+    <div class="comuneSearchWrap">
+      <div class="comuneSearchRow">
+        <input id="comuneSearchInput" class="inlineInput" placeholder="Cerca comune (anche parziale)…" autocomplete="off" />
+        <button id="btnComuneSearchGo" type="button">Vai</button>
+      </div>
+      <div id="comuneSearchSuggs" style="display:none"></div>
+    </div>
+
+    <div class="grid2" id="comuneCounts"></div>
+  </div>
+
+  <div class="hud-buttons">
+    <button class="hud-btn" id="btnAddRef">Aggiungi referente</button>
+    <button class="hud-btn" id="btnToggleRef">Vedi referenti</button>
+    <button class="hud-btn" id="btnClearFilter" title="Rimuovi filtro stati" style="display:none">Reset filtro stati</button>
+  
+    <button class="hud-btn" id="btnExportXLSX" title="Scarica un file Excel con statistiche + liste per stato">Esporta Excel</button>
+    <button class="hud-btn" id="btnExportCSV" title="Scarica un CSV (apribile in Excel) con tutte le farmacie e i campi campagna">Esporta CSV</button>
+    <button class="hud-btn" id="btnPrintReport" title="Apri una pagina stampabile con statistiche + liste per stato">Stampa</button>
+    <button class="hud-btn" id="btnExportAderisce" title="Export rapido per coordinamento: elenco SOLO ADERISCE">Solo aderisce</button>
+    <button class="hud-btn" id="btnChangeUI" title="Scegli Smartphone/Desktop">Cambia UI</button>
+  </div>
+
+  <div id="refPanel">
+    <ul id="refList"></ul>
+  </div>
 </div>
+  </div>
+</div>
+
 <!-- Overlay sempre visibile in mappa -->
-<div aria-hidden="true" id="mapStats">
-<div class="ms-title" id="ms_title">Avanzamento campagna</div>
-<div class="ms-line">
-<div class="ms-main"><span id="ms_aderisce">0</span>/<span id="ms_total">0</span> aderisce</div>
-<div class="ms-pct" id="ms_pct">0%</div>
-</div>
-<div class="ms-bar"><div id="ms_bar"></div></div>
-<div class="ms-bar2"><div id="ms_bar_nc"></div></div>
+<div id="mapStats" aria-hidden="true">
+  <div class="ms-title" id="ms_title">Avanzamento campagna</div>
+  <div class="ms-line">
+    <div class="ms-main"><span id="ms_aderisce">0</span>/<span id="ms_total">0</span> aderisce</div>
+    <div class="ms-pct" id="ms_pct">0%</div>
+  </div>
+  <div class="ms-bar"><div id="ms_bar"></div></div>
+    <div class="ms-bar2"><div id="ms_bar_nc"></div></div>
 <div class="ms-mini">
     Trattativa: <b id="ms_trattativa">0</b> · Non aderisce: <b id="ms_rifiuta">0</b> · Da contattare: <b id="ms_contattare">0</b>
-</div>
-<div class="ms-mini"><span class="nc-label">Da contattare (non contattate)</span>: <b id="ms_nc">0</b> · <span id="ms_nc_pct">0%</span></div>
+  </div>
+    <div class="ms-mini"><span class="nc-label">Da contattare (non contattate)</span>: <b id="ms_nc">0</b> · <span id="ms_nc_pct">0%</span></div>
 <div class="ms-mini" id="ms_filter" style="display:none"></div>
 </div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
-/* ===============================
-   UI MODE (Smartphone/Desktop)
-================================ */
-const UI_MODE_KEY = "spg_ui_mode_rev2";
-let TAP_MODE = "farmacie"; // "farmacie" | "comuni"
 
-function recommendedMode(){
-  return window.matchMedia("(max-width: 720px)").matches ? "mobile" : "desktop";
-}
-function isMobileUI(){
-  return (document.body.dataset.uimode || recommendedMode()) === "mobile";
-}
-function setUIMode(mode){
-  document.body.dataset.uimode = mode;
-  localStorage.setItem(UI_MODE_KEY, mode);
-  if(mode === "mobile"){
-    document.body.dataset.hud = document.body.dataset.hud || "collapsed";
-  }else{
-    delete document.body.dataset.hud;
-  }
-  syncMobileChrome();
-}
-function showUIModeSplash(){
-  const splash = document.getElementById("uiSplash");
-  if(!splash) return;
-  const rec = recommendedMode();
-  const hint = document.getElementById("uiSplashHint");
-  if(hint) hint.textContent = `Suggerito: ${rec === "mobile" ? "Smartphone" : "Desktop"} (puoi cambiare dopo)`;
-  splash.classList.add("show");
-  splash.setAttribute("aria-hidden","false");
-}
-function hideUIModeSplash(){
-  const splash = document.getElementById("uiSplash");
-  if(!splash) return;
-  splash.classList.remove("show");
-  splash.setAttribute("aria-hidden","true");
-}
-function toggleHud(){
-  if(!isMobileUI()) return;
-  const cur = document.body.dataset.hud || "collapsed";
-  document.body.dataset.hud = (cur === "collapsed") ? "open" : "collapsed";
-}
-function showToast(msg, ms=1400){
-  const t = document.getElementById("toast");
-  if(!t) return;
-  t.textContent = msg;
-  t.classList.add("show");
-  t.setAttribute("aria-hidden","false");
-  clearTimeout(t._to);
-  t._to = setTimeout(() => {
-    t.classList.remove("show");
-    t.setAttribute("aria-hidden","true");
-  }, ms);
-}
-function syncMobileChrome(){
-  const mc = document.getElementById("mobileControls");
-  if(!mc) return;
-  if(isMobileUI()){
-    mc.classList.add("show");
-    mc.setAttribute("aria-hidden","false");
-  }else{
-    mc.classList.remove("show");
-    mc.setAttribute("aria-hidden","true");
-  }
-}
-function setTapMode(mode){
-  TAP_MODE = mode;
-  const seg = document.getElementById("segTapMode");
-  if(seg){
-    seg.querySelectorAll("button.segBtn").forEach(b => {
-      b.dataset.on = (b.dataset.mode === mode) ? "1" : "0";
-    });
-  }
-  syncMarkersPointerEvents();
-  if(isMobileUI()){
-    showToast(mode === "comuni" ? "Modalità COMUNI: tocca un comune" : "Modalità FARMACIE: tocca un marker");
-  }
-}
-function syncMarkersPointerEvents(){
-  const enable = (TAP_MODE !== "comuni");
-  farmMarkers.forEach(o => {
-    const el = o.marker.getElement ? o.marker.getElement() : null;
-    if(el) el.style.pointerEvents = enable ? "" : "none";
-  });
-}
-function initUIMode(){
-  const saved = localStorage.getItem(UI_MODE_KEY);
-  if(saved){
-    setUIMode(saved);
-    hideUIModeSplash();
-  }else{
-    setUIMode(recommendedMode());
-    showUIModeSplash();
-  }
-
-  document.getElementById("btnModeMobile")?.addEventListener("click", () => {
-    setUIMode("mobile"); hideUIModeSplash();
-  });
-  document.getElementById("btnModeDesktop")?.addEventListener("click", () => {
-    setUIMode("desktop"); hideUIModeSplash();
-  });
-  document.getElementById("btnChangeUI")?.addEventListener("click", () => showUIModeSplash());
-
-  document.getElementById("btnHudFab")?.addEventListener("click", () => toggleHud());
-  document.getElementById("segTapMode")?.addEventListener("click", (e) => {
-    const b = e.target.closest("button.segBtn");
-    if(!b) return;
-    setTapMode(b.dataset.mode);
-  });
-
-  window.addEventListener("resize", () => {
-    const current = localStorage.getItem(UI_MODE_KEY) || document.body.dataset.uimode || recommendedMode();
-    document.body.dataset.uimode = current;
-    syncMobileChrome();
-  });
-}
-
-</script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
 <script>
 /* ===============================
    CONFIG
@@ -807,6 +779,15 @@ function esc(s){
 }
 function normKey(s){
   return (s||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");
+}
+
+function normSearch(s){
+  // normalizza per ricerca "tollerante": rimuove accenti, apostrofi e punteggiatura
+  return normKey(s)
+    .replace(/[’']/g,"")
+    .replace(/[^a-z0-9 ]/g,"")
+    .replace(/\s+/g," ")
+    .trim();
 }
 function stableId(str){
   let h = 0;
@@ -839,6 +820,80 @@ async function fetchFirst(paths, type){
     }catch(e){ lastErr = e; }
   }
   throw (lastErr || new Error("Impossibile caricare risorsa"));
+}
+
+
+/* ===============================
+   UI MODE (mobile/desktop) + interaction mode
+================================ */
+const UI_MODE_KEY = "spg_ui_mode_rev2";
+const AUTO_MOBILE = window.matchMedia("(max-width: 720px)").matches || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+let uiMode = localStorage.getItem(UI_MODE_KEY) || (AUTO_MOBILE ? "mobile" : "desktop");
+let showChooser = !localStorage.getItem(UI_MODE_KEY);
+
+function setUiMode(mode){
+  uiMode = (mode === "desktop") ? "desktop" : "mobile";
+  localStorage.setItem(UI_MODE_KEY, uiMode);
+  applyUiMode();
+}
+
+function applyUiMode(){
+  document.body.classList.remove("ui-mobile","ui-desktop");
+  document.body.classList.add(uiMode === "mobile" ? "ui-mobile" : "ui-desktop");
+
+  const hud = document.getElementById("hud");
+  const fab = document.getElementById("hudFab");
+  const modeToggle = document.getElementById("modeToggle");
+
+  if(uiMode === "mobile"){
+    hud.classList.add("is-collapsed"); // default: pannello chiuso
+    if(fab) fab.style.display = "";
+    if(modeToggle) modeToggle.style.display = "";
+    setInteractionMode("comuni"); // su mobile: priorità comuni
+  }else{
+    hud.classList.remove("is-collapsed");
+    if(fab) fab.style.display = "none";
+    if(modeToggle) modeToggle.style.display = "none";
+    setInteractionMode("farmacie");
+  }
+}
+
+function openUiChooser(){
+  const el = document.getElementById("uiChooser");
+  if(!el) return;
+  el.style.display = "flex";
+  el.setAttribute("aria-hidden","false");
+}
+function closeUiChooser(){
+  const el = document.getElementById("uiChooser");
+  if(!el) return;
+  el.style.display = "none";
+  el.setAttribute("aria-hidden","true");
+}
+
+let interactionMode = "farmacie"; // "comuni" | "farmacie"
+function setInteractionMode(mode){
+  interactionMode = (mode === "comuni") ? "comuni" : "farmacie";
+  const bC = document.getElementById("btnModeComuni");
+  const bF = document.getElementById("btnModeFarmacie");
+  if(bC) bC.setAttribute("data-on", interactionMode==="comuni" ? "1":"0");
+  if(bF) bF.setAttribute("data-on", interactionMode==="farmacie" ? "1":"0");
+
+  // abilita/disabilita click marker farmacie
+  const enableFarm = interactionMode === "farmacie";
+  farmMarkers.forEach(rec => {
+    const el = rec.marker.getElement ? rec.marker.getElement() : rec.marker._icon;
+    if(el) el.style.pointerEvents = enableFarm ? "auto" : "none";
+  });
+  // Suggerimento banner
+  const hint = document.getElementById("g_hint");
+  if(hint && uiMode==="mobile"){
+    hint.textContent = (interactionMode==="comuni")
+      ? "Modalità COMUNI: tocchi il territorio, non i marker"
+      : "Modalità FARMACIE: tocchi i marker per aprire i popup";
+  }else if(hint){
+    hint.textContent = "";
+  }
 }
 
 /* ===============================
@@ -904,7 +959,7 @@ function hasRef(nome){ return (referentiComune[nome] && referentiComune[nome].le
 /* ===============================
    MAPPA
 ================================ */
-const map = L.map("map", { attributionControl:false }).setView([45.43, 10.99], 10);
+const map = L.map("map", { attributionControl:false, preferCanvas: AUTO_MOBILE }).setView([45.43, 10.99], 10);
 L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { maxZoom:18 }).addTo(map);
 
 /* ===============================
@@ -971,6 +1026,7 @@ const selNomeEl = document.getElementById("sel_nome");
 let comuniLayer = null;
 let selectedComuneLayer = null;
 let selectedComuneNome = null;
+const comuneLayerByNorm = {}; // norm -> layer (per ricerca)
 
 /* pharmacy markers */
 const farmLayer = L.layerGroup().addTo(map);
@@ -1052,11 +1108,16 @@ function applyStatusToMarker(marker, farmaciaId, row, isComunale){
   const st = getSt(farmaciaId);
   marker.setIcon(iconFarmacia(st.state, st.closed, isComunale));
   marker.setOpacity(st.closed ? 0.35 : 1);
+  // pointer-events in base alla modalità (mobile: comuni vs farmacie)
+  const el = marker.getElement ? marker.getElement() : marker._icon;
+  if(el) el.style.pointerEvents = (interactionMode === "farmacie") ? "auto" : "none";
 
-  // tooltip rapido
-  const nome = row.descrizione_farmacia || "Farmacia";
-  const extra = (st.owners && st.owners.length) ? ` · incaricati: ${st.owners.join(", ")}` : "";
-  marker.bindTooltip(`${nome}${extra}`, { direction:"top", opacity:0.9, offset:[0,-8] });
+  // tooltip rapido (desktop only)
+  if(uiMode !== "mobile"){
+    const nome = row.descrizione_farmacia || "Farmacia";
+    const extra = (st.owners && st.owners.length) ? ` · incaricati: ${st.owners.join(", ")}` : "";
+    marker.bindTooltip(`${nome}${extra}`, { direction:"top", opacity:0.9, offset:[0,-8] });
+  }
 }
 
 /* ===============================
@@ -1612,6 +1673,119 @@ function resetSelezione(){
   applyMarkerVisibility();
 }
 
+
+/* ===============================
+   RICERCA COMUNE (tollerante)
+================================ */
+function getComuneMatches(q){
+  const query = normSearch(q || "");
+  if(!query) return [];
+  const list = Array.from(comuniCanon);
+  // 1) match "inizia con"
+  const starts = [];
+  const includes = [];
+  for(const nome of list){
+    const nk = normSearch(nome);
+    if(!nk) continue;
+    if(nk.startsWith(query)) starts.push(nome);
+    else if(nk.includes(query)) includes.push(nome);
+    if(starts.length >= 8) break;
+  }
+  const out = starts.concat(includes).slice(0, 8);
+  return out;
+}
+
+function selectComuneByName(nome){
+  if(!nome) return false;
+  const layer = comuneLayerByNorm[normSearch(nome)];
+  if(layer){
+    selezionaComune(layer, nomeComuneFromFeature(layer.feature));
+    return true;
+  }
+  // fallback: cerca in tutti
+  const found = Array.from(comuniCanon).find(n => normSearch(n) === normSearch(nome));
+  if(found){
+    const ly = comuneLayerByNorm[normSearch(found)];
+    if(ly){ selezionaComune(ly, found); return true; }
+  }
+  return false;
+}
+
+function initComuneSearchUI(){
+  const input = document.getElementById("comuneSearchInput");
+  const suggs = document.getElementById("comuneSearchSuggs");
+  const btnGo = document.getElementById("btnComuneSearchGo");
+  if(!input || !suggs || !btnGo) return;
+
+  const closeSuggs = () => { suggs.style.display="none"; suggs.innerHTML=""; };
+
+  const renderSuggs = (arr) => {
+    if(!arr || !arr.length){ closeSuggs(); return; }
+    suggs.innerHTML = arr.map(n => `<div class="suggItem" data-n="${esc(n)}">${esc(n)}</div>`).join("");
+    suggs.style.display = "";
+  };
+
+  const doSearch = () => {
+    const q = input.value || "";
+    const matches = getComuneMatches(q);
+    if(matches.length === 1){
+      setInteractionMode("comuni");
+      selectComuneByName(matches[0]);
+      closeSuggs();
+      return;
+    }
+    // se c'è un match esatto, vai diretto
+    const exact = matches.find(n => normSearch(n) === normSearch(q));
+    if(exact){
+      setInteractionMode("comuni");
+      selectComuneByName(exact);
+      closeSuggs();
+      return;
+    }
+    renderSuggs(matches);
+  };
+
+  input.addEventListener("input", () => {
+    const matches = getComuneMatches(input.value);
+    renderSuggs(matches);
+  });
+
+  input.addEventListener("keydown", (ev) => {
+    if(ev.key === "Enter"){
+      ev.preventDefault();
+      doSearch();
+    }else if(ev.key === "Escape"){
+      closeSuggs();
+    }
+  });
+
+  btnGo.addEventListener("click", (ev) => {
+    ev.preventDefault();
+    doSearch();
+  });
+
+  suggs.addEventListener("click", (ev) => {
+    const t = ev.target;
+    if(!(t instanceof HTMLElement)) return;
+    const n = t.getAttribute("data-n");
+    if(n){
+      input.value = n;
+      setInteractionMode("comuni");
+      selectComuneByName(n);
+      closeSuggs();
+    }
+  });
+
+  // chiudi suggerimenti cliccando fuori
+  document.addEventListener("click", (ev) => {
+    const target = ev.target;
+    if(!(target instanceof HTMLElement)) return;
+    if(target === input || suggs.contains(target)) return;
+    closeSuggs();
+  });
+}
+
+
 /* ===============================
    REFERENTI COMUNE UI
 ================================ */
@@ -1703,6 +1877,7 @@ async function loadAll(){
       },
       onEachFeature: (f, layer) => {
         const nome = nomeComuneFromFeature(f);
+        comuneLayerByNorm[normSearch(nome)] = layer;
         layer.on("click", () => selezionaComune(layer, nome));
 
         const center = layer.getBounds().getCenter();
@@ -1741,6 +1916,7 @@ async function loadAll(){
     });
 
     aggiornaStiliComuni();
+    initComuneSearchUI();
 
     // farmacie
     const parsed = Papa.parse(csvRes.data, { header:true, skipEmptyLines:true });
@@ -1771,7 +1947,7 @@ async function loadAll(){
 
       // Contenuto popup: viene rigenerato ad ogni apertura per riflettere SEMPRE lo stato salvato
       // (evita che i chip/nomi "spariscano" dopo Salva e ricompaiano solo dopo un refresh).
-      marker.bindPopup(buildPopupHtml(row, farmaciaId), { maxWidth: 420, autoPan:true });
+      marker.bindPopup(buildPopupHtml(row, farmaciaId), { maxWidth: (uiMode==="mobile" ? 320 : 420), autoPan:true });
       marker.on("popupopen", () => {
         // rigenera contenuto dal data-store (localStorage)
         marker.setPopupContent(buildPopupHtml(row, farmaciaId));
@@ -2266,6 +2442,57 @@ document.getElementById("btnExportAderisce")?.addEventListener("click", () => {
   const ok = confirm("SOLO ADERISCE\n\nOK = scarica file (Excel se disponibile, altrimenti CSV)\nAnnulla = stampa elenco");
   if(ok) exportSoloAderisce(); else printSoloAderisce();
 });
+
+/* ===============================
+   UI: wiring (rev2.1.6)
+================================ */
+(function(){
+  const hud = document.getElementById("hud");
+  const hudFab = document.getElementById("hudFab");
+  const hudToggleBtn = document.getElementById("hudToggleBtn");
+  const hudUiBtn = document.getElementById("hudUiBtn");
+  const btnChangeUI = document.getElementById("btnChangeUI");
+  const btnUiMobile = document.getElementById("btnUiMobile");
+  const btnUiDesktop = document.getElementById("btnUiDesktop");
+  const btnUiClose = document.getElementById("btnUiChooserClose");
+  const btnModeComuni = document.getElementById("btnModeComuni");
+  const btnModeFarmacie = document.getElementById("btnModeFarmacie");
+
+  // Toggle pannello
+  const toggleHud = () => {
+    if(!hud) return;
+    hud.classList.toggle("is-collapsed");
+  };
+  if(hudFab) hudFab.addEventListener("click", (e)=>{ e.preventDefault(); toggleHud(); });
+  if(hudToggleBtn) hudToggleBtn.addEventListener("click", (e)=>{ e.preventDefault(); toggleHud(); });
+  const hudHandle = document.getElementById("hudHandle");
+  if(hudHandle) hudHandle.addEventListener("click", (e)=>{
+    // click sul maniglione (non sull'icona): toggle
+    const t = e.target;
+    if(t && t instanceof HTMLElement && (t.id === "hudToggleBtn" || t.id === "hudUiBtn")) return;
+    toggleHud();
+  });
+
+  // UI chooser
+  if(btnChangeUI) btnChangeUI.addEventListener("click", (e)=>{ e.preventDefault(); openUiChooser(); });
+  if(hudUiBtn) hudUiBtn.addEventListener("click", (e)=>{ e.preventDefault(); openUiChooser(); });
+  if(btnUiMobile) btnUiMobile.addEventListener("click", (e)=>{ e.preventDefault(); closeUiChooser(); setUiMode("mobile"); showChooser=false; });
+  if(btnUiDesktop) btnUiDesktop.addEventListener("click", (e)=>{ e.preventDefault(); closeUiChooser(); setUiMode("desktop"); showChooser=false; });
+  if(btnUiClose) btnUiClose.addEventListener("click", (e)=>{ e.preventDefault(); closeUiChooser(); showChooser=false; applyUiMode(); });
+
+  // Modalità selezione
+  if(btnModeComuni) btnModeComuni.addEventListener("click", (e)=>{ e.preventDefault(); setInteractionMode("comuni"); });
+  if(btnModeFarmacie) btnModeFarmacie.addEventListener("click", (e)=>{ e.preventDefault(); setInteractionMode("farmacie"); });
+
+  // Applica UI mode iniziale (IMPORTANTE: dopo che farmMarkers è definito)
+  applyUiMode();
+
+  // Se è la prima visita, mostra scelta UI (ma la mappa può già caricarsi dietro)
+  if(showChooser){
+    openUiChooser();
+  }
+})();
+
 // START
 loadAll();
 </script>
