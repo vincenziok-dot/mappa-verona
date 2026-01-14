@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Mappa Verona – SpG (rev2.1.3.2)</title>
+<title>Campagna SpG Verona – Mappa (rev2.1.4)</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -380,6 +380,156 @@ textarea.inlineInput{ min-height: 64px; resize: vertical; }
 @media (max-width: 720px){
   #mapStats{ right:12px; bottom:12px; width: min(420px, calc(100vw - 24px)); }
 }
+/* ===============================
+   UI MODE: splash + mobile panel
+================================ */
+.uiSplash{
+  position:fixed;
+  inset:0;
+  z-index:10001;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  background:
+    radial-gradient(1200px 700px at 20% 10%, rgba(0,255,156,.18), rgba(0,0,0,0) 55%),
+    radial-gradient(900px 600px at 90% 90%, rgba(255,191,0,.10), rgba(0,0,0,0) 60%),
+    rgba(0,0,0,.92);
+  backdrop-filter: blur(3px);
+}
+.uiSplash.hidden{ display:none; }
+.uiCard{
+  width: min(520px, 100%);
+  background: rgba(5,5,5,.92);
+  border:1px solid rgba(0,255,156,.28);
+  box-shadow: 0 0 28px rgba(0,0,0,.75);
+  border-radius: 18px;
+  padding: 18px 16px 16px;
+}
+.uiKicker{
+  font-size:10px;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+  color:#bfeee0;
+}
+.uiTitle{
+  margin-top:6px;
+  font-size:22px;
+  font-weight:900;
+  color:#fff;
+  letter-spacing:.02em;
+}
+.uiSub{
+  margin-top:8px;
+  color:#cfcfcf;
+  font-size:13px;
+  line-height:1.35;
+}
+.uiBtns{
+  margin-top:14px;
+  display:grid;
+  grid-template-columns: 1fr;
+  gap:10px;
+}
+.uiBtn{
+  width:100%;
+  padding:14px 14px;
+  border-radius: 16px;
+  border:1px solid rgba(255,255,255,.14);
+  background:#0e0e0e;
+  color:#fff;
+  font-size:15px;
+  font-weight:900;
+  cursor:pointer;
+}
+.uiBtn:hover{ border-color: rgba(0,255,156,.55); }
+.uiBtnMobile{
+  border-color: rgba(0,255,156,.35);
+  background: linear-gradient(180deg, rgba(0,255,156,.10), rgba(14,14,14,1));
+}
+.uiBtnDesktop{
+  border-color: rgba(77,166,255,.35);
+  background: linear-gradient(180deg, rgba(77,166,255,.10), rgba(14,14,14,1));
+}
+.uiHint{
+  margin-top:10px;
+  color:#9a9a9a;
+  font-size:12px;
+}
+
+/* Mobile HUD toggle + close */
+#hudToggle{
+  position:fixed;
+  left:14px;
+  bottom:14px;
+  z-index:9999;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:12px 14px;
+  border-radius: 16px;
+  border:1px solid rgba(0,255,156,.35);
+  background: rgba(0,0,0,.82);
+  color:#eafff7;
+  font-size:13px;
+  font-weight:950;
+  cursor:pointer;
+  box-shadow: 0 0 18px rgba(0,0,0,.6);
+}
+#hudToggle:active{ transform: translateY(1px); }
+
+#hudClose{
+  position:absolute;
+  top:10px;
+  right:10px;
+  width:34px;
+  height:34px;
+  border-radius: 12px;
+  border:1px solid rgba(0,255,156,.55);
+  background:#0b0b0b;
+  color:#00ff9c;
+  font-size:20px;
+  font-weight:900;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+#hudClose:hover{ background:#00ff9c; color:#00110b; }
+
+/* Modalità mobile: HUD collassabile */
+body[data-uimode="mobile"] #hudToggle{ display:flex; }
+body[data-uimode="mobile"] #hudClose{ display:flex; }
+
+/* In mobile, se collassato lo nascondo */
+body[data-uimode="mobile"] #hud{
+  transition: transform .22s ease, opacity .22s ease;
+}
+body[data-uimode="mobile"] #hud.hud-collapsed{
+  transform: translateY(120%);
+  opacity: 0;
+  pointer-events:none;
+}
+
+/* Micro-leggenda dentro overlay (utile su smartphone) */
+.ms-legendline{
+  margin-top:8px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  font-size:11px;
+  color:#e6e6e6;
+}
+.ms-legendline .k{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+}
+.ms-legendline .b{
+  width:10px; height:10px; border-radius:3px;
+}
+.ms-legendline .b.round{ border-radius:50%; }
 </style>
 </head>
 
@@ -387,7 +537,24 @@ textarea.inlineInput{ min-height: 64px; resize: vertical; }
 <div id="map"></div>
 <div id="banner"></div>
 
+<!-- UI mode splash (smartphone / desktop) -->
+<div id="uiSplash" class="uiSplash hidden" role="dialog" aria-modal="true" aria-label="Scelta interfaccia">
+  <div class="uiCard">
+    <div class="uiKicker">Campagna</div>
+    <div class="uiTitle">SpG Verona</div>
+    <div class="uiSub">Scegli l’interfaccia. Puoi cambiarla in qualsiasi momento dal pannello.</div>
+    <div class="uiBtns">
+      <button type="button" id="btnModeMobile" class="uiBtn uiBtnMobile">📱 Smartphone</button>
+      <button type="button" id="btnModeDesktop" class="uiBtn uiBtnDesktop">🖥️ Desktop</button>
+    </div>
+    <div class="uiHint" id="uiHint"></div>
+  </div>
+</div>
+
+<button id="hudToggle" type="button" aria-label="Apri pannello">☰ Legenda</button>
+
 <div id="hud">
+  <button id="hudClose" type="button" aria-label="Chiudi pannello">×</button>
   <div class="hud-title" id="hudTitle">Provincia di Verona</div>
   <div class="hud-sub" id="hudSub">Vista generale</div>
 
@@ -451,6 +618,7 @@ textarea.inlineInput{ min-height: 64px; resize: vertical; }
     <button class="hud-btn" id="btnExportCSV" title="Scarica un CSV (apribile in Excel) con tutte le farmacie e i campi campagna">Esporta CSV</button>
     <button class="hud-btn" id="btnPrintReport" title="Apri una pagina stampabile con statistiche + liste per stato">Stampa</button>
     <button class="hud-btn" id="btnExportAderisce" title="Export rapido per coordinamento: elenco SOLO ADERISCE">Solo aderisce</button>
+    <button class="hud-btn" id="btnUIMode" title="Cambia interfaccia (Smartphone/Desktop)">Cambia UI</button>
   </div>
 
   <div id="refPanel">
@@ -471,6 +639,12 @@ textarea.inlineInput{ min-height: 64px; resize: vertical; }
     Trattativa: <b id="ms_trattativa">0</b> · Non aderisce: <b id="ms_rifiuta">0</b> · Da contattare: <b id="ms_contattare">0</b>
   </div>
     <div class="ms-mini"><span class="nc-label">Da contattare (non contattate)</span>: <b id="ms_nc">0</b> · <span id="ms_nc_pct">0%</span></div>
+  <div class="ms-legendline" id="ms_legendline">
+    <span class="k"><span class="b round" style="background:#ffaa00"></span>Da contattare</span>
+    <span class="k"><span class="b round" style="background:#4da6ff"></span>Trattativa</span>
+    <span class="k"><span class="b round" style="background:#00ff9c"></span>Aderisce</span>
+    <span class="k"><span class="b round" style="background:#ff4d4d"></span>Non aderisce</span>
+  </div>
 <div class="ms-mini" id="ms_filter" style="display:none"></div>
 </div>
 
@@ -487,6 +661,91 @@ const DRIVE_MATERIALI = "https://drive.google.com/drive/folders/1oMqJ_6ZLthMK73F
 /* Path robusti: prova prima DATA/ (GitHub case-sensitive), poi data/ */
 const PATHS_FARMACIE = ["data/farmacie.csv", "DATA/farmacie.csv"];
 const PATHS_COMUNI   = ["data/comuni_verona.json", "DATA/comuni_verona.json"];
+
+/* ===============================
+   UI MODE (Smartphone / Desktop)
+================================ */
+const UI_MODE_KEY = "spg_ui_mode_rev2";
+function recommendedMode(){
+  const vw = window.innerWidth || document.documentElement.clientWidth;
+  return (vw <= 820) ? "mobile" : "desktop";
+}
+function setUIMode(mode){
+  document.body.dataset.uimode = mode;
+  const hud = document.getElementById("hud");
+  const toggle = document.getElementById("hudToggle");
+  if(mode === "mobile"){
+    hud.classList.add("hud-collapsed"); // default chiuso
+    if(toggle) toggle.textContent = "☰ Legenda";
+  }else{
+    hud.classList.remove("hud-collapsed");
+  }
+  try{ map && map.invalidateSize(); }catch(e){}
+}
+function showUIModeSplash(){
+  const splash = document.getElementById("uiSplash");
+  const hint = document.getElementById("uiHint");
+  if(!splash) return;
+  splash.classList.remove("hidden");
+  const rec = recommendedMode();
+  if(hint){
+    hint.textContent = `Suggerito: ${rec === "mobile" ? "Smartphone" : "Desktop"} (in base allo schermo).`;
+  }
+}
+function hideUIModeSplash(){
+  const splash = document.getElementById("uiSplash");
+  if(splash) splash.classList.add("hidden");
+}
+function initUIMode(){
+  const saved = localStorage.getItem(UI_MODE_KEY);
+  if(saved){
+    setUIMode(saved);
+    hideUIModeSplash();
+  }else{
+    // pre-applica la modalità consigliata ma chiedi conferma
+    document.body.dataset.uimode = recommendedMode();
+    showUIModeSplash();
+  }
+
+  const bM = document.getElementById("btnModeMobile");
+  const bD = document.getElementById("btnModeDesktop");
+  if(bM) bM.addEventListener("click", () => {
+    localStorage.setItem(UI_MODE_KEY, "mobile");
+    setUIMode("mobile");
+    hideUIModeSplash();
+  });
+  if(bD) bD.addEventListener("click", () => {
+    localStorage.setItem(UI_MODE_KEY, "desktop");
+    setUIMode("desktop");
+    hideUIModeSplash();
+  });
+
+  const hud = document.getElementById("hud");
+  const toggle = document.getElementById("hudToggle");
+  const closeBtn = document.getElementById("hudClose");
+  const toggleHud = () => {
+    if(document.body.dataset.uimode !== "mobile") return;
+    hud.classList.toggle("hud-collapsed");
+    try{
+      farmMarkers.forEach(f => {
+        const m = f.marker;
+        if(m && m.isPopupOpen && m.isPopupOpen()){
+          applyPopupAutoPan(m.getPopup());
+        }
+      });
+    }catch(e){}
+  };
+  if(toggle) toggle.addEventListener("click", toggleHud);
+  if(closeBtn) closeBtn.addEventListener("click", (ev)=>{ ev.preventDefault(); ev.stopPropagation(); hud.classList.add("hud-collapsed"); });
+
+  const btnUIMode = document.getElementById("btnUIMode");
+  if(btnUIMode) btnUIMode.addEventListener("click", () => showUIModeSplash());
+
+  window.addEventListener("resize", () => {
+    const current = localStorage.getItem(UI_MODE_KEY) || document.body.dataset.uimode || recommendedMode();
+    document.body.dataset.uimode = current;
+  });
+}
 
 /* ===============================
    HELPERS
@@ -611,9 +870,10 @@ function getSmartPadding(opts){
 
   const hud = document.getElementById("hud");
   if(includeHud && hud){
+    const hudCollapsed = hud.classList.contains("hud-collapsed");
     const r = hud.getBoundingClientRect();
     // HUD tipicamente a sinistra: conta sempre il suo ingombro per centrare nell'area mappa
-    const hudVisible = (r.width > 120) && (r.height > 120) && (r.right > 0) && (r.bottom > 0);
+    const hudVisible = (!hudCollapsed) && (r.width > 120) && (r.height > 120) && (r.right > 0) && (r.bottom > 0);
     const hudLeft = hudVisible && (r.left <= 80);
     if(hudLeft) padLeft = Math.max(padLeft, Math.round(r.width + 24));
 
@@ -1956,6 +2216,7 @@ document.getElementById("btnExportAderisce")?.addEventListener("click", () => {
   if(ok) exportSoloAderisce(); else printSoloAderisce();
 });
 // START
+initUIMode();
 loadAll();
 </script>
 </body>
