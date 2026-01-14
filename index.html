@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Campagna SpG Verona – Mappa (rev 2.1.6.2)</title>
+<title>Campagna SpG Verona · rev2.1.6.3</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -179,13 +179,13 @@ html, body { margin:0; height:100%; background:#000; font-family:system-ui, -app
   height:8px;
   border-radius:999px;
   overflow:hidden;
-  background: rgba(255, 191, 0, .10);
-  border:1px solid rgba(255,191,0,.28);
+  background: rgba(255, 191, 0, .08);
+  border:1px solid rgba(255,191,0,.22);
 }
 #ms_bar_nc{
   height:100%;
   width:0%;
-  background: linear-gradient(90deg, rgba(255,191,0,.35), rgba(255,191,0,.85));
+  background: linear-gradient(90deg, rgba(255,191,0,.22), rgba(255,191,0,.72));
   border-radius:999px;
 }
 .ms-mini .nc-label{ color:rgba(255,191,0,.95); font-weight:900; }
@@ -377,8 +377,108 @@ textarea.inlineInput{ min-height: 64px; resize: vertical; }
   border-radius: 999px;
   font-weight:800;
 }
+
+/* === MapStats compact line (mobile collapse) === */
+.ms-compact{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:12px;
+  font-weight:1000;
+  letter-spacing:.02em;
+  color:#ffffff;
+}
+.ms-compact b{ font-weight:1000; }
+.ms-compact-pct{ color:#00ff9c; }
+.ms-compact-nc{ color:rgba(255,191,0,.95); }
+
+/* === Grouped HUD buttons === */
+.hud-buttons{
+  margin-top:12px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:stretch;
+  position: sticky;
+  bottom:0;
+  padding-top:10px;
+  background: rgba(5,5,5,.96);
+  border-top:1px solid #222;
+}
+.btnGroup{
+  flex: 1 1 240px;
+  min-width: 220px;
+  background: rgba(8,8,8,.92);
+  border:1px solid rgba(255,255,255,.10);
+  border-radius: 14px;
+  padding:10px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.grpTitle{
+  font-size:10px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:#bfeee0;
+  font-weight:1000;
+  opacity:.95;
+}
+.grpBtns{ display:flex; gap:6px; flex-wrap:wrap; }
+.btnGroup.grpComune{ border-left:3px solid #00ff9c; }
+.btnGroup.grpExport{ border-left:3px solid #4da6ff; }
+.btnGroup.grpTools{ border-left:3px solid #ffaa00; }
+
+body.ui-mobile #hudFab{ display:none !important; } /* rimuove doppio pulsante chiudi */
+body.ui-mobile .leaflet-popup-close-button{
+  width:36px !important;
+  height:36px !important;
+  line-height:36px !important;
+  font-size:26px !important;
+}
+.modeHelp{
+  margin-top:6px;
+  font-size:11px;
+  color:#d0d0d0;
+  line-height:1.25;
+  max-width: 360px;
+}
+body.ui-mobile .modeHelp{ font-size:12px; max-width: calc(100vw - 24px); }
 @media (max-width: 720px){
-  #mapStats{ right:12px; bottom:12px; width: min(420px, calc(100vw - 24px)); }
+  #mapStats{
+    left:12px;
+    right:auto;
+    top:64px;
+    bottom:auto;
+    width: min(420px, calc(100vw - 24px));
+  }
+  body.ui-mobile #mapStats{ pointer-events:none; }
+  body.ui-mobile #mapStats.ms-collapsed{
+    pointer-events:auto;
+    cursor:pointer;
+  }
+
+  #mapStats #ms_compact{ display:none; }
+  #mapStats.ms-collapsed{
+    width:auto;
+    max-width: calc(100vw - 24px);
+    padding:8px 10px;
+    border-radius: 999px;
+    background: rgba(0,0,0,.46);
+    backdrop-filter: blur(4px);
+  }
+  #mapStats.ms-collapsed .ms-title,
+  #mapStats.ms-collapsed .ms-line,
+  #mapStats.ms-collapsed .ms-bar,
+  #mapStats.ms-collapsed .ms-bar2,
+  #mapStats.ms-collapsed .ms-mini,
+  #mapStats.ms-collapsed .ms-tag,
+  #mapStats.ms-collapsed #ms_filter{
+    display:none !important;
+  }
+  #mapStats.ms-collapsed #ms_compact{
+    display:flex !important;
+  }
 }
 
 /* ===============================
@@ -716,6 +816,7 @@ body.ui-mobile #mobileHint{ display:block; }
 <div id="modeToggle" role="group" aria-label="Modalità selezione">
   <button class="modeBtn modeComuni" id="btnModeComuni" data-on="0">👆 Comuni</button>
   <button class="modeBtn" id="btnModeFarmacie" data-on="1">🏥 Farmacie</button>
+  <div class="modeHelp" id="modeHelp">Comuni: scegli un comune · Farmacie: tocchi i marker per aprire le schede</div>
 </div>
 
 
@@ -796,19 +897,37 @@ body.ui-mobile #mobileHint{ display:block; }
     <div class="grid2" id="comuneCounts"></div>
   </div>
 
-  <div class="hud-buttons">
-    <button class="hud-btn" id="btnAddRef">Aggiungi referente</button>
-    <button class="hud-btn" id="btnToggleRef">Vedi referenti</button>
-    <button class="hud-btn" id="btnClearFilter" title="Rimuovi filtro stati" style="display:none">Reset filtro stati</button>
   
-    <button class="hud-btn" id="btnExportXLSX" title="Scarica un file Excel con statistiche + liste per stato">Esporta Excel</button>
-    <button class="hud-btn" id="btnExportCSV" title="Scarica un CSV (apribile in Excel) con tutte le farmacie e i campi campagna">Esporta CSV</button>
-    <button class="hud-btn" id="btnPrintReport" title="Apri una pagina stampabile con statistiche + liste per stato">Stampa</button>
-    <button class="hud-btn" id="btnExportAderisce" title="Export rapido per coordinamento: elenco SOLO ADERISCE">Solo aderisce</button>
-    <button class="hud-btn" id="btnChangeUI" title="Scegli Smartphone/Desktop">Cambia UI</button>
+  <div class="hud-buttons">
+    <div class="btnGroup grpComune">
+      <div class="grpTitle">Comune & referenti</div>
+      <div class="grpBtns">
+        <button class="hud-btn" id="btnAddRef">Aggiungi referente</button>
+        <button class="hud-btn" id="btnToggleRef">Vedi referenti</button>
+      </div>
+    </div>
+
+    <div class="btnGroup grpExport">
+      <div class="grpTitle">Export & stampa</div>
+      <div class="grpBtns">
+        <button class="hud-btn" id="btnExportXLSX" title="Scarica un... Excel con statistiche + liste per stato">Esporta Excel</button>
+        <button class="hud-btn" id="btnExportCSV" title="Scarica un ...) con tutte le farmacie e i campi campagna">Esporta CSV</button>
+        <button class="hud-btn" id="btnPrintReport" title="Apri una pagina stampabile con statistiche + liste per stato">Stampa</button>
+        <button class="hud-btn" id="btnExportAderisce" title="Export... per coordinamento: elenco SOLO ADERISCE">Solo aderisce</button>
+      </div>
+    </div>
+
+    <div class="btnGroup grpTools">
+      <div class="grpTitle">Strumenti</div>
+      <div class="grpBtns">
+        <button class="hud-btn" id="btnClearFilter" title="Rimuovi filtro stati" style="display:none">Reset filtro stati</button>
+        <button class="hud-btn" id="btnChangeUI" title="Scegli Smartphone/Desktop">Cambia UI</button>
+      </div>
+    </div>
   </div>
 
   <div id="refPanel">
+
     <ul id="refList"></ul>
   </div>
 </div>
@@ -818,7 +937,14 @@ body.ui-mobile #mobileHint{ display:block; }
 <!-- Overlay sempre visibile in mappa -->
 <div id="mapStats" aria-hidden="true">
   <div class="ms-title" id="ms_title">Avanzamento campagna</div>
-  <div class="ms-line">
+    <div id="ms_compact" class="ms-compact" title="Tocca per vedere le statistiche">
+    <span class="ms-compact-pct" id="ms_c_pct">0%</span>
+    <span class="ms-compact-sep">·</span>
+    <span class="ms-compact-ader">Aderisce <b><span id="ms_c_ader">0</span>/<span id="ms_c_tot">0</span></b></span>
+    <span class="ms-compact-sep">·</span>
+    <span class="ms-compact-nc">Da contattare <b><span id="ms_c_nc">0</span></b></span>
+  </div>
+<div class="ms-line">
     <div class="ms-main"><span id="ms_aderisce">0</span>/<span id="ms_total">0</span> aderisce</div>
     <div class="ms-pct" id="ms_pct">0%</div>
   </div>
@@ -852,7 +978,15 @@ function esc(s){
   return String(s||"").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
 }
 function normKey(s){
-  return (s||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");
+  return (s||"")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/[’\'`´"]/g,"")
+    .replace(/[^a-z0-9 ]+/g," ")
+    .replace(/\s+/g," ")
+    .trim();
 }
 
 function normSearch(s){
@@ -1735,6 +1869,24 @@ elTr.textContent = String(counts.trattativa);
   } else {
     elF.style.display = "none";
     elF.textContent = "";
+  }
+
+  // Compact (mobile)
+  const cPct = document.getElementById("ms_c_pct");
+  const cAder = document.getElementById("ms_c_ader");
+  const cTot = document.getElementById("ms_c_tot");
+  const cNc = document.getElementById("ms_c_nc");
+  if(cPct) cPct.textContent = (pct || 0) + "%";
+  if(cAder) cAder.textContent = String(counts.aderisce || 0);
+  if(cTot) cTot.textContent = String(total || 0);
+  if(cNc) cNc.textContent = String(counts.contattare || 0);
+
+  // Auto-collapse (mobile) dopo 3s
+  const ms = document.getElementById("mapStats");
+  if(ms && uiMode==="mobile"){
+    ms.classList.remove("ms-collapsed");
+    clearTimeout(window.__msAutoTimer);
+    window.__msAutoTimer = setTimeout(()=>{ ms.classList.add("ms-collapsed"); }, 3000);
   }
 }
 
@@ -2741,11 +2893,23 @@ document.getElementById("btnExportAderisce")?.addEventListener("click", () => {
   const btnModeComuni = document.getElementById("btnModeComuni");
   const btnModeFarmacie = document.getElementById("btnModeFarmacie");
 
+  // MapStats (tap to expand on mobile when collapsed)
+  const __ms = document.getElementById("mapStats");
+  if(__ms){
+    __ms.addEventListener("click", ()=>{
+      if(uiMode!=="mobile") return;
+      if(!__ms.classList.contains("ms-collapsed")) return;
+      __ms.classList.remove("ms-collapsed");
+      clearTimeout(window.__msAutoTimer);
+      window.__msAutoTimer = setTimeout(()=>{ __ms.classList.add("ms-collapsed"); }, 3000);
+    });
+  }
+
   // Toggle pannello
   const updateHudChrome = () => {
     if(!hud) return;
     const collapsed = hud.classList.contains("is-collapsed");
-    if(hudToggleBtn) hudToggleBtn.textContent = collapsed ? "⌃" : "⌄";
+    if(hudToggleBtn) hudToggleBtn.textContent = collapsed ? "⌃" : "✕";
     if(hudFab) hudFab.textContent = collapsed ? "☰" : "✕";
   };
   const toggleHud = () => {
