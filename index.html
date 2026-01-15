@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Campagna SpG Verona · rev2.1.6.6</title>
+<title>Campagna SpG Verona · rev2.1.6.7</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -237,6 +237,21 @@ html, body { margin:0; height:100%; background:#000; font-family:system-ui, -app
   font-size:14px;
   color:#0b0b0b;
 }
+
+/* Popup: link compatti in alto a destra */
+.popupTop{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+.popupTopLinks{ display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+.pillLink{
+  display:inline-flex; align-items:center; justify-content:center;
+  padding:5px 9px; border-radius:999px;
+  font-size:12px; font-weight:1000; text-decoration:none; line-height:1;
+  border:1px solid rgba(0,0,0,.22);
+  color:#0b0b0b; background: rgba(255,255,255,.55);
+}
+.pillMaps{ border-color: rgba(0,255,156,.95); box-shadow: 0 0 0 2px rgba(0,255,156,.18) inset; }
+.pillMat{ border-color: rgba(77,166,255,.95); box-shadow: 0 0 0 2px rgba(77,166,255,.18) inset; }
+body.ui-mobile .pillLink{ font-size:11px; padding:5px 8px; }
+
 .popupMeta{ color:#3b3b3b; font-size:12px; }
 .popupDivider{ height:1px; background:#e6e6e6; margin:10px 0; }
 
@@ -465,6 +480,27 @@ body.ui-mobile .leaflet-popup-close-button{
   line-height:1.25;
   max-width: 360px;
 }
+.modeLabel{
+  display:inline-flex;
+  align-items:center;
+  height: 28px;
+  padding:0 8px;
+  border-radius: 12px;
+  font-size:11px;
+  font-weight:900;
+  color:#ffffff;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width: 200px;
+  text-shadow:0 0 6px rgba(0,0,0,.85);
+}
+body.ui-mobile .modeLabel{
+  max-width: 140px;
+  font-size:10px;
+  opacity:.95;
+}
+
 body.ui-mobile .modeHelp{ font-size:12px; max-width: calc(100vw - 24px); }
 @media (max-width: 720px){
   #mapStats{
@@ -814,7 +850,7 @@ body.ui-mobile #mobileHint{ display:block; }
 #mobileHint.show{ opacity:1; }
 
 
-/* === PATCH mobile usability (rev2.1.6.6) === */
+/* === PATCH mobile usability (rev2.1.6.7) === */
 
 /* Center custom markers inside Leaflet div icon container */
 .leaflet-div-icon{
@@ -919,12 +955,12 @@ body.ui-mobile #msFab{
 }
 
 /* di default su mobile: stats non intercettano tocchi */
-body.ui-mobile #mapStats{ pointer-events:none !important; left:60px !important; right:auto !important; top:58px !important; }
+body.ui-mobile #mapStats{ pointer-events:none !important; left:60px !important; right:12px !important; top:58px !important; width:auto !important; max-width: calc(100vw - 72px) !important; overflow:hidden !important; }
 body.ui-mobile #mapStats.ms-expanded{ pointer-events:auto !important; }
 
 /* quando espanso: mostra il box completo (poi si richiude da solo) */
 body.ui-mobile #mapStats.ms-expanded{
-  width: min(320px, calc(100vw - 24px)) !important;
+  width: min(340px, calc(100vw - 72px)) !important;
   padding:10px 10px 8px !important;
   border-radius: 12px !important;
 }
@@ -974,6 +1010,7 @@ body.ui-mobile .leaflet-popup-content{ overflow-x:hidden !important; }
 <div id="modeToggle" role="group" aria-label="Modalità selezione">
   <button class="modeBtn modeComuni" id="btnModeComuni" data-on="0">👆 Comuni</button>
   <button class="modeBtn" id="btnModeFarmacie" data-on="1">🏥 Farmacie</button>
+    <div class="modeLabel" id="modeComuneLabel">Vista generale</div>
   <div class="modeHelp" id="modeHelp">Comuni: scegli un comune · Farmacie: tocchi i marker per aprire le schede</div>
 </div>
 
@@ -1231,6 +1268,37 @@ function setUiMode(mode){
         if(uiMode !== "mobile") return;
         if(document.body.classList.contains("ph-popup-open")) return;
 
+        const now = Date.now();
+        const dbl = (window.__msFabLastClick && (now - window.__msFabLastClick) < 320);
+        window.__msFabLastClick = now;
+
+        // Double tap: pin/unpin (resta aperto finché non richiudi)
+        if(dbl){
+          window.__msFabPinned = !window.__msFabPinned;
+          clearTimeout(window.__msFabTimer);
+
+          if(window.__msFabPinned){
+            ms.classList.remove("ms-collapsed");
+            ms.classList.add("ms-expanded");
+            msFab.textContent = "📊✓";
+          }else{
+            ms.classList.remove("ms-expanded");
+            ms.classList.add("ms-collapsed");
+            msFab.textContent = "📊";
+          }
+          return;
+        }
+
+        // Single tap: toggle (auto-chiusura 4s). Se pinned, unpin e chiudi.
+        if(window.__msFabPinned){
+          window.__msFabPinned = false;
+          msFab.textContent = "📊";
+          clearTimeout(window.__msFabTimer);
+          ms.classList.remove("ms-expanded");
+          ms.classList.add("ms-collapsed");
+          return;
+        }
+
         const isOpen = ms.classList.contains("ms-expanded");
         clearTimeout(window.__msFabTimer);
 
@@ -1243,14 +1311,24 @@ function setUiMode(mode){
         ms.classList.remove("ms-collapsed");
         ms.classList.add("ms-expanded");
         window.__msFabTimer = setTimeout(()=>{
+          if(window.__msFabPinned) return;
           ms.classList.remove("ms-expanded");
           ms.classList.add("ms-collapsed");
-        }, 3000);
+        }, 4000);
       });
     }
   }
 
   applyUiMode();
+
+  // Desktop: vista iniziale più zoomata (≈ +35%) dopo scelta UI
+  try{
+    const noComune = (!selectedComuneNome);
+    if(uiMode==="desktop" && noComune){
+      map.setView([45.43, 10.99], 10.5, { animate:true });
+    }
+  }catch(e){}
+
   __initUxOnce();
 }
 
@@ -1294,7 +1372,7 @@ function showMobileHintOnce(){
     ? "Suggerimento: sei in modalità COMUNI. Tocca un comune o usa la ricerca. Passa a FARMACIE per aprire i popup."
     : "Suggerimento: sei in modalità FARMACIE. Tocca i marker per aprire i popup.";
   el.classList.add("show");
-  setTimeout(() => el.classList.remove("show"), 4200);
+  setTimeout(() => el.classList.remove("show"), 5000);
 }
 
 
@@ -1407,8 +1485,20 @@ function hasRef(nome){ return (referentiComune[nome] && referentiComune[nome].le
 /* ===============================
    MAPPA
 ================================ */
-const map = L.map("map", { attributionControl:false, preferCanvas: AUTO_MOBILE }).setView([45.43, 10.99], 10);
+const map = L.map("map", {
+  attributionControl:false,
+  preferCanvas: AUTO_MOBILE,
+  zoomControl:false,
+  wheelPxPerZoomLevel: 60,
+  wheelDebounceTime: 20,
+  zoomSnap: 0.25,
+  zoomDelta: 0.5
+}).setView([45.43, 10.99], 10);
+
 L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { maxZoom:18 }).addTo(map);
+
+// +/- sempre disponibili (utile su notebook / touchpad)
+L.control.zoom({ position:"topright" }).addTo(map);
 
 /* ===============================
    PADDING "SMART" (HUD + overlay)
@@ -1549,6 +1639,24 @@ function applyPopupAutoPan(popup){
   popup.options.keepInView = true;
 }
 
+
+/* Mobile: porta il marker più in basso per lasciare più spazio al popup */
+function panMarkerLowerForPopup(latlng){
+  if(uiMode !== "mobile") return;
+  try{
+    const vh = window.innerHeight || document.documentElement.clientHeight || 0;
+    if(!vh) return;
+    const desiredY = Math.round(vh * 0.72);
+    const p = map.latLngToContainerPoint(latlng);
+    let dy = desiredY - p.y;
+    const max = Math.round(vh * 0.28);
+    dy = Math.max(-max, Math.min(max, dy));
+    if(Math.abs(dy) > 8){
+      map.panBy([0, dy], { animate:true });
+    }
+  }catch(e){}
+}
+
 /* Per capire se l'utente sta facendo zoom-in o zoom-out */
 let lastZoomLevel = null;
 
@@ -1677,7 +1785,13 @@ function buildPopupHtml(row, farmaciaId){
 
   return `
   <div class="popupWrap" data-farm-id="${esc(farmaciaId)}">
-    <h3>${esc(nome)}</h3>
+    <div class="popupTop">
+      <h3>${esc(nome)}</h3>
+      <div class="popupTopLinks">
+        <a class="pillLink pillMaps" href="${esc(maps||"#")}" target="_blank" rel="noopener" title="Apri in Maps">🗺️</a>
+        <a class="pillLink pillMat" href="${esc(DRIVE_MATERIALI)}" target="_blank" rel="noopener" title="Materiali">📁</a>
+      </div>
+    </div>
     <div class="popupMeta">${esc(indirizzo)}${cap?` – ${esc(cap)}`:""} – <b>${esc(comune)}</b>${gestione?` · ${esc(gestione)}`:""}</div>
 
     <div class="popupDivider"></div>
@@ -1724,11 +1838,6 @@ function buildPopupHtml(row, farmaciaId){
         <input type="checkbox" data-role="closed" ${closed?"checked":""}/>
         Chiusa temporaneamente
       </label>
-      <div class="smallLink">
-        <a href="${esc(maps)}" target="_blank" rel="noopener">Apri in Maps</a>
-        &nbsp;·&nbsp;
-        <a href="${esc(DRIVE_MATERIALI)}" target="_blank" rel="noopener">Materiali</a>
-      </div>
     </div>
 
     <div class="popupActions">
@@ -2195,8 +2304,16 @@ function selezionaComune(layer, nome){
   aggiornaStiliComuni();
   fitBoundsSmart(layer.getBounds());
 
-  banner.style.display="block";
-  banner.innerHTML = `↑ Comune di <b>${esc(nome)}</b>`;
+  // Banner solo su desktop (su mobile usiamo label nel toggle)
+  if(uiMode !== "mobile"){
+    banner.style.display="block";
+    banner.innerHTML = `↑ Comune di <b>${esc(nome)}</b>`;
+  }else{
+    banner.style.display="none";
+  }
+
+  const lbl = document.getElementById("modeComuneLabel");
+  if(lbl) lbl.textContent = nome;
 
   hudTitle.textContent = `Comune di ${nome}`;
   const nRef = hasRef(nome) ? (referentiComune[nome].length) : 0;
@@ -2213,6 +2330,9 @@ function resetSelezione(){
   selectedComuneLayer = null;
   selectedComuneNome = null;
   banner.style.display="none";
+
+  const lbl = document.getElementById("modeComuneLabel");
+  if(lbl) lbl.textContent = "Vista generale";;
 
   hudTitle.textContent="Provincia di Verona";
   hudSub.textContent="Vista generale";
@@ -2524,6 +2644,7 @@ async function loadAll(){
           const hud=document.getElementById("hud");
           if(hud) hud.classList.add("is-collapsed");
         }
+          setTimeout(()=>{ try{ panMarkerLowerForPopup(marker.getLatLng()); }catch(e){} }, 60);
         setTimeout(() => attachPopupHandlers(marker, row, farmaciaId), 0);
       });
 
