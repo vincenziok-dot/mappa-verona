@@ -3,19 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Campagna SpG Verona · rev2.1.6.8</title>
+<title>Mappa Verona – SpG (Farmacie + Stato)</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-html, body { margin:0; height:100%; background:#000; font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+html, body { margin:0; height:100%; background:#000; font-family:system-ui, sans-serif; }
 #map { position:absolute; inset:0; background:#050505; }
 
-/* TOP BANNER (comune selezionato) */
+/* BANNER ALTO COMUNE SELEZIONATO */
 #banner{
   position:fixed; top:0; left:50%; transform:translateX(-50%);
-  background:rgba(0,0,0,.86);
-  padding:8px 14px;
+  background:rgba(0,0,0,.85);
+  padding:8px 18px;
   border-bottom:3px solid #00ff9c;
   color:#fff; font-size:13px;
   display:none; z-index:9999;
@@ -25,145 +25,121 @@ html, body { margin:0; height:100%; background:#000; font-family:system-ui, -app
 
 /* HUD */
 #hud{
-  position:fixed; top:14px; left:14px; z-index:9998;
-  padding:12px 14px;
+  position:fixed; top:18px; left:18px; z-index:9998;
+  padding:14px 16px;
   background:rgba(5,5,5,.94);
   border-left:4px solid #00ff9c;
-  width: min(430px, calc(100vw - 28px));
+  min-width:340px; max-width:440px;
   box-shadow:0 0 20px rgba(0,0,0,.85);
-  max-height: calc(100vh - 28px);
+  max-height: calc(100vh - 36px);
   overflow:auto;
-  border-radius: 6px;
 }
 
-.hud-title{ font-size:16px; font-weight:750; color:#fff; text-transform:uppercase; letter-spacing:.04em; }
+.hud-title{ font-size:18px; font-weight:750; color:#fff; text-transform:uppercase; }
 .hud-sub{ margin-top:6px; font-size:13px; color:#bdbdbd; }
 
-.section-chip{
-  display:flex; align-items:center; justify-content:space-between;
-  gap:10px;
-  margin-top:10px;
+.hud-chip{
+  display:inline-block; margin-top:10px;
   font-size:10px; letter-spacing:.14em; text-transform:uppercase;
   color:#9ef5d9; background:#0e0e0e;
   padding:6px 8px; border:1px solid #1f1f1f;
-  border-radius: 6px;
 }
-.section-chip small{ color:#9a9a9a; letter-spacing:.08em; text-transform:none; font-size:11px; }
 
-.grid2{ margin-top:10px; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-
-.stat{ background:#0e0e0e; padding:8px; border:1px solid #1f1f1f; border-radius: 6px; }
-.stat-title{ font-size:10px; text-transform:uppercase; letter-spacing:.12em; color:#bdbdbd; }
-.stat-value{ font-size:24px; font-weight:800; margin-top:2px; }
-.v-green{ color:#00ff9c; }
-.v-amber{ color:#ffaa00; }
-.v-blue{ color:#4da6ff; }
-.v-red{ color:#ff4d4d; }
-.v-muted{ color:#d0d0d0; }
-
-.progressBox{
+#stats{
   margin-top:10px;
-  background:#0e0e0e;
-  border:1px solid #1f1f1f;
-  border-radius: 10px;
-  padding:10px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
 }
-.p-main{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap; }
-.p-main b{ color:#fff; }
-.p-main .big{
-  font-size:18px; font-weight:850; color:#00ff9c;
-}
-.p-main .big span{ color:#fff; }
-.p-main .pct{ font-size:13px; color:#bdbdbd; font-weight:700; }
-.p-bar{
-  margin-top:8px;
-  height:10px;
-  background:#111;
-  border:1px solid #242424;
-  border-radius:999px;
-  overflow:hidden;
-}
-.p-bar > div{
-  height:100%;
-  width:0%;
-  background:linear-gradient(90deg, rgba(0,255,156,.25), rgba(0,255,156,1));
-}
-.p-mini{
-  margin-top:8px;
+.stat{ background:#0e0e0e; padding:8px; border:1px solid #1f1f1f; }
+.stat-title{ font-size:10px; text-transform:uppercase; letter-spacing:.12em; color:#bdbdbd; }
+.stat-value{ font-size:24px; font-weight:800; }
+.stat-ok .stat-value{ color:#00ff9c; }
+.stat-warn .stat-value{ color:#ffaa00; }
+.stat-info .stat-value{ color:#4da6ff; }
+.stat-bad .stat-value{ color:#ff4d4d; }
+.stat-muted .stat-value{ color:#d0d0d0; }
+
+#debugBox{
+  margin-top:10px;
   font-size:12px;
-  color:#cfcfcf;
+  color:#bdbdbd;
   line-height:1.35;
 }
-.p-mini b{ color:#fff; }
-
-#miniLegend{
-  margin-top:10px; padding-top:8px;
-  border-top:1px solid #222;
-}
-
-.legend-row{ display:flex; align-items:center; gap:8px; font-size:12px; color:#e6e6e6; margin:6px 0; }
-.badge{
-  display:inline-flex; align-items:center; justify-content:center;
-  min-width:18px; height:18px; padding:0 6px;
-  border-radius:999px;
-  background:#141414; border:1px solid #2a2a2a;
-  font-size:11px; color:#e6e6e6;
-}
-
-.dot{ width:12px; height:12px; border-radius:50%; }
-.square{ width:12px; height:12px; border-radius:2px; }
-
-.c-contattare{ background:#ffaa00; }
-.c-trattativa{ background:#4da6ff; }
-.c-aderisce{ background:#00ff9c; }
-.c-rifiuta{ background:#ff4d4d; }
-.c-chiusa{ background:#9a9a9a; opacity:.45; }
-
-.c-comune-coperto{ background:#00ff9c; }
-.c-comune-orfano{ background:#ffaa00; }
+#debugBox .warn{ color:#ffaa00; }
+#debugBox .info{ color:#4da6ff; }
 
 #comuneBox{
-  margin-top:12px; padding-top:10px;
+  margin-top:14px; padding-top:10px;
   border-top:1px solid #222;
 }
-#comuneCounts{ margin-top:8px; }
-#comuneCounts .stat-value{ font-size:20px; }
-
-.hud-buttons{
-  margin-top:12px;
-  display:flex; gap:6px; flex-wrap:wrap;
-  position:sticky; bottom:0;
-  padding-top:10px;
-  background: rgba(5,5,5,.96);
-  border-top: 1px solid #222;
+#comuneBox h4{
+  margin:0 0 6px;
+  font-size:11px; text-transform:uppercase; letter-spacing:.12em;
+  color:#9ef5d9;
 }
-.hud-btn{
+#farm-count, #pri-com-count{ font-size:12px; margin:4px 0 0; color:#e6e6e6; }
+
+#comuneStats{
+  margin-top:8px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.small .stat-value{ font-size:18px; }
+
+#toolsBox{
+  margin-top:14px; padding-top:10px;
+  border-top:1px solid #222;
+}
+#toolsBox h4{
+  margin:0 0 8px;
+  font-size:11px; text-transform:uppercase; letter-spacing:.12em;
+  color:#9ef5d9;
+}
+.btnRow{ display:flex; gap:8px; flex-wrap:wrap; }
+button{
   border:1px solid #00ff9c;
   background:#041812; color:#eafff7;
-  font-size:12px; padding:8px 10px; cursor:pointer;
-  border-radius: 8px;
+  font-size:11px; padding:8px 10px; cursor:pointer;
 }
-.hud-btn:hover{ background:#00ff9c; color:#00110b; }
+button:hover{ background:#00ff9c; color:#00110b; }
+button.danger{ border-color:#ff4d4d; background:#1b0505; }
+button.danger:hover{ background:#ff4d4d; color:#120000; }
+button.disabled{ opacity:.45; cursor:not-allowed; }
+#selectedPharmHint{ margin-top:8px; font-size:12px; color:#bdbdbd; }
+#selectedPharmHint b{ color:#fff; }
 
-#refPanel{ display:none; margin-top:8px; }
-#refList{ list-style:none; padding-left: 0; margin:6px 0 0; }
-#refList li{
-  display:flex; align-items:center; justify-content:space-between; gap:8px;
-  font-size:12px; color:#fff;
-  background:#0e0e0e; border:1px solid #1f1f1f;
-  padding:6px 8px; border-radius: 8px;
-  margin-bottom:6px;
+#legend-box{
+  margin-top:14px; padding-top:10px;
+  border-top:1px solid #222;
 }
-.xbtn{
-  width:18px; height:18px;
-  border-radius: 6px;
-  border:1px solid #333;
-  background:#151515; color:#ddd;
-  display:flex; align-items:center; justify-content:center;
-  cursor:pointer;
-  font-size:12px; line-height:12px;
+#legend-box h4{
+  margin:8px 0 6px;
+  font-size:11px; text-transform:uppercase; letter-spacing:.12em;
+  color:#cccccc;
 }
-.xbtn:hover{ background:#ff4d4d; border-color:#ff4d4d; color:#120000; }
+.legend-row{
+  display:flex; align-items:center; gap:8px;
+  font-size:11px; margin-bottom:5px;
+  color:#e6e6e6;
+}
+.dot{ width:12px; height:12px; border-radius:50%; }
+.triangle{
+  width:0; height:0;
+  border-left:7px solid transparent;
+  border-right:7px solid transparent;
+  border-bottom:12px solid;
+}
+.square{ width:12px; height:12px; border-radius:2px; }
+
+.s-noncont{ background:#ffaa00; border-bottom-color:#ffaa00; color:#ffaa00; }
+.s-tratt{ background:#4da6ff; border-bottom-color:#4da6ff; color:#4da6ff; }
+.s-ader{ background:#00ff9c; border-bottom-color:#00ff9c; color:#00ff9c; }
+.s-noader{ background:#ff4d4d; border-bottom-color:#ff4d4d; color:#ff4d4d; }
+
+.leg-coperto{ background:#00ff9c; }
+.leg-orfano{ background:#ffaa00; }
 
 .label-comune{
   color:#ffffff; font-size:11px;
@@ -171,3338 +147,851 @@ html, body { margin:0; height:100%; background:#000; font-family:system-ui, -app
   pointer-events:none;
 }
 
-.leaflet-control-zoom{ margin-top: 88px !important; }
+.leaflet-interactive{ cursor:pointer; }
 
-/* Popups sempre in primo piano (sopra HUD/banner) */
-.leaflet-pane.leaflet-popup-pane{ z-index: 10060 !important; }
-.leaflet-popup{ z-index: 10061 !important; }
- /* evita sovrapposizione col HUD */
+/* marker farmacia (divIcon) */
+.mrk{ width:14px; height:14px; display:flex; align-items:center; justify-content:center; }
+.mrk.dot{ border-radius:50%; }
+.mrk.dot span{ font-size:9px; font-weight:900; line-height:9px; color:rgba(0,0,0,.85); }
+.mrk.dot.s-noader span{ color:rgba(255,255,255,.95); }
+.mrk.dot.s-tratt span{ color:rgba(0,0,0,.85); }
+.mrk.dot.s-noncont span{ color:rgba(0,0,0,.85); }
+.mrk.dot.s-ader span{ color:rgba(0,0,0,.9); }
 
-/* === Barra non contattate (arancione) === */
-.ms-bar2{
-  margin-top:12px; /* più distanza dalla barra verde */
-  height:8px;
-  border-radius:999px;
-  overflow:hidden;
-  background: rgba(255, 191, 0, .08);
-  border:1px solid rgba(255,191,0,.22);
-}
-#ms_bar_nc{
-  height:100%;
-  width:0%;
-  background: linear-gradient(90deg, rgba(255,191,0,.22), rgba(255,191,0,.72));
-  border-radius:999px;
-}
-.ms-mini .nc-label{ color:rgba(255,191,0,.95); font-weight:900; }
-/* === Incaricati: riga input + pulsante aggiungi === */
-.ownersRow{
-  display:flex;
-  gap:8px;
-  align-items:stretch;
-}
-.ownersRow .inlineInput{ flex:1; }
-.miniBtn{
-  width:40px;
-  border-radius:12px;
-  border:1px solid #2a2a2a;
-  background:#00ff9c;
-  color:#111;
-  font-weight:1000;
-  cursor:pointer;
-}
-.miniBtn:active{ transform: translateY(1px); }
+/* chiusa temporaneamente */
+.mrk.closed{ opacity:.35; filter:grayscale(.4); }
 
+/* mobile */
+#hudMobileToggle{
+  position:fixed; right:14px; top:14px;
+  z-index:10000;
+  display:none;
+  border:1px solid rgba(255,255,255,.25);
+  background:rgba(0,0,0,.65);
+  color:#fff;
+}
 @media (max-width: 720px){
-  #hud{ top:auto; bottom:12px; left:12px; right:12px; width:auto; max-height: 58vh; }
-  .leaflet-control-zoom{ margin-top: 12px !important; }
+  #hud{
+    left:10px; right:10px; top:64px;
+    min-width:0; width:auto;
+    max-width:none;
+    max-height: calc(100vh - 80px);
+  }
+  #hudMobileToggle{ display:block; }
+}
+.hud-collapsed{
+  display:none;
 }
 
-/* === Marker farmacia (divIcon) === */
-.mrk{
-  width:14px; height:14px;
-  border-radius:50%;
-  border:1px solid rgba(255,255,255,.18);
-  box-shadow: 0 0 12px rgba(0,0,0,.35);
-}
-.mrk.square{ border-radius:2px; }
-.mrk.contattare{ background:#ffaa00; }
-.mrk.trattativa{ background:#4da6ff; }
-.mrk.aderisce{ background:#00ff9c; }
-.mrk.rifiuta{ background:#ff4d4d; }
-.mrk.chiusa{ opacity:.35; filter: grayscale(1); }
-
-/* === Popup farmacia === */
-.popupWrap{
-  min-width: 260px;
-  color:#0b0b0b;
-  font-size:13px;
-}
-.popupWrap h3{
-  margin:0 0 6px;
-  font-size:14px;
-  color:#0b0b0b;
-}
-
-/* Popup: quick actions (Maps/Materiali) - smart & tappabili */
-.popupTop{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
-.popupTop h3{ flex:1; margin:0 0 2px; padding-right:54px; } /* lascia spazio al bottone X Leaflet */
-.popupQuick{
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  margin:8px 0 10px;
-}
-.quickBtn{
-  flex: 1 1 140px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:8px;
-  padding:8px 10px;
-  border-radius: 12px;
+/* popup editor */
+.pop-edit{
+  margin-top:10px;
+  padding-top:8px;
+  border-top:1px solid rgba(255,255,255,.12);
   font-size:12px;
-  font-weight:950;
-  text-decoration:none;
-  line-height:1;
-  background: rgba(255,255,255,.88);
-  color:#0b0b0b;
-  border:2px solid rgba(0,0,0,.18);
-  box-shadow: 0 0 0 2px rgba(0,0,0,.06) inset;
 }
-.quickBtn:active{ transform: translateY(1px); }
-.quickMaps{ border-color: rgba(0,255,156,.95); box-shadow: 0 0 0 3px rgba(0,255,156,.16) inset; }
-.quickMat{ border-color: rgba(77,166,255,.95); box-shadow: 0 0 0 3px rgba(77,166,255,.16) inset; }
-body.ui-mobile .quickBtn{ padding:10px 10px; border-radius: 14px; font-size:12px; }
-
-
-.popupMeta{ color:#3b3b3b; font-size:12px; }
-.popupDivider{ height:1px; background:#e6e6e6; margin:10px 0; }
-
-.seg{
-  display:flex; gap:6px; flex-wrap:wrap;
-}
-.seg button{
-  border:1px solid #d8d8d8;
-  background:#ffffff;
-  color:#0b0b0b;
-  padding:6px 8px;
-  font-size:12px;
-  border-radius: 10px;
-  cursor:pointer;
-}
-.seg button[data-on="1"]{
-  border-color:#0b0b0b;
-  background:#0b0b0b;
-  color:#ffffff;
-}
-.seg button.state-contattare[data-on="1"]{ background:#ffaa00; color:#1d1200; border-color:#ffaa00; }
-.seg button.state-trattativa[data-on="1"]{ background:#4da6ff; color:#001427; border-color:#4da6ff; }
-.seg button.state-aderisce[data-on="1"]{ background:#00ff9c; color:#00110b; border-color:#00ff9c; }
-.seg button.state-rifiuta[data-on="1"]{ background:#ff4d4d; color:#250000; border-color:#ff4d4d; }
-
-.flagRow{ display:flex; gap:10px; flex-wrap:wrap; font-size:12px; color:#1a1a1a; }
-.flagRow label{ display:flex; align-items:center; gap:6px; }
-
-.inlineInput{
+.pop-edit label{ display:block; margin-top:6px; opacity:.9; }
+.pop-edit select, .pop-edit input, .pop-edit textarea{
   width:100%;
   box-sizing:border-box;
-  padding:8px 10px;
-  border-radius: 10px;
-  border:1px solid #d8d8d8;
-  font-size:12px;
-}
-textarea.inlineInput{ min-height: 64px; resize: vertical; }
-
-.chipBar{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
-.chip{
-  display:inline-flex; align-items:center; gap:6px;
-  padding:4px 8px;
-  border-radius: 999px;
-  border:1px solid #d8d8d8;
-  background:#fff;
-  font-size:12px;
-  color:#111;
-}
-.chip .xbtn{ width:16px; height:16px; border-radius: 999px; font-size:11px; }
-
-.popupActions{ display:flex; gap:8px; margin-top:10px; }
-.popupActions button{
-  flex:1;
-  border:1px solid #0b0b0b;
-  background:#0b0b0b;
+  margin-top:4px;
+  background:#0e0e0e;
+  border:1px solid #1f1f1f;
   color:#fff;
-  padding:8px 10px;
-  font-size:12px;
-  border-radius: 10px;
-  cursor:pointer;
-}
-.popupActions button.secondary{
-  background:#ffffff;
-  color:#0b0b0b;
-  border-color:#d8d8d8;
-}
-.smallLink{ font-size:12px; }
-.smallLink a{ color:#0b0b0b; font-weight:700; text-decoration:none; }
-.smallLink a:hover{ text-decoration:underline; }
-
-/* === Overlay statistiche mappa (bottom-right) === */
-#mapStats{
-  position:fixed;
-  right:14px;
-  bottom:14px;
-  z-index:9997;
-  background:rgba(0,0,0,.55);
-  border:1px solid rgba(255,255,255,.12);
-  box-shadow: 0 0 18px rgba(0,0,0,.55);
-  border-radius: 12px;
-  padding:12px 12px 10px;
-  width: min(360px, calc(100vw - 28px));
-  color:#fff;
-  pointer-events:none; /* non blocca drag/zoom mappa */
-  backdrop-filter: blur(3px);
-}
-.ms-title{
-  font-size:10px;
-  letter-spacing:.16em;
-  text-transform:uppercase;
-  color:#bfeee0;
-}
-.ms-line{
-  margin-top:6px;
-  display:flex;
-  align-items:baseline;
-  justify-content:space-between;
-  gap:10px;
-  flex-wrap:wrap;
-}
-.ms-main{
-  font-size:18px;
-  font-weight:900;
-  color:#00ff9c;
-}
-.ms-main span{ color:#fff; }
-.ms-pct{
-  font-size:12px;
-  color:#d0d0d0;
-  font-weight:700;
-}
-.ms-bar{
-  margin-top:8px;
-  height:10px;
-  background:rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.12);
-  border-radius:999px;
-  overflow:hidden;
-}
-.ms-bar > div{
-  height:100%;
-  width:0%;
-  background:linear-gradient(90deg, rgba(0,255,156,.25), rgba(0,255,156,1));
-}
-.ms-mini{
-  margin-top:8px;
-  font-size:12px;
-  color:#e6e6e6;
-}
-.ms-mini b{ color:#fff; }
-.ms-tag{
-  display:inline-flex;
-  margin-top:6px;
-  font-size:11px;
-  color:#111;
-  background:#00ff9c;
-  padding:2px 8px;
-  border-radius: 999px;
-  font-weight:800;
-}
-
-/* === MapStats compact line (mobile collapse) === */
-.ms-compact{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  font-size:12px;
-  font-weight:1000;
-  letter-spacing:.02em;
-  color:#ffffff;
-}
-.ms-compact b{ font-weight:1000; }
-.ms-compact-pct{ color:#00ff9c; }
-.ms-compact-nc{ color:rgba(255,191,0,.95); }
-
-/* === Grouped HUD buttons === */
-.hud-buttons{
-  margin-top:12px;
-  display:flex;
-  gap:10px;
-  flex-wrap:wrap;
-  align-items:stretch;
-  position: sticky;
-  bottom:0;
-  padding-top:10px;
-  background: rgba(5,5,5,.96);
-  border-top:1px solid #222;
-}
-.btnGroup{
-  flex: 1 1 240px;
-  min-width: 220px;
-  background: rgba(8,8,8,.92);
-  border:1px solid rgba(255,255,255,.10);
-  border-radius: 14px;
-  padding:10px;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
-.grpTitle{
-  font-size:10px;
-  letter-spacing:.14em;
-  text-transform:uppercase;
-  color:#bfeee0;
-  font-weight:1000;
-  opacity:.95;
-}
-.grpBtns{ display:flex; gap:6px; flex-wrap:wrap; }
-.btnGroup.grpComune{ border-left:3px solid #00ff9c; }
-.btnGroup.grpExport{ border-left:3px solid #4da6ff; }
-.btnGroup.grpTools{ border-left:3px solid #ffaa00; }
-
-/* === Collapsible action groups (desktop + mobile) === */
-.btnGroup .grpTitle{
-  cursor:pointer;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  user-select:none;
-}
-.btnGroup .grpTitle::after{
-  content:"⌄";
-  opacity:.85;
-  font-size:14px;
-}
-.btnGroup[data-open="1"] .grpTitle::after{ content:"⌃"; }
-.btnGroup[data-open="0"] .grpBtns{ display:none; }
-.btnGroup[data-open="0"] #refPanel{ display:none !important; }
-/* Comune group more prominent */
-.btnGroup.grpComune{ border-left-width:5px; }
-
-.btnGroup.grpComune .grpTitle{ color:#00ff9c; }
-.btnGroup[data-open="0"]{ padding:8px 10px; }
-
-body.ui-mobile #hudFab{ display:none !important; } /* rimuove doppio pulsante chiudi */
-body.ui-mobile .leaflet-popup-close-button{
-  width:36px !important;
-  height:36px !important;
-  line-height:36px !important;
-  font-size:26px !important;
-}
-.modeHelp{
-  margin-top:6px;
-  font-size:11px;
-  color:#d0d0d0;
-  line-height:1.25;
-  max-width: 360px;
-}
-.modeLabel{
-  display:inline-flex;
-  align-items:center;
-  height: 28px;
-  padding:0 8px;
-  border-radius: 12px;
-  font-size:11px;
-  font-weight:900;
-  color:#ffffff;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  max-width: 200px;
-  text-shadow:0 0 6px rgba(0,0,0,.85);
-}
-body.ui-mobile .modeLabel{
-  max-width: 140px;
-  font-size:10px;
-  opacity:.95;
-}
-
-body.ui-mobile .modeHelp{ font-size:12px; max-width: calc(100vw - 24px); }
-@media (max-width: 720px){
-  #mapStats{
-    left:12px;
-    right:auto;
-    top:64px;
-    bottom:auto;
-    width: min(420px, calc(100vw - 24px));
-  }
-  body.ui-mobile #mapStats{ pointer-events:none; }
-  body.ui-mobile #mapStats.ms-collapsed{
-    pointer-events:auto;
-    cursor:pointer;
-  }
-
-  #mapStats #ms_compact{ display:none; }
-  #mapStats.ms-collapsed{
-    width:auto;
-    max-width: calc(100vw - 24px);
-    padding:8px 10px;
-    border-radius: 999px;
-    background: rgba(0,0,0,.46);
-    backdrop-filter: blur(4px);
-  }
-  #mapStats.ms-collapsed .ms-title,
-  #mapStats.ms-collapsed .ms-line,
-  #mapStats.ms-collapsed .ms-bar,
-  #mapStats.ms-collapsed .ms-bar2,
-  #mapStats.ms-collapsed .ms-mini,
-  #mapStats.ms-collapsed .ms-tag,
-  #mapStats.ms-collapsed #ms_filter{
-    display:none !important;
-  }
-  #mapStats.ms-collapsed #ms_compact{
-    display:flex !important;
-  }
-}
-
-/* ===============================
-   UI MOBILE / DESKTOP (rev2.1.6)
-================================ */
-#hudFab{
-  position:fixed;
-  left:14px;
-  bottom:14px;
-  z-index:10005;
-  border:1px solid rgba(0,255,156,.65);
-  background:rgba(5,5,5,.86);
-  color:#eafff7;
-  padding:12px 14px;
-  border-radius: 14px;
-  font-weight:900;
-  letter-spacing:.04em;
-  display:none;
-  box-shadow:0 0 18px rgba(0,0,0,.6);
-}
-#hudFab:active{ transform: translateY(1px); }
-
-#hudHandle{
-  display:none;
-  padding:10px 10px 8px;
-  border-bottom: 1px solid #1b1b1b;
-  background: rgba(5,5,5,.96);
-  position: sticky;
-  top:0;
-  z-index:2;
-}
-.hudGrab{
-  width:48px;
-  height:5px;
-  border-radius:999px;
-  margin:0 auto 8px;
-  background: rgba(255,255,255,.22);
-}
-.hudHandleRow{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-}
-.hudHandleTitle{
-  font-size:12px;
-  letter-spacing:.18em;
-  text-transform:uppercase;
-  color:#bfeee0;
-  font-weight:900;
-}
-.hudIconBtn{
-  width:40px;
-  height:36px;
-  border-radius: 12px;
-  border:1px solid rgba(0,255,156,.65);
-  background: rgba(0,255,156,.12);
-  color:#eafff7;
-  font-weight:1000;
-  cursor:pointer;
-}
-
-#modeToggle{
-  position:fixed;
-  left:50%;
-  transform:translateX(-50%);
-  bottom:14px;
-  z-index:10004;
-  display:none;
-  gap:8px;
   padding:6px;
-  border-radius: 16px;
-  background: rgba(5,5,5,.70);
-  border:1px solid rgba(255,255,255,.12);
-  box-shadow:0 0 18px rgba(0,0,0,.55);
-  backdrop-filter: blur(3px);
-}
-.modeBtn{
-  border:1px solid rgba(255,255,255,.14);
-  background: rgba(255,255,255,.06);
-  color:#eaeaea;
-  padding:10px 12px;
-  border-radius: 14px;
-  font-weight:900;
   font-size:12px;
-  cursor:pointer;
-  letter-spacing:.02em;
 }
-.modeBtn[data-on="1"]{
-  border-color:#00ff9c;
-  background: rgba(0,255,156,.22);
+.pop-edit textarea{ min-height:54px; resize:vertical; }
+.pop-edit .row{ display:flex; gap:8px; }
+.pop-edit .row > div{ flex:1; }
+.pop-edit .save{
+  margin-top:8px;
+  border:1px solid #00ff9c;
+  background:#041812;
   color:#eafff7;
-}
-.modeBtn.modeComuni[data-on="1"]{ border-color:#fff; background: rgba(255,255,255,.14); color:#fff; }
-
-#uiChooser{
-  position:fixed;
-  inset:0;
-  z-index:10010;
-  display:none;
-  align-items:center;
-  justify-content:center;
-  background: radial-gradient(ellipse at center, rgba(0,0,0,.82), rgba(0,0,0,.96));
-  backdrop-filter: blur(4px);
-}
-#uiChooser .box{
-  width:min(560px, calc(100vw - 28px));
-  border:1px solid rgba(255,255,255,.12);
-  background: rgba(5,5,5,.86);
-  border-radius: 18px;
-  padding:18px;
-  box-shadow: 0 0 30px rgba(0,0,0,.75);
-}
-#uiChooser h1{
-  margin:0;
-  font-size:18px;
-  letter-spacing:.06em;
-  text-transform:uppercase;
-  color:#fff;
-}
-#uiChooser p{
-  margin:8px 0 16px;
-  color:#bdbdbd;
-  font-size:13px;
-  line-height:1.35;
-}
-.uiBtns{
-  display:grid;
-  grid-template-columns: 1fr 1fr;
-  gap:12px;
-}
-.uiBtn{
-  border:1px solid rgba(0,255,156,.70);
-  background: rgba(0,255,156,.10);
-  color:#eafff7;
-  padding:14px 12px;
-  border-radius: 16px;
-  font-weight:1000;
+  padding:6px 10px;
   cursor:pointer;
-  text-align:center;
-}
-.uiBtn b{ display:block; font-size:16px; }
-.uiBtn small{ display:block; margin-top:6px; color:#bfeee0; opacity:.9; font-weight:800; }
-.uiBtn:active{ transform: translateY(1px); }
-#uiChooser .x{
-  position:absolute;
-  top:14px;
-  right:14px;
-  width:44px;
-  height:44px;
-  border-radius: 16px;
-  border:1px solid rgba(255,255,255,.14);
-  background: rgba(255,255,255,.06);
-  color:#fff;
-  font-size:18px;
-  cursor:pointer;
-}
-
-/* Ricerca comune (suggerimenti) */
-.comuneSearchWrap{ margin-top:10px; position:relative; }
-.farmSearchWrap{ margin-top:10px; }
-.comuneSearchRow{ display:flex; gap:8px; align-items:stretch; }
-#btnComuneSearchGo,
-#btnFarmSearchGo{
-  width:64px;
-  border-radius: 12px;
-  border:1px solid rgba(0,255,156,.65);
-  background: rgba(0,255,156,.12);
-  color:#eafff7;
-  font-weight:1000;
-  cursor:pointer;
-}
-#comuneSearchSuggs, #farmSearchSuggs{
-  position:absolute;
-  left:0; right:0;
-  top: calc(100% + 6px);
-  z-index: 10;
-  background: rgba(5,5,5,.96);
-  border:1px solid rgba(255,255,255,.12);
-  border-radius: 12px;
-  overflow:hidden;
-  box-shadow: 0 0 18px rgba(0,0,0,.65);
-}
-.suggItem{
-  padding:10px 10px;
-  font-size:13px;
-  color:#fff;
-  cursor:pointer;
-  border-bottom:1px solid rgba(255,255,255,.08);
-}
-.suggItem:last-child{ border-bottom:none; }
-.suggItem:hover{ background: rgba(0,255,156,.12); }
-
-/* MOBILE: HUD come bottom-sheet collassabile */
-body.ui-mobile #hud{
-  top:auto;
-  left:12px;
-  right:12px;
-  bottom:12px;
-  width:auto;
-  max-height:none;
-  height: min(68vh, 520px);
-  border-radius: 18px;
-  transform: translateY(0);
-  transition: transform .20s ease;
-  will-change: transform;
-}
-body.ui-mobile #hudHandle{ display:block; }
-body.ui-mobile #hudFab{ display:block; }
-body.ui-mobile #modeToggle{ display:flex; }
-
-body.ui-mobile .leaflet-popup-content{
-  max-width: 320px;
-  max-height: 52vh;
-  overflow:auto;
-}
-body.ui-mobile .leaflet-popup-content-wrapper{ border-radius: 14px; }
-
-body.ui-mobile #banner{ display:none !important; }
-body.ui-mobile .leaflet-control-zoom{ display:none; }
-
-body.ui-mobile #hud.is-collapsed{
-  transform: translateY(calc(100% - 74px));
-}
-body.ui-mobile #hud.is-collapsed .hud-buttons{
-  position:static;
-  background: transparent;
-  border-top:none;
-  padding-top:10px;
-}
-body.ui-mobile #hud.is-collapsed #hudScroll{
-  display:none;
-}
-
-#hudScroll{ /* wrapper aggiunto via JS se non esiste */ }
-
-@media (max-width: 720px){
-  /* Evita che la vecchia media query sposti l'HUD se non siamo in ui-mobile */
-  body.ui-desktop #hud{ top:auto; bottom:12px; left:12px; right:12px; width:auto; max-height: 58vh; }
-}
-
-
-/* === Quando il selettore UI è aperto, nascondi overlay per evitare confusione === */
-body.chooser-open #hud,
-body.chooser-open #hudFab,
-body.chooser-open #modeToggle,
-body.chooser-open #mapStats,
-body.chooser-open #banner{
-  display:none !important;
-}
-
-/* === Mobile: overlay avanzamento in alto, più compatto === */
-body.ui-mobile #mapStats{
-  top:58px;
-  bottom:auto;
-  right:12px;
-  left:auto;
-  width: min(300px, calc(100vw - 24px));
-  padding:10px 10px 8px;
-}
-body.ui-mobile .ms-main{ font-size:15px; }
-body.ui-mobile .ms-line{ margin-top:4px; }
-body.ui-mobile .ms-bar{ height:8px; }
-body.ui-mobile .ms-bar2{ height:6px; }
-body.ui-mobile .ms-mini{ font-size:11px; }
-body.ui-mobile .ms-tag{ font-size:10px; }
-
-/* === Mobile: toggle modalità in alto per non sovrapporsi === */
-body.ui-mobile #modeToggle{
-  top:12px;
-  bottom:auto;
-  left:12px;
-  transform:none;
-  border-radius: 16px;
-}
-
-/* === Popup: sempre dentro lo schermo su mobile === */
-body.ui-mobile .leaflet-popup{
-  max-width: calc(100vw - 24px) !important;
-}
-body.ui-mobile .leaflet-popup-content-wrapper{
-  max-width: calc(100vw - 24px) !important;
-}
-body.ui-mobile .leaflet-popup-content{
-  max-width: calc(100vw - 48px) !important;
-}
-
-
-/* === Mobile hint toast === */
-#mobileHint{
-  position:fixed;
-  left:50%;
-  transform:translateX(-50%);
-  bottom:96px;
-  z-index:10006;
-  background:rgba(0,0,0,.72);
-  border:1px solid rgba(0,255,156,.22);
-  color:#eafff7;
-  padding:10px 12px;
-  border-radius: 14px;
   font-size:12px;
-  font-weight:800;
-  letter-spacing:.02em;
-  max-width: calc(100vw - 24px);
-  box-shadow: 0 0 18px rgba(0,0,0,.55);
-  backdrop-filter: blur(3px);
-  opacity:0;
-  transition: opacity .2s ease;
-  pointer-events:none;
-  display:none;
 }
-body.ui-mobile #mobileHint{ display:block; }
-#mobileHint.show{ opacity:1; }
-
-
-/* === PATCH mobile usability (rev2.1.6.8) === */
-
-/* Center custom markers inside Leaflet div icon container */
-.leaflet-div-icon{
-  background: transparent !important;
-  border: none !important;
-  position: relative !important;
-}
-.leaflet-div-icon .mrk{
-  position:absolute;
-  left:50%;
-  top:50%;
-  transform: translate(-50%,-50%);
-}
-
-/* Mobile: render pharmacy markers as tiny dots (less “fat finger”) */
-body.ui-mobile .mrk{ width:7px; height:7px; }
-body.ui-mobile .mrk.square{ border-radius:2px; }
-
-/* Mobile: grouped HUD buttons become collapsible (titles only) */
-body.ui-mobile .hud-buttons{
-  position: static !important;
-  bottom: auto !important;
-  background: transparent !important;
-  border-top: none !important;
-  padding-top: 8px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 8px !important;
-}
-body.ui-mobile .btnGroup{
-  flex: none !important;
-  min-width: 0 !important;
-  width: 100% !important;
-  padding: 10px 10px 8px !important;
-}
-
-/* Mobile: mode toggle smaller + never blocks popup close */
-body.ui-mobile #modeToggle{
-  padding:6px 8px !important;
-  gap:6px !important;
-  border-radius: 14px !important;
-}
-body.ui-mobile .modeBtn{
-  padding:5px 7px !important;
-  font-size:10px !important;
-  border-radius: 12px !important;
-}
-body.ui-mobile .modeHelp{ display:none !important; }
-
-/* Mobile: mapStats = compact pill by default; user can tap to expand, then auto-collapses */
-body.ui-mobile #mapStats{
-  pointer-events:auto !important;
-  left:12px !important;
-  right:auto !important;
-  top:60px !important;
-  width: min(320px, calc(100vw - 24px)) !important;
-}
-body.ui-mobile #mapStats.ms-collapsed{
-  padding:8px 10px !important;
-  border-radius: 999px !important;
-  width: auto !important;
-  max-width: calc(100vw - 24px) !important;
-}
-
-/* Mobile: make Leaflet popup close button truly tappable */
-body.ui-mobile .leaflet-popup-close-button{
-  width:44px !important;
-  height:44px !important;
-  line-height:44px !important;
-  font-size:30px !important;
-  margin:6px !important;
-  border-radius: 14px !important;
-  background: rgba(255,255,255,.10) !important;
-}
-body.ui-mobile .leaflet-popup-content-wrapper{
-  padding-top: 2px !important;
-}
-
-
-/* === Mobile: stats button (richiamo) + overlay espandibile === */
-#msFab{
-  display:none;
-  align-items:center;
-  justify-content:center;
-  width:42px;
-  height:40px;
-  border-radius: 14px;
-  border:1px solid rgba(0,255,156,.65);
-  background: rgba(0,255,156,.12);
-  color:#eafff7;
-  font-weight:1000;
-  cursor:pointer;
-  z-index:10007;
-  box-shadow:0 0 18px rgba(0,0,0,.55);
-  backdrop-filter: blur(3px);
-}
-body.ui-mobile #msFab{
-  display:flex;
-  position:fixed;
-  left:12px;
-  top:58px; /* sotto i toggle */
-}
-
-/* di default su mobile: stats non intercettano tocchi */
-body.ui-mobile #mapStats{ pointer-events:none !important; left:60px !important; right:12px !important; top:58px !important; width:auto !important; max-width: calc(100vw - 72px) !important; overflow:hidden !important; }
-body.ui-mobile #mapStats.ms-expanded{ pointer-events:auto !important; }
-
-/* quando espanso: mostra il box completo (poi si richiude da solo) */
-body.ui-mobile #mapStats.ms-expanded{
-  width: min(340px, calc(100vw - 72px)) !important;
-  padding:10px 10px 8px !important;
-  border-radius: 12px !important;
-}
-body.ui-mobile #mapStats.ms-expanded .ms-title,
-body.ui-mobile #mapStats.ms-expanded .ms-line,
-body.ui-mobile #mapStats.ms-expanded .ms-bar,
-body.ui-mobile #mapStats.ms-expanded .ms-bar2,
-body.ui-mobile #mapStats.ms-expanded .ms-mini,
-body.ui-mobile #mapStats.ms-expanded .ms-tag,
-body.ui-mobile #mapStats.ms-expanded #ms_filter{
-  display:block !important;
-}
-
-
-/* === Mobile: quando un popup farmacia è aperto, libera la vista === */
-body.ui-mobile.ph-popup-open #modeToggle{ display:none !important; }
-body.ui-mobile.ph-popup-open #msFab{ display:none !important; }
-body.ui-mobile.ph-popup-open #mapStats{ display:none !important; }
-body.ui-mobile.ph-popup-open #hud{ transform: translateY(calc(100% - 74px)) !important; }
-body.ui-mobile.ph-popup-open .leaflet-popup{ z-index:10050 !important; }
-
-/* Popup: niente scroll orizzontale su mobile */
-body.ui-mobile .popupWrap{ min-width:220px; max-width:100%; }
-body.ui-mobile .leaflet-popup-content{ overflow-x:hidden !important; }
+.pop-edit .save:hover{ background:#00ff9c; color:#00110b; }
+.pop-edit .tiny{ margin-top:6px; color:#bdbdbd; font-size:11px; line-height:1.25; }
 </style>
 </head>
 
 <body>
 <div id="map"></div>
 <div id="banner"></div>
-<div id="mobileHint" aria-hidden="true"></div>
 
-<div id="uiChooser" aria-hidden="true">
-  <button class="x" id="btnUiChooserClose" title="Chiudi">×</button>
-  <div class="box">
-    <h1>Campagna SpG Verona</h1>
-    <p>Scegli l’interfaccia migliore per questo dispositivo. Puoi cambiarla in qualsiasi momento da <b>Cambia UI</b>.</p>
-    <div class="uiBtns">
-      <button class="uiBtn" id="btnUiMobile"><b>📱 Smartphone</b><small>Touch + pannello collassabile</small></button>
-      <button class="uiBtn" id="btnUiDesktop"><b>🖥️ Desktop</b><small>HUD completo + precisione mouse</small></button>
-    </div>
-  </div>
-</div>
-
-<button id="hudFab" title="Apri/chiudi pannello">☰</button>
-
-<div id="modeToggle" role="group" aria-label="Modalità selezione">
-  <button class="modeBtn modeComuni" id="btnModeComuni" data-on="0">👆 Comuni</button>
-  <button class="modeBtn" id="btnModeFarmacie" data-on="1">🏥 Farmacie</button>
-    <div class="modeLabel" id="modeComuneLabel">Vista generale</div>
-  <div class="modeHelp" id="modeHelp">Comuni: scegli un comune · Farmacie: tocchi i marker per aprire le schede</div>
-</div>
-
+<button id="hudMobileToggle">Pannello</button>
 
 <div id="hud">
-  
-<div id="hudHandle">
-  <div class="hudGrab"></div>
-  <div class="hudHandleRow">
-    <div class="hudHandleTitle">Campagna SpG Verona</div>
-    <div style="display:flex; gap:8px">
-      <button id="hudUiBtn" class="hudIconBtn" title="Cambia interfaccia">UI</button>
-      <button id="hudToggleBtn" class="hudIconBtn" title="Apri/chiudi pannello">⌃</button>
-    </div>
-  </div>
-</div>
-<div id="hudScroll">
-
   <div class="hud-title" id="hudTitle">Provincia di Verona</div>
   <div class="hud-sub" id="hudSub">Vista generale</div>
 
-  <div class="section-chip">Avanzamento <small id="g_hint"></small></div>
-  <div class="progressBox">
-    <div class="p-main">
-      <div class="big">Aderiscono <span id="g_aderisce">0</span>/<span id="g_total">0</span></div>
-      <div class="pct" id="g_aderisce_pct">0%</div>
+  <div class="hud-chip">GLOBALI</div>
+
+  <div id="stats">
+    <div class="stat stat-muted">
+      <div class="stat-title">Farmacie totali</div>
+      <div class="stat-value" id="gTot">0</div>
     </div>
-    <div class="p-bar"><div id="g_bar"></div></div>
-    <div class="p-mini">
-      Trattativa: <b id="g_trattativa">0</b> · Non aderisce: <b id="g_rifiuta">0</b> · Da contattare: <b id="g_contattare">0</b><br/>
-      Private: <b id="g_private">0</b> · Comunali: <b id="g_comunali">0</b><br/>
-      Comuni (coperti / orfani): <b id="g_comuni_coperti">0</b> / <b id="g_comuni_orfani">0</b>
+    <div class="stat stat-info">
+      <div class="stat-title">Privata / Comunale</div>
+      <div class="stat-value" id="gPriCom">0 / 0</div>
+    </div>
+    <div class="stat stat-warn">
+      <div class="stat-title">Non contattate</div>
+      <div class="stat-value" id="gNonCont">0</div>
+    </div>
+    <div class="stat stat-info">
+      <div class="stat-title">In trattativa</div>
+      <div class="stat-value" id="gTratt">0</div>
+    </div>
+    <div class="stat stat-ok">
+      <div class="stat-title">Aderisce</div>
+      <div class="stat-value" id="gAder">0</div>
+    </div>
+    <div class="stat stat-bad">
+      <div class="stat-title">Non aderisce</div>
+      <div class="stat-value" id="gNoAder">0</div>
     </div>
   </div>
 
-  <div id="miniLegend">
-    <div class="section-chip">Stati <small>clicca per filtrare la vista</small></div>
-    <div class="grid2" id="g_statusGrid"></div>
-
-    <div style="margin-top:10px">
-      <div class="section-chip">Aderisce <small>dettagli (facoltativi)</small></div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
-        <span class="badge">Poster <b id="g_poster" style="margin-left:6px">0</b></span>
-        <span class="badge">Boicotta <b id="g_boicotta" style="margin-left:6px">0</b></span>
-        <span class="badge">Promo <b id="g_promo" style="margin-left:6px">0</b></span>
-        <span class="badge">Info <b id="g_info" style="margin-left:6px">0</b></span>
-      </div>
-    </div>
-
-    <div style="margin-top:12px">
-      <div class="section-chip">Legenda <small>forme + colori</small></div>
-      <div class="legend-row"><span class="dot" style="background:#fff"></span> Privata (puntino)</div>
-      <div class="legend-row"><span class="square" style="background:#fff"></span> Comunale (quadratino)</div>
-      <div class="legend-row"><span class="dot c-contattare"></span> Da contattare</div>
-      <div class="legend-row"><span class="dot c-trattativa"></span> In trattativa</div>
-      <div class="legend-row"><span class="dot c-aderisce"></span> Aderisce</div>
-      <div class="legend-row"><span class="dot c-rifiuta"></span> Non aderisce</div>
-      <div class="legend-row"><span class="dot c-chiusa"></span> Chiusa temporaneamente (strumento)</div>
-      <div class="legend-row" style="margin-top:10px; color:#cfcfcf">
-        <span class="square c-comune-coperto"></span> Bordo verde = comune con referente
-      </div>
-      <div class="legend-row" style="color:#cfcfcf">
-        <span class="square c-comune-orfano"></span> Bordo ambra tratteggiato = senza referente
-      </div>
-    </div>
-  </div>
+  <div id="debugBox"></div>
 
   <div id="comuneBox">
-    <div class="section-chip">Comune <small id="sel_nome">—</small></div>
+    <h4>Comune selezionato</h4>
+    <div id="farm-count">Farmacie: —</div>
+    <div id="pri-com-count">Privata / Comunale: —</div>
 
-    <div class="comuneSearchWrap">
-      <div class="comuneSearchRow">
-        <input id="comuneSearchInput" class="inlineInput" placeholder="Cerca comune (anche parziale)…" autocomplete="off" />
-        <button id="btnComuneSearchGo" type="button">Vai</button>
+    <div id="comuneStats" class="small">
+      <div class="stat stat-warn">
+        <div class="stat-title">Non contattate</div>
+        <div class="stat-value" id="cNonCont">—</div>
       </div>
-      <div id="comuneSearchSuggs" style="display:none"></div>
-    </div>
-
-
-    <div class="comuneSearchWrap farmSearchWrap">
-      <div class="comuneSearchRow">
-        <input id="farmSearchInput" class="inlineInput" placeholder="Cerca farmacia (nome/indirizzo)…" autocomplete="off" />
-        <button id="btnFarmSearchGo" type="button">Vai</button>
+      <div class="stat stat-info">
+        <div class="stat-title">In trattativa</div>
+        <div class="stat-value" id="cTratt">—</div>
       </div>
-      <div id="farmSearchSuggs" style="display:none"></div>
-    </div>
-
-    <div class="grid2" id="comuneCounts"></div>
-  </div>
-
-  
-  <div class="hud-buttons">
-    <div class="btnGroup grpComune" data-open="1">
-      <div class="grpTitle">Comune & referenti</div>
-      <div class="grpBtns">
-        <button class="hud-btn" id="btnAddRef">Aggiungi referente</button>
-        <button class="hud-btn" id="btnToggleRef">Vedi referenti</button>
+      <div class="stat stat-ok">
+        <div class="stat-title">Aderisce</div>
+        <div class="stat-value" id="cAder">—</div>
       </div>
-    
-      <div id="refPanel" style="display:none; margin-top:8px;">
-        <ul id="refList"></ul>
-      </div>
-    </div>
-
-    <div class="btnGroup grpExport" data-open="0">
-      <div class="grpTitle">Export & stampa</div>
-      <div class="grpBtns">
-        <button class="hud-btn" id="btnExportXLSX" title="Scarica un... Excel con statistiche + liste per stato">Esporta Excel</button>
-        <button class="hud-btn" id="btnExportCSV" title="Scarica un ...) con tutte le farmacie e i campi campagna">Esporta CSV</button>
-        <button class="hud-btn" id="btnPrintReport" title="Apri una pagina stampabile con statistiche + liste per stato">Stampa</button>
-        <button class="hud-btn" id="btnExportAderisce" title="Export... per coordinamento: elenco SOLO ADERISCE">Solo aderisce</button>
-      </div>
-    </div>
-
-    <div class="btnGroup grpTools" data-open="0">
-      <div class="grpTitle">Strumenti</div>
-      <div class="grpBtns">
-        <button class="hud-btn" id="btnClearFilter" title="Rimuovi filtro stati" style="display:none">Reset filtro stati</button>
-        <button class="hud-btn" id="btnChangeUI" title="Scegli Smartphone/Desktop">Cambia UI</button>
+      <div class="stat stat-bad">
+        <div class="stat-title">Non aderisce</div>
+        <div class="stat-value" id="cNoAder">—</div>
       </div>
     </div>
   </div>
-</div>
-  </div>
-</div>
 
-<!-- Overlay sempre visibile in mappa -->
+  <div id="toolsBox">
+    <h4>Strumenti</h4>
+    <div class="btnRow">
+      <button id="btnResetSel">Reset selezione</button>
+      <button id="btnResetUI">Reset UI</button>
+    </div>
+    <div style="height:8px"></div>
+    <div class="btnRow">
+      <button id="btnCloseTemp" class="danger disabled">Segna chiusa temporaneamente</button>
+      <button id="btnReopen" class="disabled">Segna riaperta</button>
+    </div>
+    <div id="selectedPharmHint">Farmacia selezionata: <b>nessuna</b></div>
+    <div style="margin-top:6px;font-size:11px;color:#bdbdbd;line-height:1.2">
+      Nota: in questa versione puoi solo segnare “chiusa temporaneamente” / “riaperta”.
+      Gli altri stati (contatto/adesione/notes) si impostano dal popup della farmacia.
+    </div>
+  </div>
 
-<button id="msFab" title="Statistiche" aria-label="Mostra statistiche">📊</button>
-<div id="mapStats" aria-hidden="true">
-  <div class="ms-title" id="ms_title">Avanzamento campagna</div>
-    <div id="ms_compact" class="ms-compact" title="Tocca per vedere le statistiche">
-    <span class="ms-compact-pct" id="ms_c_pct">0%</span>
-    <span class="ms-compact-sep">·</span>
-    <span class="ms-compact-ader">Aderisce <b><span id="ms_c_ader">0</span>/<span id="ms_c_tot">0</span></b></span>
-    <span class="ms-compact-sep">·</span>
-    <span class="ms-compact-nc">Da contattare <b><span id="ms_c_nc">0</span></b></span>
+  <div id="legend-box">
+    <h4>Legenda gestione</h4>
+    <div class="legend-row"><span class="dot s-ader"></span> Privata (cerchio)</div>
+    <div class="legend-row"><span class="triangle s-ader"></span> Comunale (triangolo)</div>
+
+    <h4>Legenda avanzamento</h4>
+    <div class="legend-row"><span class="dot s-noncont"></span> Non contattata</div>
+    <div class="legend-row"><span class="dot s-tratt"></span> In trattativa</div>
+    <div class="legend-row"><span class="dot s-ader"></span> Aderisce</div>
+    <div class="legend-row"><span class="dot s-noader"></span> Non aderisce</div>
+
+    <h4>Note marker</h4>
+    <div class="legend-row"><span class="dot s-ader" style="opacity:.35"></span> Chiusa temporaneamente</div>
+    <div class="legend-row"><span class="dot s-ader"><span>P</span></span> P = poster/visibile</div>
+    <div class="legend-row"><span class="dot s-ader"><span>I</span></span> I = informativa</div>
+    <div class="legend-row"><span class="dot s-ader"><span>B</span></span> B = boicotta (stop fornitura)</div>
   </div>
-<div class="ms-line">
-    <div class="ms-main"><span id="ms_aderisce">0</span>/<span id="ms_total">0</span> aderisce</div>
-    <div class="ms-pct" id="ms_pct">0%</div>
-  </div>
-  <div class="ms-bar"><div id="ms_bar"></div></div>
-    <div class="ms-bar2"><div id="ms_bar_nc"></div></div>
-<div class="ms-mini">
-    Trattativa: <b id="ms_trattativa">0</b> · Non aderisce: <b id="ms_rifiuta">0</b> · Da contattare: <b id="ms_contattare">0</b>
-  </div>
-    <div class="ms-mini"><span class="nc-label">Da contattare (non contattate)</span>: <b id="ms_nc">0</b> · <span id="ms_nc_pct">0%</span></div>
-<div class="ms-mini" id="ms_filter" style="display:none"></div>
+
+  <div style="height:10px"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <script>
 /* ===============================
    CONFIG
 ================================ */
-const DRIVE_MATERIALI = "https://drive.google.com/drive/folders/1oMqJ_6ZLthMK73FkpirBtvQ_Ycif4OYS";
+const DATA_FARMACIE_CANDIDATES = ['data/farmacie.csv', 'DATA/farmacie.csv'];
+const DATA_STATS_CANDIDATES    = ['data/farmacie_stats_comune.csv', 'DATA/farmacie_stats_comune.csv'];
 
-/* Path robusti: prova prima DATA/ (GitHub case-sensitive), poi data/ */
-const PATHS_FARMACIE = ["data/farmacie.csv", "DATA/farmacie.csv"];
-const PATHS_COMUNI   = ["data/comuni_verona.json", "DATA/comuni_verona.json"];
+const DRIVE_MATERIALI = "https://drive.google.com/drive/folders/1f9JTPwuquc1epCO6rpsONh2fFes8yabm";
+
+/* stato persistente (localStorage) */
+const LS_KEY = 'spg_farmacie_status_v1';
 
 /* ===============================
-   HELPERS
+   UTILS
 ================================ */
-function esc(s){
-  return String(s||"").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
-}
 function normKey(s){
-  return (s||"")
+  return (s || '')
     .trim()
     .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g,"")
-    .replace(/[’\'`´"]/g,"")
-    .replace(/[^a-z0-9 ]+/g," ")
-    .replace(/\s+/g," ")
-    .trim();
-}
-
-function normSearch(s){
-  // normalizza per ricerca "tollerante": rimuove accenti, apostrofi e punteggiatura
-  return normKey(s)
-    .replace(/[’']/g,"")
-    .replace(/[^a-z0-9 ]/g,"")
-    .replace(/\s+/g," ")
-    .trim();
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .replace(/\s+/g,' ');
 }
 function stableId(str){
   let h = 0;
-  const s = String(str||"");
-  for (let i=0; i<s.length; i++){
-    h = ((h<<5) - h) + s.charCodeAt(i);
+  for (let i=0; i<str.length; i++){
+    h = ((h<<5) - h) + str.charCodeAt(i);
     h |= 0;
   }
   return String(h);
 }
-function parseCoordinateCell(v){
-  if(v===null || v===undefined) return null;
-  const s = String(v).trim();
+function parseCoordPair(s){
   if(!s) return null;
-  const parts = s.split(",").map(x=>x.trim().replace(",","."));
-  if(parts.length<2) return null;
-  const lat = parseFloat(parts[0]);
-  const lon = parseFloat(parts[1]);
+  const m = String(s).trim().match(/(-?\d+(?:[.,]\d+)?)\s*[,; ]\s*(-?\d+(?:[.,]\d+)?)/);
+  if(!m) return null;
+  const lat = parseFloat(m[1].replace(',','.'));
+  const lon = parseFloat(m[2].replace(',','.'));
   if(!isFinite(lat) || !isFinite(lon)) return null;
-  return { lat, lon };
+  return {lat, lon};
 }
-async function fetchFirst(paths, type){
-  let lastErr = null;
-  for(const p of paths){
+function mapsLinkFromLatLng(lat,lng, label){
+  const q = encodeURIComponent((label ? label + ' ' : '') + lat + ',' + lng);
+  return `https://www.google.com/maps/search/?api=1&query=${q}`;
+}
+function pickFirstNonEmpty(obj, keys){
+  for(const k of keys){
+    if(obj && obj[k] !== undefined && obj[k] !== null){
+      const v = String(obj[k]).trim();
+      if(v) return v;
+    }
+  }
+  return '';
+}
+async function fetchFirstAvailable(urls){
+  for(const url of urls){
     try{
-      const r = await fetch(p, { cache:"no-store" });
-      if(!r.ok) continue;
-      if(type==="json") return { path:p, data: await r.json() };
-      if(type==="text") return { path:p, data: await r.text() };
-    }catch(e){ lastErr = e; }
+      const r = await fetch(url, { cache:'no-store' });
+      if(r.ok) return { url, text: await r.text() };
+    }catch(e){}
   }
-  throw (lastErr || new Error("Impossibile caricare risorsa"));
+  return null;
 }
 
-
 /* ===============================
-   UI MODE (mobile/desktop) + interaction mode
+   STATUS STORE
+   struttura: { [pharmKey]: { st, sub, incaricato, note, closedTemp, updatedAt } }
 ================================ */
-const UI_MODE_KEY = "spg_ui_mode_rev2";
-const AUTO_MOBILE = window.matchMedia("(max-width: 720px)").matches || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-let uiMode = localStorage.getItem(UI_MODE_KEY) || (AUTO_MOBILE ? "mobile" : "desktop");
-let showChooser = true;
-function setUiMode(mode){
-  uiMode = (mode === "desktop") ? "desktop" : "mobile";
-  localStorage.setItem(UI_MODE_KEY, uiMode);
-  
-  
-  /* === UX: gruppi pulsanti collassabili + stats button su mobile === */
-  function __initUxOnce(){
-    // Collapsible button groups (one open at a time) - desktop + mobile
-    document.querySelectorAll(".btnGroup .grpTitle").forEach(t=>{
-      if(t.dataset.bound === "1") return;
-      t.dataset.bound = "1";
-      t.addEventListener("click", ()=>{
-        const g = t.closest(".btnGroup");
-        if(!g) return;
-        const wasOpen = g.getAttribute("data-open")==="1";
-        document.querySelectorAll(".btnGroup").forEach(x=>x.setAttribute("data-open","0"));
-        g.setAttribute("data-open", wasOpen ? "0" : "1");
-      });
-    });
-
-    // MapStats: su mobile resta sempre compatto; il dettaglio si apre solo col pulsante 📊
-    const ms = document.getElementById("mapStats");
-    const msFab = document.getElementById("msFab");
-    if(ms && uiMode === "mobile"){
-      ms.classList.add("ms-collapsed");
-      ms.classList.remove("ms-expanded");
-    }
-    if(msFab && ms && !msFab.dataset.bound){
-      msFab.dataset.bound = "1";
-      msFab.addEventListener("click", (e)=>{
-        e.preventDefault(); e.stopPropagation();
-        if(uiMode !== "mobile") return;
-        if(document.body.classList.contains("ph-popup-open")) return;
-
-        const now = Date.now();
-        const dbl = (window.__msFabLastClick && (now - window.__msFabLastClick) < 320);
-        window.__msFabLastClick = now;
-
-        // Double tap: pin/unpin (resta aperto finché non richiudi)
-        if(dbl){
-          window.__msFabPinned = !window.__msFabPinned;
-          clearTimeout(window.__msFabTimer);
-
-          if(window.__msFabPinned){
-            ms.classList.remove("ms-collapsed");
-            ms.classList.add("ms-expanded");
-            msFab.textContent = "📊✓";
-          }else{
-            ms.classList.remove("ms-expanded");
-            ms.classList.add("ms-collapsed");
-            msFab.textContent = "📊";
-          }
-          return;
-        }
-
-        // Single tap: toggle (auto-chiusura 4s). Se pinned, unpin e chiudi.
-        if(window.__msFabPinned){
-          window.__msFabPinned = false;
-          msFab.textContent = "📊";
-          clearTimeout(window.__msFabTimer);
-          ms.classList.remove("ms-expanded");
-          ms.classList.add("ms-collapsed");
-          return;
-        }
-
-        const isOpen = ms.classList.contains("ms-expanded");
-        clearTimeout(window.__msFabTimer);
-
-        if(isOpen){
-          ms.classList.remove("ms-expanded");
-          ms.classList.add("ms-collapsed");
-          return;
-        }
-
-        ms.classList.remove("ms-collapsed");
-        ms.classList.add("ms-expanded");
-        window.__msFabTimer = setTimeout(()=>{
-          if(window.__msFabPinned) return;
-          ms.classList.remove("ms-expanded");
-          ms.classList.add("ms-collapsed");
-        }, 4000);
-      });
-    }
-  }
-
-  applyUiMode();
-
-  // Desktop: vista iniziale più zoomata (≈ +35%) dopo scelta UI
+function loadStatus(){
   try{
-    const noComune = (!selectedComuneNome);
-    if(uiMode==="desktop" && noComune){
-      map.setView([45.43, 10.99], 10.5, { animate:true });
-    }
-  }catch(e){}
-
-  __initUxOnce();
+    const raw = localStorage.getItem(LS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  }catch(e){ return {}; }
 }
-
-function applyUiMode(){
-  document.body.classList.remove("ui-mobile","ui-desktop");
-  document.body.classList.add(uiMode === "mobile" ? "ui-mobile" : "ui-desktop");
-
-  const hud = document.getElementById("hud");
-  const fab = document.getElementById("hudFab");
-  const modeToggle = document.getElementById("modeToggle");
-
-  if(uiMode === "mobile"){
-    hud.classList.add("is-collapsed"); // default: pannello chiuso
-    if(fab) fab.style.display = "";
-    if(modeToggle) modeToggle.style.display = "";
-    setInteractionMode("comuni");     try{ const ms=document.getElementById("mapStats"); if(ms){ ms.classList.add("ms-collapsed"); ms.classList.remove("ms-expanded"); } }catch(e){}
-// su mobile: priorità comuni
-    setTimeout(() => showMobileHintOnce(), 600);
-  }else{
-    hud.classList.remove("is-collapsed");
-    if(fab) fab.style.display = "none";
-    if(modeToggle) modeToggle.style.display = "none";
-    setInteractionMode("farmacie");
-    // su desktop niente hint
-
-  }
-  if(typeof updateHudChrome==="function") updateHudChrome();
-}
-
-
-function showMobileHintOnce(){
-  if(uiMode !== "mobile") return;
-  const key = "spg_mobile_hint_seen_rev2";
+function saveStatus(obj){
   try{
-    if(sessionStorage.getItem(key)) return;
-    sessionStorage.setItem(key, "1");
-  }catch(e){}
-  const el = document.getElementById("mobileHint");
-  if(!el) return;
-  el.textContent = (interactionMode === "comuni")
-    ? "Suggerimento: sei in modalità COMUNI. Tocca un comune o usa la ricerca. Passa a FARMACIE per aprire i popup."
-    : "Suggerimento: sei in modalità FARMACIE. Tocca i marker per aprire i popup.";
-  el.classList.add("show");
-  setTimeout(() => el.classList.remove("show"), 5000);
-}
-
-
-function openUiChooser(){
-  const el = document.getElementById("uiChooser");
-  if(!el) return;
-  document.body.classList.add("chooser-open");
-  el.style.display = "flex";
-  el.setAttribute("aria-hidden","false");
-}
-function closeUiChooser(){
-  const el = document.getElementById("uiChooser");
-  if(!el) return;
-  el.style.display = "none";
-  el.setAttribute("aria-hidden","true");
-  document.body.classList.remove("chooser-open");
-}
-
-let interactionMode = "farmacie"; // "comuni" | "farmacie"
-function setInteractionMode(mode){
-  interactionMode = (mode === "comuni") ? "comuni" : "farmacie";
-  const bC = document.getElementById("btnModeComuni");
-  const bF = document.getElementById("btnModeFarmacie");
-  if(bC) bC.setAttribute("data-on", interactionMode==="comuni" ? "1":"0");
-  if(bF) bF.setAttribute("data-on", interactionMode==="farmacie" ? "1":"0");
-
-  // abilita/disabilita click marker farmacie
-  const enableFarm = interactionMode === "farmacie";
-  farmMarkers.forEach(rec => {
-    const el = rec.marker.getElement ? rec.marker.getElement() : rec.marker._icon;
-    if(el) el.style.pointerEvents = enableFarm ? "auto" : "none";
-  });
-  // Suggerimento banner
-  const mh = document.getElementById("mobileHint");
-  if(mh && uiMode==="mobile" && mh.classList.contains("show")){
-    mh.textContent = (interactionMode === "comuni")
-      ? "Suggerimento: sei in modalità COMUNI. Tocca un comune o usa la ricerca. Passa a FARMACIE per aprire i popup."
-      : "Suggerimento: sei in modalità FARMACIE. Tocca i marker per aprire i popup.";
-  }
-  const hint = document.getElementById("g_hint");
-  if(hint && uiMode==="mobile"){
-    hint.textContent = (interactionMode==="comuni")
-      ? "Modalità COMUNI: tocchi il territorio, non i marker"
-      : "Modalità FARMACIE: tocchi i marker per aprire i popup";
-  }else if(hint){
-    hint.textContent = "";
-  }
-}
-
-/* ===============================
-   STATUS STORE (localStorage)
-================================ */
-const STATUS_STORE_KEY = "spg_farmacie_status_rev2";
-function loadStatusStore(){
-  try { return JSON.parse(localStorage.getItem(STATUS_STORE_KEY) || "{}"); }
-  catch(e){ return {}; }
-}
-function saveStatusStore(obj){
-  try { localStorage.setItem(STATUS_STORE_KEY, JSON.stringify(obj)); }
-  catch(e){}
-}
-const statusStore = loadStatusStore();
-
-function normalizeOwners(val){
-  if(Array.isArray(val)){
-    return val.map(x=>String(x||"").trim()).filter(Boolean);
-  }
-  if(typeof val === "string"){
-    return val.split(/[,;\n]+/).map(s=>s.trim()).filter(Boolean);
-  }
-  return [];
-}
-function uniq(arr){
-  const out=[];
-  (arr||[]).forEach(x=>{ const v=String(x||"").trim(); if(v && !out.includes(v)) out.push(v); });
-  return out;
-}
-
-function defaultStatus(){
-  return { state:"contattare", owners:[], note:"", flags:{poster:false, boicotta:false, promo:false, info:false}, closed:false };
-}
-function getSt(id){
-  return statusStore[id] || defaultStatus();
-}
-function setSt(id, next){
-  statusStore[id] = next;
-  saveStatusStore(statusStore);
-}
-
-/* ===============================
-   REFERENTI COMUNE (localStorage)
-================================ */
-const REF_STORE_KEY = "spg_referenti_comune_rev2";
-function loadRefStore(){
-  try { return JSON.parse(localStorage.getItem(REF_STORE_KEY) || "{}"); }
-  catch(e){ return {}; }
-}
-function saveRefStore(obj){
-  try { localStorage.setItem(REF_STORE_KEY, JSON.stringify(obj)); }
-  catch(e){}
-}
-const referentiComune = loadRefStore();
-// seed minimo se vuoto
-if(Object.keys(referentiComune).length === 0){
-  referentiComune["Verona"] = ["Vincenzo Russo"];
-  saveRefStore(referentiComune);
-}
-function hasRef(nome){ return (referentiComune[nome] && referentiComune[nome].length>0); }
-
-/* ===============================
-   MAPPA
-================================ */
-const map = L.map("map", {
-  attributionControl:false,
-  preferCanvas: AUTO_MOBILE,
-  zoomControl:false,
-  wheelPxPerZoomLevel: 60,
-  wheelDebounceTime: 20,
-  zoomSnap: 0.25,
-  zoomDelta: 0.5
-}).setView([45.43, 10.99], 10);
-
-L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { maxZoom:18 }).addTo(map);
-
-// +/- sempre disponibili (utile su notebook / touchpad)
-L.control.zoom({ position:"topright" }).addTo(map);
-
-/* ===============================
-   PADDING "SMART" (HUD + overlay)
-================================ */
-function getSmartPadding(opts){
-  const options = opts || {};
-  const includeHud = options.includeHud !== false;
-  const includeStats = options.includeStats !== false;
-
-  const base = 40;
-  let padLeft = base, padTop = base, padRight = base, padBottom = base;
-
-  const vw = window.innerWidth || document.documentElement.clientWidth;
-  const vh = window.innerHeight || document.documentElement.clientHeight;
-
-  // --- HUD (può essere: sidebar desktop, o bottom-sheet mobile) ---
-  const hud = document.getElementById("hud");
-  if(includeHud && hud){
-    const r = hud.getBoundingClientRect();
-    const visible = (r.right > 0 && r.left < vw && r.bottom > 0 && r.top < vh);
-
-    if(visible){
-      const isBottomSheet = (r.width >= vw*0.65) && (r.left <= 24) && (r.right >= vw-24) && (r.top > vh*0.25);
-      if(isBottomSheet){
-        // quanto "mangia" davvero dal basso (se è collassato, è ~maniglia)
-        let overlapBottom = Math.max(0, vh - Math.max(r.top, 0));
-        // clamp: evita padding enorme quando l'HUD è espanso (su mobile faceva zoom-out “infinito”)
-        overlapBottom = Math.min(overlapBottom, Math.round(vh * 0.32));
-        if(overlapBottom > 0){
-          padBottom = Math.max(padBottom, Math.round(overlapBottom + 18));
-        }
-      }else{
-        // sidebar (desktop)
-        const isLeft = (r.left <= 80);
-        if(isLeft){
-          padLeft = Math.max(padLeft, Math.round(r.width + 24));
-        }
-      }
-    }
-  }
-
-  // --- Overlay mapStats (desktop: bottom-right, mobile: top-right) ---
-  const ms = document.getElementById("mapStats");
-  if(includeStats && ms){
-    const r = ms.getBoundingClientRect();
-    const visible = (r.right > 0 && r.left < vw && r.bottom > 0 && r.top < vh);
-    if(visible){
-      const msRight = (r.right >= vw - 12);
-      const msBottom = (r.bottom >= vh - 12);
-      const msTop = (r.top <= 12);
-
-      if(msRight) padRight = Math.max(padRight, Math.round(r.width + 18));
-      if(msBottom) padBottom = Math.max(padBottom, Math.round(r.height + 18));
-      if(msTop) padTop = Math.max(padTop, Math.round(r.height + 18));
-    }
-  }
-
-  padLeft = Math.min(padLeft, Math.round(vw * 0.40));
-  padRight = Math.min(padRight, Math.round(vw * 0.40));
-  padTop = Math.min(padTop, Math.round(vh * 0.35));
-  padBottom = Math.min(padBottom, Math.round(vh * 0.35));
-  return { padLeft, padTop, padRight, padBottom };
-}
-function fitBoundsSmart(bounds){
-  const maxZ = (uiMode === "mobile") ? 12 : 14;
-  // Desktop: usa padding “smart” completo (HUD a sinistra).
-  if(uiMode !== "mobile"){
-    const p = getSmartPadding({ includeHud:true, includeStats:false });
-    map.fitBounds(bounds, {
-      paddingTopLeft:[p.padLeft, p.padTop],
-      paddingBottomRight:[p.padRight, p.padBottom],
-      maxZoom:maxZ
-    });
-    return;
-  }
-
-  // Mobile: padding “sicuro” (evita zoom-out infinito quando l'HUD è aperto)
-  const vw = window.innerWidth || document.documentElement.clientWidth;
-  const vh = window.innerHeight || document.documentElement.clientHeight;
-
-  let topPad = 22;
-  ["modeToggle","mapStats","banner"].forEach(id=>{
-    const el = document.getElementById(id);
-    if(!el || el.style.display==="none") return;
-    const r = el.getBoundingClientRect();
-    const visible = (r.right>0 && r.left<vw && r.bottom>0 && r.top<vh);
-    if(visible) topPad = Math.max(topPad, Math.round(r.bottom + 14));
-  });
-
-  let bottomPad = 22;
-  const hud = document.getElementById("hud");
-  if(hud && hud.style.display!=="none"){
-    const r = hud.getBoundingClientRect();
-    const overlap = Math.max(0, vh - Math.max(r.top, 0));
-    bottomPad = Math.max(bottomPad, Math.min(Math.round(overlap + 18), Math.round(vh * 0.22)));
-  }
-
-  map.fitBounds(bounds, {
-    paddingTopLeft:[22, topPad],
-    paddingBottomRight:[22, bottomPad],
-    maxZoom:maxZ
-  });
-}
-function applyPopupAutoPan(popup){
-  if(!popup) return;
-  // Desktop: usa smart padding completo
-  if(uiMode !== "mobile"){
-    const p = getSmartPadding({ includeHud:true, includeStats:true });
-    popup.options.autoPanPaddingTopLeft = L.point(p.padLeft, p.padTop);
-    popup.options.autoPanPaddingBottomRight = L.point(p.padRight, p.padBottom);
-    popup.options.keepInView = true;
-    return;
-  }
-
-  // Mobile: evita che il popup finisca sotto il toggle in alto o dentro l'HUD in basso
-  const vw = window.innerWidth || document.documentElement.clientWidth;
-  const vh = window.innerHeight || document.documentElement.clientHeight;
-
-  let topPad = 20;
-  ["modeToggle","mapStats","banner"].forEach(id=>{
-    const el = document.getElementById(id);
-    if(!el || el.style.display==="none") return;
-    const r = el.getBoundingClientRect();
-    const visible = (r.right>0 && r.left<vw && r.bottom>0 && r.top<vh);
-    if(visible) topPad = Math.max(topPad, Math.round(r.bottom + 14));
-  });
-
-  let bottomPad = 20;
-  const hud = document.getElementById("hud");
-  if(hud && hud.style.display!=="none"){
-    const r = hud.getBoundingClientRect();
-    const overlap = Math.max(0, vh - Math.max(r.top, 0));
-    bottomPad = Math.max(bottomPad, Math.min(Math.round(overlap + 18), Math.round(vh * 0.25)));
-  }
-
-  popup.options.autoPanPaddingTopLeft = L.point(22, topPad);
-  popup.options.autoPanPaddingBottomRight = L.point(22, bottomPad);
-  popup.options.keepInView = true;
-}
-
-
-/* Mobile: porta il marker più in basso per lasciare più spazio al popup */
-function panMarkerLowerForPopup(latlng){
-  if(uiMode !== "mobile") return;
-  try{
-    const vh = window.innerHeight || document.documentElement.clientHeight || 0;
-    if(!vh) return;
-    const desiredY = Math.round(vh * 0.72);
-    const p = map.latLngToContainerPoint(latlng);
-    let dy = desiredY - p.y;
-    const max = Math.round(vh * 0.28);
-    dy = Math.max(-max, Math.min(max, dy));
-    if(Math.abs(dy) > 8){
-      map.panBy([0, dy], { animate:true });
-    }
+    localStorage.setItem(LS_KEY, JSON.stringify(obj));
   }catch(e){}
 }
+const statusStore = loadStatus();
 
-/* Per capire se l'utente sta facendo zoom-in o zoom-out */
-let lastZoomLevel = null;
+function getPharmKey(pharm){
+  // priorità: farmacia_id dal CSV, poi hash stabile
+  const fid = (pharm.farmacia_id || '').toString().trim();
+  if(fid) return 'pharm::' + fid;
+  return 'pharm::' + stableId([pharm.nome, pharm.comune, pharm.indirizzo, pharm.maps_url].join('|'));
+}
+function getStatus(pharmKey){
+  return statusStore[pharmKey] || null;
+}
+function setStatus(pharmKey, patch){
+  const cur = statusStore[pharmKey] || {};
+  statusStore[pharmKey] = { ...cur, ...patch, updatedAt: Date.now() };
+  saveStatus(statusStore);
+}
 
-const banner   = document.getElementById("banner");
-const hudTitle = document.getElementById("hudTitle");
-const hudSub   = document.getElementById("hudSub");
-const selNomeEl = document.getElementById("sel_nome");
+/* ===============================
+   MAP
+================================ */
+const map = L.map('map',{ attributionControl:false }).setView([45.43,10.99],10);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom:18 }).addTo(map);
 
-let comuniLayer = null;
-let selectedComuneLayer = null;
-let selectedComuneNome = null;
-const comuneLayerByNorm = {}; // norm -> layer (per ricerca)
+const banner   = document.getElementById('banner');
+const hudTitle = document.getElementById('hudTitle');
+const hudSub   = document.getElementById('hudSub');
 
-// ricerca farmacie (UI)
-const farmSearchIndex = []; // {id,label,norm,marker,row}
+const debugBox = document.getElementById('debugBox');
 
-/* pharmacy markers */
+/* comuni */
+const nomeComune = p => p.nome || p.DENOM_COM || p.name || 'Comune';
+let labels = [];
+let selectedLayer = null;
+let selectedNome = null;
+let selectedZoomRef = null;
+let comuniSet = new Set();
+let comuneCanonByNorm = {};
+let layersByNome = {};
+
+/* farmacie markers */
 const farmLayer = L.layerGroup().addTo(map);
-/* { id, comune, gestione, isComunale, marker, row } */
-const farmMarkers = [];
+const farmMarkers = []; // { marker, comune, gestione, key, data }
+let selectedPharmKey = null;
 
-const comuniCanon = new Set(); // dall'GeoJSON
-const comuneCanonByNorm = {}; // norm -> canon
-
-/* label comuni */
-const labels = [];
-function nomeComuneFromFeature(f){
-  const p = (f && f.properties) ? f.properties : {};
-  return p.nome || p.DENOM_COM || p.name || "Comune";
-}
 function canonComune(raw){
   const k = normKey(raw);
-  return comuneCanonByNorm[k] || (raw||"").trim();
+  return comuneCanonByNorm[k] || (raw || '').trim();
 }
 
 /* ===============================
    STILI COMUNI
 ================================ */
 function styleComuneBase(nome){
-  const ref = hasRef(nome);
-  return {
-    color: ref ? "#00ff9c" : "#ffaa00",
-    weight: ref ? 2 : 1,
-    dashArray: ref ? null : "5 5",
-    fillColor: "#00ff9c",
-    fillOpacity: ref ? 0.10 : 0
-  };
+  // qui solo stile generale: tratteggio sempre arancio (non gestiamo referenti in questa versione)
+  return { color:'#ffaa00', weight:1, dashArray:'5 5', fillOpacity:0 };
 }
 function aggiornaStiliComuni(){
-  if(!comuniLayer) return;
-  comuniLayer.eachLayer(layer => {
-    const nome = nomeComuneFromFeature(layer.feature);
-    let st = styleComuneBase(nome);
-    if(selectedComuneLayer && layer === selectedComuneLayer){
-      st = { ...st, color:"#ffffff", weight:3, dashArray:null, fillOpacity:0 };
+  Object.keys(layersByNome).forEach(n => {
+    const layer = layersByNome[n];
+    let st = styleComuneBase(n);
+    if(selectedLayer && layer === selectedLayer){
+      st = { ...st, color:'#ffffff', weight:3, dashArray:null, fillOpacity:0 };
     }
     layer.setStyle(st);
   });
 }
+function aggiornaLabels(){
+  const z = map.getZoom();
+  labels.forEach(l => {
+    const show = (!selectedNome && z >= 9 && z <= 13);
+    if(show){ if(!map.hasLayer(l)) map.addLayer(l); }
+    else { if(map.hasLayer(l)) map.removeLayer(l); }
+  });
+}
+function resetSelezione(){
+  selectedLayer = null;
+  selectedNome = null;
+  selectedZoomRef = null;
+
+  hudTitle.innerText = 'Provincia di Verona';
+  hudSub.innerText   = 'Vista generale';
+  banner.style.display = 'none';
+
+  // reset opacità marker
+  farmMarkers.forEach(x => x.marker.setOpacity(1));
+
+  // reset comune box
+  document.getElementById('farm-count').innerText = 'Farmacie: —';
+  document.getElementById('pri-com-count').innerText = 'Privata / Comunale: —';
+  document.getElementById('cNonCont').innerText = '—';
+  document.getElementById('cTratt').innerText = '—';
+  document.getElementById('cAder').innerText = '—';
+  document.getElementById('cNoAder').innerText = '—';
+
+  aggiornaStiliComuni();
+  aggiornaLabels();
+
+  // selection farmacia
+  setSelectedPharmacy(null);
+}
+function selezionaComune(layer, nome){
+  selectedLayer = layer;
+  selectedNome = nome;
+
+  aggiornaStiliComuni();
+  map.fitBounds(layer.getBounds(), { padding:[40,40] });
+  map.once('moveend', () => { selectedZoomRef = map.getZoom(); });
+
+  hudTitle.innerText = 'Comune di ' + nome;
+  hudSub.innerText = 'Filtrato per comune';
+  banner.style.display = 'block';
+  banner.innerHTML = '↑ Comune di <b>' + nome + '</b>';
+
+  aggiornaLabels();
+
+  // dim marker
+  farmMarkers.forEach(x => x.marker.setOpacity(x.comune === nome ? 1 : 0.18));
+
+  // counters comune
+  updateComuneCounters();
+}
+
+document.getElementById('btnResetSel').onclick = resetSelezione;
+document.getElementById('btnResetUI').onclick = () => {
+  // NON cancella lo stato (quello è lavoro reale). Resetta solo selezione e pannello.
+  resetSelezione();
+};
+
+/* mobile toggle */
+const hud = document.getElementById('hud');
+document.getElementById('hudMobileToggle').onclick = () => {
+  hud.classList.toggle('hud-collapsed');
+};
 
 /* ===============================
-   FILTRO STATO (solo vista)
+   STATO -> UI (categorie)
 ================================ */
-let stateFilter = null; // "contattare" | "trattativa" | "aderisce" | "rifiuta" | null
-const btnClearFilter = document.getElementById("btnClearFilter");
-function setStateFilter(next){
-  stateFilter = next;
-  btnClearFilter.style.display = stateFilter ? "" : "none";
-  applyMarkerVisibility();
-  aggiornaHUD();
-  aggiornaMapStats();
+const ST_MAIN = {
+  NON_CONTATTATA: 'non_contattata',
+  IN_TRATTATIVA:  'in_trattativa',
+  ADERISCE:       'aderisce',
+  NON_ADERISCE:   'non_aderisce'
+};
+const ADER_SUB = {
+  INFORMATIVA: 'informativa',
+  POSTER:      'poster',
+  BOICOTTA:    'boicotta'
+};
+
+function effectiveStatus(pharmKey){
+  const st = getStatus(pharmKey) || {};
+  // default: non contattata
+  const main = st.st || ST_MAIN.NON_CONTATTATA;
+  const sub  = st.sub || '';
+  const closedTemp = !!st.closedTemp;
+  const incaricato = (st.incaricato || '').trim();
+  const note = (st.note || '').trim();
+  return { main, sub, closedTemp, incaricato, note };
 }
-btnClearFilter.addEventListener("click", () => setStateFilter(null));
+function statusToCss(main){
+  switch(main){
+    case ST_MAIN.IN_TRATTATIVA: return 's-tratt';
+    case ST_MAIN.ADERISCE: return 's-ader';
+    case ST_MAIN.NON_ADERISCE: return 's-noader';
+    default: return 's-noncont';
+  }
+}
+function statusBadge(main, sub){
+  if(main !== ST_MAIN.ADERISCE) return '';
+  if(sub === ADER_SUB.POSTER) return 'P';
+  if(sub === ADER_SUB.BOICOTTA) return 'B';
+  if(sub === ADER_SUB.INFORMATIVA) return 'I';
+  return '';
+}
 
 /* ===============================
-   MARKER ICON (forma diversa se comunale)
+   MARKER ICON
 ================================ */
-function isComunaleFromGestione(gestione){
-  return /comun/i.test(String(gestione||""));
+function isComunale(gestioneRaw){
+  const g = (gestioneRaw || '').toString().toLowerCase();
+  return g.includes('comun');
 }
-function iconFarmacia(state, closed, isComunale){
-  const cls = (state || "contattare");
-  const closeCls = closed ? " chiusa" : "";
-  const shapeCls = isComunale ? " square" : "";
+function iconFarmacia(gestione, main, sub, closedTemp){
+  const cls = statusToCss(main);
+  const badge = statusBadge(main, sub);
+  const closedCls = closedTemp ? 'closed' : '';
+  if(isComunale(gestione)){
+    // triangolo: badge non facile, quindi lo omettiamo (resta colore)
+    return L.divIcon({
+      className:'',
+      html:`<div class="triangle ${cls} ${closedCls}"></div>`,
+      iconSize:[14,14],
+      iconAnchor:[7,7]
+    });
+  }
+  // privata: badge dentro dot
   return L.divIcon({
-    className:"",
-    html:`<div class="mrk ${cls}${closeCls}${shapeCls}"></div>`,
+    className:'',
+    html:`<div class="mrk dot ${cls} ${closedCls}">${badge ? `<span>${badge}</span>` : ''}</div>`,
     iconSize:[14,14],
     iconAnchor:[7,7]
   });
 }
 
-function applyStatusToMarker(marker, farmaciaId, row, isComunale){
-  const st = getSt(farmaciaId);
-  marker.setIcon(iconFarmacia(st.state, st.closed, isComunale));
-  marker.setOpacity(st.closed ? 0.35 : 1);
-  // pointer-events in base alla modalità (mobile: comuni vs farmacie)
-  const el = marker.getElement ? marker.getElement() : marker._icon;
-  if(el) el.style.pointerEvents = (interactionMode === "farmacie") ? "auto" : "none";
+/* ===============================
+   COUNTERS
+================================ */
+function computeCounters(filterComune=null){
+  const items = farmMarkers.filter(x => !filterComune || x.comune === filterComune);
+  let tot = items.length;
+  let priv = 0, com = 0;
+  let nonc = 0, tratt = 0, ader = 0, noader = 0;
 
-  // tooltip rapido (desktop only)
-  if(uiMode !== "mobile"){
-    const nome = row.descrizione_farmacia || "Farmacia";
-    const extra = (st.owners && st.owners.length) ? ` · incaricati: ${st.owners.join(", ")}` : "";
-    marker.bindTooltip(`${nome}${extra}`, { direction:"top", opacity:0.9, offset:[0,-8] });
-  }
+  items.forEach(x => {
+    if(isComunale(x.gestione)) com++; else priv++;
+    const es = effectiveStatus(x.key);
+    switch(es.main){
+      case ST_MAIN.IN_TRATTATIVA: tratt++; break;
+      case ST_MAIN.ADERISCE: ader++; break;
+      case ST_MAIN.NON_ADERISCE: noader++; break;
+      default: nonc++; break;
+    }
+  });
+  return { tot, priv, com, nonc, tratt, ader, noader };
+}
+function updateGlobalCounters(){
+  const c = computeCounters(null);
+  document.getElementById('gTot').innerText = c.tot;
+  document.getElementById('gPriCom').innerText = `${c.priv} / ${c.com}`;
+  document.getElementById('gNonCont').innerText = c.nonc;
+  document.getElementById('gTratt').innerText = c.tratt;
+  document.getElementById('gAder').innerText = c.ader;
+  document.getElementById('gNoAder').innerText = c.noader;
+}
+function updateComuneCounters(){
+  if(!selectedNome) return;
+  const c = computeCounters(selectedNome);
+  document.getElementById('farm-count').innerText = `Farmacie: ${c.tot}`;
+  document.getElementById('pri-com-count').innerText = `Privata / Comunale: ${c.priv} / ${c.com}`;
+  document.getElementById('cNonCont').innerText = c.nonc;
+  document.getElementById('cTratt').innerText = c.tratt;
+  document.getElementById('cAder').innerText = c.ader;
+  document.getElementById('cNoAder').innerText = c.noader;
 }
 
 /* ===============================
-   POPUP HTML + HANDLERS
+   SELEZIONE FARMACIA + TOOL
 ================================ */
-function buildPopupHtml(row, farmaciaId){
-  const st = getSt(farmaciaId);
+const btnCloseTemp = document.getElementById('btnCloseTemp');
+const btnReopen = document.getElementById('btnReopen');
+const selectedPharmHint = document.getElementById('selectedPharmHint');
 
-  const nome = row.descrizione_farmacia || row.nome || "Farmacia";
-  const comune = canonComune(row.comune || "");
-  const indirizzo = row.indirizzo_full || row.indirizzo || "";
-  const cap = row.cap || "";
-  const gestione = row.gestione || "";
-  const maps = row.maps_url || "";
+function setSelectedPharmacy(pharmKey){
+  selectedPharmKey = pharmKey;
 
-  const state = st.state || "contattare";
-  const owners = uniq(normalizeOwners(st.owners));
-  const note = st.note || "";
-  const flags = st.flags || { poster:false, boicotta:false, promo:false, info:false };
-  const closed = !!st.closed;
+  const has = !!pharmKey;
+  btnCloseTemp.classList.toggle('disabled', !has);
+  btnReopen.classList.toggle('disabled', !has);
 
-  const stateBtn = (key, label) => `<button class="state-${key}" data-role="state" data-value="${key}" data-on="${key===state?1:0}">${label}</button>`;
+  if(!has){
+    selectedPharmHint.innerHTML = 'Farmacia selezionata: <b>nessuna</b>';
+    return;
+  }
+  const obj = farmMarkers.find(x => x.key === pharmKey);
+  if(obj){
+    selectedPharmHint.innerHTML = `Farmacia selezionata: <b>${obj.data.nome}</b>`;
+    const es = effectiveStatus(pharmKey);
+    // abilita il bottone giusto
+    if(es.closedTemp){
+      btnCloseTemp.classList.add('disabled');
+      btnReopen.classList.remove('disabled');
+    } else {
+      btnCloseTemp.classList.remove('disabled');
+      btnReopen.classList.add('disabled');
+    }
+  }
+}
+
+btnCloseTemp.onclick = () => {
+  if(!selectedPharmKey || btnCloseTemp.classList.contains('disabled')) return;
+  setStatus(selectedPharmKey, { closedTemp:true });
+  refreshMarkerIcon(selectedPharmKey);
+  updateGlobalCounters();
+  updateComuneCounters();
+  setSelectedPharmacy(selectedPharmKey);
+};
+btnReopen.onclick = () => {
+  if(!selectedPharmKey || btnReopen.classList.contains('disabled')) return;
+  setStatus(selectedPharmKey, { closedTemp:false });
+  refreshMarkerIcon(selectedPharmKey);
+  updateGlobalCounters();
+  updateComuneCounters();
+  setSelectedPharmacy(selectedPharmKey);
+};
+
+function refreshMarkerIcon(pharmKey){
+  const obj = farmMarkers.find(x => x.key === pharmKey);
+  if(!obj) return;
+  const es = effectiveStatus(pharmKey);
+  obj.marker.setIcon(iconFarmacia(obj.gestione, es.main, es.sub, es.closedTemp));
+}
+
+/* ===============================
+   POPUP HTML (con editor stato)
+================================ */
+function statusLabel(main, sub){
+  if(main === ST_MAIN.ADERISCE){
+    if(sub === ADER_SUB.POSTER) return 'Aderisce – poster/visibile';
+    if(sub === ADER_SUB.BOICOTTA) return 'Aderisce – boicotta (stop fornitura)';
+    if(sub === ADER_SUB.INFORMATIVA) return 'Aderisce – informativa';
+    return 'Aderisce';
+  }
+  if(main === ST_MAIN.IN_TRATTATIVA) return 'In trattativa';
+  if(main === ST_MAIN.NON_ADERISCE) return 'Non aderisce';
+  return 'Non contattata';
+}
+function popupHtml(pharm){
+  const key = pharm.key;
+  const es = effectiveStatus(key);
+
+  const statoTxt = statusLabel(es.main, es.sub);
+  const chiusaTxt = es.closedTemp ? `<div style="margin-top:6px;color:#ffaa00"><b>⚠ Chiusa temporaneamente</b></div>` : '';
+
+  // gestione
+  const gest = (pharm.gestione || '').toString().trim();
+
+  const mapsUrl = pharm.maps_url || mapsLinkFromLatLng(pharm.lat, pharm.lon, pharm.nome);
+
+  // editor: select main+sub in un unico select
+  const selVal = (es.main === ST_MAIN.ADERISCE) ? `aderisce:${es.sub || ''}` : es.main;
 
   return `
-  <div class="popupWrap" data-farm-id="${esc(farmaciaId)}">
-    <div class="popupTop">
-      <h3>${esc(nome)}</h3>
-    </div>
-    <div class="popupQuick">
-      <a class="quickBtn quickMaps" href="${esc(maps||"#")}" target="_blank" rel="noopener">🗺️ Apri in Maps</a>
-      <a class="quickBtn quickMat" href="${esc(DRIVE_MATERIALI)}" target="_blank" rel="noopener">📁 Materiali</a>
-    </div>
-    <div class="popupMeta">${esc(indirizzo)}${cap?` – ${esc(cap)}`:""} – <b>${esc(comune)}</b>${gestione?` · ${esc(gestione)}`:""}</div>
-
-    <div class="popupDivider"></div>
-
-    <div style="font-size:12px; color:#3b3b3b; margin-bottom:6px"><b>Stato</b></div>
-    <div class="seg" data-role="stateSeg">
-      ${stateBtn("contattare","Da contattare")}
-      ${stateBtn("trattativa","In trattativa")}
-      ${stateBtn("aderisce","Aderisce")}
-      ${stateBtn("rifiuta","Non aderisce")}
+    <strong>${pharm.nome}</strong><br/>
+    <div style="opacity:.9">${pharm.indirizzo_full ? pharm.indirizzo_full : ''}${pharm.cap ? ' – ' + pharm.cap : ''}${pharm.comune ? ' – ' + pharm.comune : ''}</div>
+    ${gest ? `<div style="opacity:.85;margin-top:4px">${gest}</div>` : ''}
+    <div style="margin-top:6px"><b>Stato:</b> ${statoTxt}${es.incaricato ? ` — <span style="opacity:.9">In carico: ${es.incaricato}</span>` : ''}</div>
+    ${chiusaTxt}
+    <div style="margin-top:8px">
+      <a href="${mapsUrl}" target="_blank" rel="noopener">Apri in Google Maps</a><br/>
+      <a href="${DRIVE_MATERIALI}" target="_blank" rel="noopener">Materiali campagna</a>
     </div>
 
-    <div class="popupDivider"></div>
-
-    <div data-role="aderisceFlags" style="${state==="aderisce"?"":"display:none"}">
-      <div style="font-size:12px; color:#3b3b3b; margin-bottom:6px"><b>Dettagli adesione</b> (puoi selezionare più voci)</div>
-      <div class="flagRow">
-        <label><input type="checkbox" data-flag="boicotta" ${flags.boicotta?"checked":""}/> Boicotta (stop fornitura)</label>
-        <label><input type="checkbox" data-flag="poster" ${flags.poster?"checked":""}/> Poster</label>
-        <label><input type="checkbox" data-flag="promo" ${flags.promo?"checked":""}/> Promo BDS</label>
-        <label><input type="checkbox" data-flag="info" ${flags.info?"checked":""}/> Informativa</label>
+    <div class="pop-edit" data-key="${key}">
+      <div class="row">
+        <div>
+          <label>Avanzamento</label>
+          <select class="stSel">
+            <option value="non_contattata">Non contattata</option>
+            <option value="in_trattativa">In trattativa</option>
+            <option value="aderisce:informativa">Aderisce – informativa</option>
+            <option value="aderisce:poster">Aderisce – poster/visibile</option>
+            <option value="aderisce:boicotta">Aderisce – boicotta (stop fornitura)</option>
+            <option value="non_aderisce">Non aderisce</option>
+          </select>
+        </div>
+        <div>
+          <label>In carico a</label>
+          <input class="incInput" type="text" placeholder="Nome" value="${es.incaricato ? es.incaricato.replace(/"/g,'&quot;') : ''}">
+        </div>
       </div>
-      <div class="popupDivider"></div>
+      <label>Note</label>
+      <textarea class="noteInput" placeholder="Es: espone poster BDS, parla ai pazienti, ecc.">${es.note ? es.note.replace(/</g,'&lt;') : ''}</textarea>
+      <button class="save">Salva</button>
+      <div class="tiny">Salvataggio locale nel browser (localStorage). In seguito aggiungeremo export/sync su file.</div>
     </div>
-
-    <div style="font-size:12px; color:#3b3b3b; margin-bottom:6px"><b>Incaricati</b> (puoi aggiungere più nomi)</div>
-    <div class="ownersRow">
-      <input class="inlineInput" type="text" data-role="ownersInput" placeholder="Es: Marco, Lucia" />
-      <button class="miniBtn" type="button" data-role="ownersAdd" title="Aggiungi">+</button>
-    </div>
-    <div class="chipBar" data-role="ownersChips">
-      ${owners.map(o => `<span class="chip">${esc(o)} <span class="xbtn" data-role="rmOwner" data-owner="${encodeURIComponent(o)}">×</span></span>`).join("")}
-    </div>
-
-    <div class="popupDivider"></div>
-
-    <div style="font-size:12px; color:#3b3b3b; margin-bottom:6px"><b>Note</b></div>
-    <textarea class="inlineInput" data-role="note" placeholder="Es: espone poster NOTEVA, parla ai clienti...">${esc(note)}</textarea>
-
-    <div class="popupDivider"></div>
-
-    <div style="display:flex; gap:10px; align-items:center; justify-content:space-between">
-      <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#1a1a1a">
-        <input type="checkbox" data-role="closed" ${closed?"checked":""}/>
-        Chiusa temporaneamente
-      </label>
-    </div>
-
-    <div class="popupActions">
-      <button data-role="save">Salva e chiudi</button>
-      <button class="secondary" data-role="reset">Chiudi senza salvare</button>
-    </div>
-  </div>`;
+  `;
 }
 
 /* ===============================
-   POPUP: autosave + refresh + binding robusto
+   POPUP BIND EVENTS
 ================================ */
-const POPUP_BINDERS = new WeakMap();
-// Cache "bozza" per autosave affidabile anche se il DOM del popup non è più disponibile al momento del close
-const POPUP_DRAFT_CACHE = new Map(); // farmaciaId -> { state, owners, note, flags, closed }
+function attachPopupEvents(marker){
+  marker.on('popupopen', (ev) => {
+    // set selected pharmacy
+    const key = marker.__pharmKey;
+    setSelectedPharmacy(key);
 
-function collectPopupDraft(wrap){
-  const onBtn = wrap.querySelector('button[data-role="state"][data-on="1"]');
-  const state = onBtn ? (onBtn.getAttribute("data-value") || "contattare") : "contattare";
+    const container = ev.popup.getElement();
+    if(!container) return;
 
-  // owners già presenti nei chip (decode)
-  const ownersFromChips = Array.from(wrap.querySelectorAll('[data-role="rmOwner"]'))
-    .map(el => {
-      const enc = (el.getAttribute("data-owner") || "").trim();
-      try { return decodeURIComponent(enc); } catch(e){ return enc; }
-    })
-    .filter(Boolean);
+    const edit = container.querySelector('.pop-edit');
+    if(!edit) return;
 
-  // owners nuovi dall'input
-  const raw = (wrap.querySelector('[data-role="ownersInput"]')?.value || "").trim();
-  const ownersFromInput = raw ? raw.split(",").map(s => s.trim()).filter(Boolean) : [];
+    const key2 = edit.getAttribute('data-key');
+    const sel = edit.querySelector('.stSel');
+    const inc = edit.querySelector('.incInput');
+    const note = edit.querySelector('.noteInput');
+    const saveBtn = edit.querySelector('.save');
 
-  // merge unico (preserva ordine: chip -> input)
-  const owners = uniq([ ...ownersFromChips, ...ownersFromInput ]);
-const note = wrap.querySelector('[data-role="note"]')?.value || "";
-  const closed = !!wrap.querySelector('[data-role="closed"]')?.checked;
+    // init select to current
+    const es = effectiveStatus(key2);
+    const selVal = (es.main === ST_MAIN.ADERISCE) ? `aderisce:${es.sub || ''}` : es.main;
+    sel.value = selVal;
 
-  const flags = { poster:false, boicotta:false, promo:false, info:false };
-  wrap.querySelectorAll("input[type=checkbox][data-flag]").forEach(cb => {
-    const k = cb.getAttribute("data-flag");
-    if(k) flags[k] = cb.checked;
-  });
-
-  return { state, owners, note, flags, closed };
-}
-
-function applyDraftToStore(marker, row, farmaciaId, isComunale, draft){
-  const prev = getSt(farmaciaId);
-  const next = { ...prev, ...draft };
-  next.flags = draft.flags || prev.flags || { poster:false, boicotta:false, promo:false, info:false };
-  next.owners = uniq(normalizeOwners(next.owners));
-// timestamp ultimo aggiornamento (utile anche per export)
-  next.updatedAt = new Date().toISOString();
-  setSt(farmaciaId, next);
-
-  applyStatusToMarker(marker, farmaciaId, row, isComunale);
-  aggiornaHUD();
-  aggiornaComuneSelezionato();
-  aggiornaMapStats();
-  applyMarkerVisibility();
-}
-
-function autoSavePopup(marker, row, farmaciaId, isComunale){
-  const root = marker.getPopup()?.getElement();
-  if(!root) return;
-  const wrap = root.querySelector(".popupWrap");
-  if(!wrap) return;
-  const draft = collectPopupDraft(wrap);
-  applyDraftToStore(marker, row, farmaciaId, isComunale, draft);
-}
-
-function refreshPopup(marker, row, farmaciaId, reopen=true){
-  const wasOpen = marker.isPopupOpen && marker.isPopupOpen();
-  marker.setPopupContent(buildPopupHtml(row, farmaciaId));
-  if(reopen || wasOpen) marker.openPopup();
-  setTimeout(() => attachPopupHandlers(marker, row, farmaciaId), 0);
-}
-
-function handlePopupClose(marker, row, farmaciaId, isComunale){
-  if(marker._skipAutosave){
-    marker._skipAutosave = false;
-    POPUP_DRAFT_CACHE.delete(farmaciaId);
-    return;
-  }
-  // Autosave: prova dal DOM; se Leaflet ha già rimosso il nodo, usa la bozza cache.
-  const root = marker.getPopup()?.getElement();
-  const wrap = root ? root.querySelector(".popupWrap") : null;
-  if(wrap){
-    const draft = collectPopupDraft(wrap);
-    applyDraftToStore(marker, row, farmaciaId, isComunale, draft);
-  }else{
-    const cached = POPUP_DRAFT_CACHE.get(farmaciaId);
-    if(cached){
-      applyDraftToStore(marker, row, farmaciaId, isComunale, cached);
-    }
-  }
-  POPUP_DRAFT_CACHE.delete(farmaciaId);
-}
-
-function attachPopupHandlers(marker, row, farmaciaId){
-  const root = marker.getPopup()?.getElement();
-  if(!root) return;
-
-  const prev = POPUP_BINDERS.get(root);
-  if(prev) prev.abort();
-  const ac = new AbortController();
-  POPUP_BINDERS.set(root, ac);
-  const { signal } = ac;
-
-  const wrap = root.querySelector(".popupWrap");
-  if(!wrap) return;
-
-  // Mantieni una bozza aggiornata per autosave affidabile (anche se Leaflet rimuove il DOM al close)
-  const cacheNow = () => {
-    try { POPUP_DRAFT_CACHE.set(farmaciaId, collectPopupDraft(wrap)); } catch(e){}
-  };
-  cacheNow();
-
-  const flagsBox = wrap.querySelector('[data-role="aderisceFlags"]');
-
-  const getCurrentState = () => {
-    const onBtn = wrap.querySelector('button[data-role="state"][data-on="1"]');
-    return onBtn ? (onBtn.getAttribute("data-value") || "contattare") : "contattare";
-  };
-
-  // state buttons
-  wrap.querySelectorAll('button[data-role="state"]').forEach(btn => {
-    btn.addEventListener("click", (ev) => {
-      ev.preventDefault(); ev.stopPropagation();
-      wrap.querySelectorAll('button[data-role="state"]').forEach(b => b.setAttribute("data-on","0"));
-      btn.setAttribute("data-on","1");
-      const st = getCurrentState();
-      if(flagsBox) flagsBox.style.display = (st==="aderisce") ? "" : "none";
-      cacheNow();
-    }, { signal });
-  });
-
-  // note + checkbox (closed + flags) -> aggiorna cache bozza
-  const noteEl = wrap.querySelector('[data-role="note"]');
-  if(noteEl){
-    noteEl.addEventListener("input", () => cacheNow(), { signal });
-  }
-  wrap.querySelectorAll('input[type=checkbox]').forEach(cb => {
-    cb.addEventListener("change", () => cacheNow(), { signal });
-  });
-
-  // remove owner chip (delegation)
-  // IMPORTANTE: la X modifica SOLO la "bozza" (DOM). Il salvataggio avviene con Salva e chiudi
-  // o con autosave (chiusura popup). Questo evita effetti strani (nomi che spariscono/ricompaiono).
-  wrap.addEventListener("click", (ev) => {
-    const t = ev.target;
-    if(!(t instanceof HTMLElement)) return;
-    if(t.getAttribute("data-role") === "rmOwner"){
-      ev.preventDefault(); ev.stopPropagation();
-      const chip = t.closest(".chip");
-      if(chip) chip.remove();
-      cacheNow();
-    }
-  }, { signal });
-
-  // reset button (chiudi SENZA salvare)
-  const btnReset = wrap.querySelector('[data-role="reset"]');
-  if(btnReset){
-    btnReset.addEventListener("click", (ev) => {
-      ev.preventDefault(); ev.stopPropagation();
-      marker._skipAutosave = true;
-      POPUP_DRAFT_CACHE.delete(farmaciaId);
-      marker.closePopup();
-    }, { signal });
-  }
-
-  // save button -> salva e chiudi
-  const btnSave = wrap.querySelector('[data-role="save"]');
-  if(btnSave){
-    btnSave.addEventListener("click", (ev) => {
-      ev.preventDefault(); ev.stopPropagation();
-      const draft = collectPopupDraft(wrap);
-      const rec = farmMarkers.find(x => x.id === farmaciaId);
-      const isComunale = rec ? rec.isComunale : isComunaleFromGestione(row.gestione);
-      applyDraftToStore(marker, row, farmaciaId, isComunale, draft);
-
-      // aggiorna contenuto "bound" per coerenza immediata
-      marker.setPopupContent(buildPopupHtml(row, farmaciaId));
-      POPUP_DRAFT_CACHE.delete(farmaciaId);
-
-      marker._skipAutosave = true; // già salvato
-      marker.closePopup();
-    }, { signal });
-  }
-
-  // Incaricati: aggiungi come chip (Enter o pulsante +)
-  const ownersInput = wrap.querySelector('[data-role="ownersInput"]');
-  const ownersChips = wrap.querySelector('[data-role="ownersChips"]');
-
-  const addOwnersFromInput = () => {
-    if(!ownersInput || !ownersChips) return;
-    const raw = (ownersInput.value || "").trim();
-    if(!raw) return;
-    const names = uniq(raw.split(/[,;\n]+/).map(s=>s.trim()).filter(Boolean));
-    if(!names.length) return;
-
-    const existing = Array.from(ownersChips.querySelectorAll('[data-role="rmOwner"]'))
-      .map(el => {
-        const enc = (el.getAttribute("data-owner") || "").trim();
-        try { return decodeURIComponent(enc); } catch(e){ return enc; }
-      })
-      .filter(Boolean);
-
-    const merged = uniq([...existing, ...names]);
-    ownersChips.innerHTML = merged.map(o => `<span class="chip">${esc(o)} <span class="xbtn" data-role="rmOwner" data-owner="${encodeURIComponent(o)}">×</span></span>`).join("");
-    ownersInput.value = "";
-    cacheNow();
-  };
-
-  const btnAdd = wrap.querySelector('[data-role="ownersAdd"]');
-  if(btnAdd){
-    btnAdd.addEventListener("click", (ev) => {
-      ev.preventDefault(); ev.stopPropagation();
-      addOwnersFromInput();
-    }, { signal });
-  }
-
-  if(ownersInput){
-    ownersInput.addEventListener("keydown", (ev) => {
-      if(ev.key === "Enter"){
-        ev.preventDefault();
-        ev.stopPropagation();
-        addOwnersFromInput();
+    saveBtn.onclick = () => {
+      const v = sel.value;
+      let main = v;
+      let sub = '';
+      if(v.startsWith('aderisce:')){
+        main = ST_MAIN.ADERISCE;
+        sub = v.split(':')[1] || '';
       }
-    }, { signal });
-  }
-}
-
-/* ===============================
-   STATS
-================================ */
-const MAIN_STATES = [
-  { key:"contattare", label:"Da contattare", cls:"v-amber" },
-  { key:"trattativa", label:"Trattativa", cls:"v-blue" },
-  { key:"aderisce", label:"Aderisce", cls:"v-green" },
-  { key:"rifiuta", label:"Non aderisce", cls:"v-red" },
-];
-
-function computeStats(ids){
-  const counts = { contattare:0, trattativa:0, aderisce:0, rifiuta:0 };
-  let priv=0, comu=0;
-  ids.forEach(id => {
-    const st = getSt(id).state || "contattare";
-    if(counts[st] !== undefined) counts[st]++; else counts.contattare++;
-    const rec = farmMarkers.find(x => x.id === id);
-    if(rec){
-      if(rec.isComunale) comu++; else priv++;
-    }
+      setStatus(key2, {
+        st: main,
+        sub: sub,
+        incaricato: (inc.value || '').trim(),
+        note: (note.value || '').trim()
+      });
+      refreshMarkerIcon(key2);
+      updateGlobalCounters();
+      updateComuneCounters();
+      // aggiorna popup testo stato: semplice, richiudendo/riaprendo
+      marker.closePopup();
+      marker.bindPopup(popupHtml(marker.__pharmData), { maxWidth: 360 });
+      marker.openPopup();
+    };
   });
-  return { counts, total: ids.length, priv, comu };
-}
 
-function aggiornaHUD(){
-  const total = farmMarkers.length;
-  const aderisce = farmMarkers.filter(x => getSt(x.id).state === "aderisce").length;
-  const trattativa = farmMarkers.filter(x => getSt(x.id).state === "trattativa").length;
-  const rifiuta = farmMarkers.filter(x => getSt(x.id).state === "rifiuta").length;
-  const contattare = farmMarkers.filter(x => getSt(x.id).state === "contattare").length;
-
-  const priv = farmMarkers.filter(x => !x.isComunale).length;
-  const comu = farmMarkers.filter(x => x.isComunale).length;
-
-  let coperti=0;
-  comuniCanon.forEach(n => { if(hasRef(n)) coperti++; });
-  const orfani = Math.max(0, comuniCanon.size - coperti);
-
-  document.getElementById("g_total").textContent = String(total);
-  document.getElementById("g_aderisce").textContent = String(aderisce);
-
-  const pct = total ? Math.round((aderisce/total)*100) : 0;
-  document.getElementById("g_aderisce_pct").textContent = `${pct}%`;
-  document.getElementById("g_bar").style.width = `${pct}%`;
-
-  document.getElementById("g_trattativa").textContent = String(trattativa);
-  document.getElementById("g_rifiuta").textContent = String(rifiuta);
-  document.getElementById("g_contattare").textContent = String(contattare);
-
-  document.getElementById("g_private").textContent = String(priv);
-  document.getElementById("g_comunali").textContent = String(comu);
-
-  document.getElementById("g_comuni_coperti").textContent = String(coperti);
-  document.getElementById("g_comuni_orfani").textContent = String(orfani);
-
-  // status grid (cliccabile)
-  const grid = document.getElementById("g_statusGrid");
-  grid.innerHTML = "";
-  for(const s of MAIN_STATES){
-    const n = farmMarkers.filter(x => getSt(x.id).state === s.key).length;
-    const el = document.createElement("div");
-    el.className = "stat";
-    el.style.cursor = "pointer";
-    el.style.borderColor = (stateFilter===s.key) ? "#00ff9c" : "#1f1f1f";
-    el.innerHTML = `<div class="stat-title">${s.label}</div><div class="stat-value ${s.cls}">${n}</div>`;
-    el.setAttribute("data-state", s.key);
-    grid.appendChild(el);
-  }
-
-  // flags among aderisce
-  const aderIds = farmMarkers.filter(x => getSt(x.id).state==="aderisce").map(x=>x.id);
-  let poster=0, boicotta=0, promo=0, info=0;
-  aderIds.forEach(id => {
-    const f = (getSt(id).flags)||{};
-    if(f.poster) poster++;
-    if(f.boicotta) boicotta++;
-    if(f.promo) promo++;
-    if(f.info) info++;
-  });
-  document.getElementById("g_poster").textContent = String(poster);
-  document.getElementById("g_boicotta").textContent = String(boicotta);
-  document.getElementById("g_promo").textContent = String(promo);
-  document.getElementById("g_info").textContent = String(info);
-
-  // hint: quali file sono stati caricati
-  const hint = document.getElementById("g_hint");
-  if(hint && window.__loadedPaths){
-    hint.textContent = `dati: ${window.__loadedPaths.farmacie.split("/")[0]}`;
-  }
-}
-// click su grid: filtro stato
-document.getElementById("g_statusGrid").addEventListener("click", (ev) => {
-  const t = ev.target;
-  if(!(t instanceof HTMLElement)) return;
-  const card = t.closest("[data-state]");
-  if(!card) return;
-  const st = card.getAttribute("data-state");
-  if(!st) return;
-  setStateFilter(stateFilter === st ? null : st);
-});
-
-function aggiornaComuneSelezionato(){
-  const grid = document.getElementById("comuneCounts");
-  grid.innerHTML = "";
-  if(!selectedComuneNome){
-    selNomeEl.textContent = "—";
-    grid.innerHTML =
-      `<div class="stat"><div class="stat-title">Farmacie</div><div class="stat-value v-muted">—</div></div>
-       <div class="stat"><div class="stat-title">Seleziona un comune</div><div class="stat-value v-muted">—</div></div>`;
-    return;
-  }
-  selNomeEl.textContent = selectedComuneNome;
-
-  const items = farmMarkers.filter(x => x.comune === selectedComuneNome);
-  const total = items.length;
-  const priv = items.filter(x => !x.isComunale).length;
-  const comu = items.filter(x => x.isComunale).length;
-
-  const mk = (title, value, cls="v-muted") => {
-    const el=document.createElement("div");
-    el.className="stat";
-    el.innerHTML=`<div class="stat-title">${title}</div><div class="stat-value ${cls}">${value}</div>`;
-    return el;
-  };
-  grid.appendChild(mk("Farmacie", total, "v-muted"));
-  grid.appendChild(mk("Private / Comunali", `${priv} / ${comu}`, "v-muted"));
-
-  for(const s of MAIN_STATES){
-    const n = items.filter(x => getSt(x.id).state === s.key).length;
-    grid.appendChild(mk(s.label, n, s.cls));
-  }
-}
-
-/* ===============================
-   Overlay statistiche mappa
-   - Se un comune è selezionato: mostra stats del comune
-   - altrimenti: stats globali
-================================ */
-function aggiornaMapStats(){
-  const title = document.getElementById("ms_title");
-  const elA = document.getElementById("ms_aderisce");
-  const elT = document.getElementById("ms_total");
-  const elP = document.getElementById("ms_pct");
-  const elB = document.getElementById("ms_bar");
-  const elBnc = document.getElementById("ms_bar_nc");
-  const elNC = document.getElementById("ms_nc");
-  const elNCpct = document.getElementById("ms_nc_pct");
-const elTr = document.getElementById("ms_trattativa");
-  const elR = document.getElementById("ms_rifiuta");
-  const elC = document.getElementById("ms_contattare");
-  const elF = document.getElementById("ms_filter");
-
-  let ids = farmMarkers.map(x=>x.id);
-  if(selectedComuneNome){
-    ids = farmMarkers.filter(x=>x.comune===selectedComuneNome).map(x=>x.id);
-    title.textContent = `Comune di ${selectedComuneNome}`;
-  } else {
-    title.textContent = "Avanzamento campagna";
-  }
-
-  const { counts, total } = computeStats(ids);
-  const pct = total ? Math.round((counts.aderisce/total)*100) : 0;
-
-  elA.textContent = String(counts.aderisce);
-  elT.textContent = String(total);
-  elP.textContent = `${pct}%`;
-  elB.style.width = `${pct}%`;
-
-  const pctNc = total ? Math.round((counts.contattare/total)*100) : 0;
-  if(elBnc) elBnc.style.width = `${pctNc}%`;
-  if(elNC) elNC.textContent = String(counts.contattare);
-  if(elNCpct) elNCpct.textContent = `${pctNc}%`;
-elTr.textContent = String(counts.trattativa);
-  elR.textContent = String(counts.rifiuta);
-  elC.textContent = String(counts.contattare);
-
-  if(stateFilter){
-    elF.style.display = "";
-    const label = MAIN_STATES.find(x=>x.key===stateFilter)?.label || stateFilter;
-    elF.innerHTML = `Vista filtrata: <b>${esc(label)}</b> (solo evidenziazione)`;
-  } else {
-    elF.style.display = "none";
-    elF.textContent = "";
-  }
-
-  // Compact (mobile)
-  const cPct = document.getElementById("ms_c_pct");
-  const cAder = document.getElementById("ms_c_ader");
-  const cTot = document.getElementById("ms_c_tot");
-  const cNc = document.getElementById("ms_c_nc");
-  if(cPct) cPct.textContent = (pct || 0) + "%";
-  if(cAder) cAder.textContent = String(counts.aderisce || 0);
-  if(cTot) cTot.textContent = String(total || 0);
-  if(cNc) cNc.textContent = String(counts.contattare || 0);
-
-  // Auto-collapse (mobile) dopo 3s
-  const ms = document.getElementById("mapStats");
-  if(ms && uiMode==="mobile"){
-    ms.classList.remove("ms-collapsed");
-    clearTimeout(window.__msAutoTimer);
-    window.__msAutoTimer = setTimeout(()=>{ ms.classList.add("ms-collapsed"); }, 3000);
-  }
-}
-
-/* ===============================
-   VISIBILITÀ MARKER (comune + filtro)
-================================ */
-function applyMarkerVisibility(){
-  farmMarkers.forEach(f => {
-    const st = getSt(f.id);
-    const matchComune = (!selectedComuneNome) || (f.comune === selectedComuneNome);
-    const matchState = (!stateFilter) || (st.state === stateFilter);
-
-    let op = 1;
-    if(selectedComuneNome && !matchComune) op = 0.18;
-    if(stateFilter && matchComune && !matchState) op = selectedComuneNome ? 0.08 : 0.06;
-    if(stateFilter && !matchComune && !matchState) op = 0.03;
-
-    if(st.closed) op = op * 0.35;
-    f.marker.setOpacity(op);
+  marker.on('click', () => {
+    const key = marker.__pharmKey;
+    setSelectedPharmacy(key);
   });
 }
 
 /* ===============================
-   SELEZIONE COMUNE
+   LOAD COMUNI GEOJSON
 ================================ */
-function selezionaComune(layer, nome){
-  selectedComuneLayer = layer;
-  selectedComuneNome = nome;
-
-  aggiornaStiliComuni();
-  fitBoundsSmart(layer.getBounds());
-
-  // Banner solo su desktop (su mobile usiamo label nel toggle)
-  if(uiMode !== "mobile"){
-    banner.style.display="block";
-    banner.innerHTML = `↑ Comune di <b>${esc(nome)}</b>`;
-  }else{
-    banner.style.display="none";
-  }
-
-  const lbl = document.getElementById("modeComuneLabel");
-  if(lbl) lbl.textContent = nome;
-
-  hudTitle.textContent = `Comune di ${nome}`;
-  const nRef = hasRef(nome) ? (referentiComune[nome].length) : 0;
-  hudSub.textContent = hasRef(nome) ? `Referenti presenti: ${nRef}` : `Referenti: 0`;
-
-  aggiornaComuneSelezionato();
-  aggiornaMapStats();
-  if(refPanelVisible) renderReferentiPanel();
-
-  applyMarkerVisibility();
-}
-
-function resetSelezione(){
-  selectedComuneLayer = null;
-  selectedComuneNome = null;
-  banner.style.display="none";
-
-  const lbl = document.getElementById("modeComuneLabel");
-  if(lbl) lbl.textContent = "Vista generale";;
-
-  hudTitle.textContent="Provincia di Verona";
-  hudSub.textContent="Vista generale";
-
-  aggiornaStiliComuni();
-  aggiornaComuneSelezionato();
-  aggiornaMapStats();
-  if(refPanelVisible) renderReferentiPanel();
-
-  applyMarkerVisibility();
-}
-
-
-/* ===============================
-   RICERCA COMUNE (tollerante)
-================================ */
-function getComuneMatches(q){
-  const query = normSearch(q || "");
-  if(!query) return [];
-  const list = Array.from(comuniCanon);
-  // 1) match "inizia con"
-  const starts = [];
-  const includes = [];
-  for(const nome of list){
-    const nk = normSearch(nome);
-    if(!nk) continue;
-    if(nk.startsWith(query)) starts.push(nome);
-    else if(nk.includes(query)) includes.push(nome);
-    if(starts.length >= 8) break;
-  }
-  const out = starts.concat(includes).slice(0, 8);
-  return out;
-}
-
-function selectComuneByName(nome){
-  if(!nome) return false;
-  const layer = comuneLayerByNorm[normSearch(nome)];
-  if(layer){
-    selezionaComune(layer, nomeComuneFromFeature(layer.feature));
-    return true;
-  }
-  // fallback: cerca in tutti
-  const found = Array.from(comuniCanon).find(n => normSearch(n) === normSearch(nome));
-  if(found){
-    const ly = comuneLayerByNorm[normSearch(found)];
-    if(ly){ selezionaComune(ly, found); return true; }
-  }
-  return false;
-}
-
-function initComuneSearchUI(){
-  const input = document.getElementById("comuneSearchInput");
-  const suggs = document.getElementById("comuneSearchSuggs");
-  const btnGo = document.getElementById("btnComuneSearchGo");
-  if(!input || !suggs || !btnGo) return;
-
-  const closeSuggs = () => { suggs.style.display="none"; suggs.innerHTML=""; };
-
-  const renderSuggs = (arr) => {
-    if(!arr || !arr.length){ closeSuggs(); return; }
-    suggs.innerHTML = arr.map(n => `<div class="suggItem" data-n="${esc(n)}">${esc(n)}</div>`).join("");
-    suggs.style.display = "";
-  };
-
-  const doSearch = () => {
-    const q = input.value || "";
-    const matches = getComuneMatches(q);
-    if(matches.length === 1){
-      setInteractionMode("comuni");
-      selectComuneByName(matches[0]);
-      closeSuggs();
-      return;
-    }
-    // se c'è un match esatto, vai diretto
-    const exact = matches.find(n => normSearch(n) === normSearch(q));
-    if(exact){
-      setInteractionMode("comuni");
-      selectComuneByName(exact);
-      closeSuggs();
-      return;
-    }
-    renderSuggs(matches);
-  };
-
-  input.addEventListener("input", () => {
-    const matches = getComuneMatches(input.value);
-    renderSuggs(matches);
-  });
-
-  input.addEventListener("keydown", (ev) => {
-    if(ev.key === "Enter"){
-      ev.preventDefault();
-      doSearch();
-    }else if(ev.key === "Escape"){
-      closeSuggs();
-    }
-  });
-
-  btnGo.addEventListener("click", (ev) => {
-    ev.preventDefault();
-    doSearch();
-  });
-
-  suggs.addEventListener("click", (ev) => {
-    const t = ev.target;
-    if(!(t instanceof HTMLElement)) return;
-    const n = t.getAttribute("data-n");
-    if(n){
-      input.value = n;
-      setInteractionMode("comuni");
-      selectComuneByName(n);
-      closeSuggs();
-    }
-  });
-
-  // chiudi suggerimenti cliccando fuori
-  document.addEventListener("click", (ev) => {
-    const target = ev.target;
-    if(!(target instanceof HTMLElement)) return;
-    if(target === input || suggs.contains(target)) return;
-    closeSuggs();
-  });
-}
-
-/* ===============================
-   RICERCA FARMACIA (tollerante)
-================================ */
-function getFarmMatches(q){
-  const nq = normSearch(q || "");
-  if(!nq) return [];
-  const terms = nq.split(" ").filter(Boolean);
-  const out = [];
-  for(const r of farmSearchIndex){
-    if(!r || !r.norm) continue;
-    let ok = true;
-    for(const t of terms){
-      if(!r.norm.includes(t)){ ok = false; break; }
-    }
-    if(ok) out.push(r);
-  }
-  const first = terms[0] || "";
-  out.sort((a,b)=> (a.norm.indexOf(first) - b.norm.indexOf(first)) || (a.label.length - b.label.length));
-  return out.slice(0, 8);
-}
-
-function openFarmaciaRecord(rec){
-  if(!rec || !rec.marker) return;
-  setInteractionMode("farmacie");
-  try{
-    const latlng = rec.marker.getLatLng();
-    const zTarget = (uiMode === "mobile") ? Math.max(map.getZoom(), 16) : Math.max(map.getZoom(), 15);
-    map.setView(latlng, zTarget, { animate:true });
-    // prepara contenuto e autopan "smart" prima di aprire
-    rec.marker.setPopupContent(buildPopupHtml(rec.row, rec.id));
-    const pop = rec.marker.getPopup();
-    if(pop) applyPopupAutoPan(pop);
-    // mobile: chiudi pannello per dare spazio
-    if(uiMode === "mobile"){
-      const hud=document.getElementById("hud");
-      if(hud) hud.classList.add("is-collapsed");
-    }
-    rec.marker.openPopup();
-  }catch(e){}
-}
-
-function initFarmSearchUI(){
-  const input = document.getElementById("farmSearchInput");
-  const suggs = document.getElementById("farmSearchSuggs");
-  const go = document.getElementById("btnFarmSearchGo");
-  if(!input || !suggs || !go) return;
-
-  let hideTimer = null;
-  const closeSuggs = () => { suggs.style.display="none"; suggs.innerHTML=""; };
-  const renderSuggs = (arr) => {
-    if(!arr || !arr.length){ closeSuggs(); return; }
-    suggs.innerHTML = arr.map(r => `<div class="suggItem" data-id="${esc(r.id)}">${esc(r.label)}</div>`).join("");
-    suggs.style.display = "";
-  };
-
-  suggs.addEventListener("click", (e)=>{
-    const item = e.target.closest(".suggItem");
-    if(!item) return;
-    const id = item.getAttribute("data-id");
-    const rec = farmSearchIndex.find(x => String(x.id) === String(id));
-    if(rec){
-      closeSuggs();
-      openFarmaciaRecord(rec);
-    }
-  });
-
-  const doSearch = () => {
-    const q = input.value || "";
-    const matches = getFarmMatches(q);
-    if(matches.length === 1){
-      closeSuggs();
-      openFarmaciaRecord(matches[0]);
-      return;
-    }
-    // match esatto (nome/indirizzo)
-    const nq = normSearch(q);
-    const exact = matches.find(r => r.norm === nq);
-    if(exact){
-      closeSuggs();
-      openFarmaciaRecord(exact);
-      return;
-    }
-    renderSuggs(matches);
-  };
-
-  const debounced = () => {
-    clearTimeout(hideTimer);
-    hideTimer = setTimeout(doSearch, 120);
-  };
-
-  input.addEventListener("input", debounced);
-  input.addEventListener("focus", debounced);
-  input.addEventListener("blur", ()=> setTimeout(closeSuggs, 180));
-  input.addEventListener("keydown", (e)=>{
-    if(e.key === "Enter"){ e.preventDefault(); doSearch(); }
-    if(e.key === "Escape"){ closeSuggs(); input.blur(); }
-  });
-  go.addEventListener("click", doSearch);
-}
-
-
-
-/* ===============================
-   REFERENTI COMUNE UI
-================================ */
-const refPanel = document.getElementById("refPanel");
-const refList = document.getElementById("refList");
-let refPanelVisible = false;
-
-function renderReferentiPanel(){
-  if(!selectedComuneNome){
-    refList.innerHTML = `<li><span>Seleziona un comune</span></li>`;
-    return;
-  }
-  const list = referentiComune[selectedComuneNome] || [];
-  refList.innerHTML = "";
-  if(!list.length){
-    const li=document.createElement("li");
-    li.innerHTML = `<span style="color:#bdbdbd">Nessun referente inserito.</span><span></span>`;
-    refList.appendChild(li);
-    return;
-  }
-  list.forEach(name => {
-    const li=document.createElement("li");
-    li.innerHTML = `<span>${esc(name)}</span><span class="xbtn" title="Rimuovi" data-rm-ref="${encodeURIComponent(name)}">×</span>`;
-    refList.appendChild(li);
-  });
-}
-
-document.getElementById("btnAddRef").addEventListener("click", () => {
-  if(!selectedComuneNome){ alert("Seleziona prima un comune."); return; }
-  const n = prompt("Inserisci il nome del referente (visibile nella lista)");
-  if(!n) return;
-  if(!referentiComune[selectedComuneNome]) referentiComune[selectedComuneNome] = [];
-  if(!referentiComune[selectedComuneNome].includes(n)) referentiComune[selectedComuneNome].push(n);
-
-  saveRefStore(referentiComune);
-  aggiornaStiliComuni();
-  aggiornaHUD();
-  aggiornaMapStats();
-  if(refPanelVisible){
-    refPanel.style.display="block";
-    renderReferentiPanel();
-  }
-  hudSub.textContent = `Referenti presenti: ${referentiComune[selectedComuneNome].length}`;
-});
-
-document.getElementById("btnToggleRef").addEventListener("click", () => {
-  if(!selectedComuneNome){ alert("Seleziona prima un comune."); return; }
-  refPanelVisible = !refPanelVisible;
-  refPanel.style.display = refPanelVisible ? "block" : "none";
-  if(refPanelVisible) renderReferentiPanel();
-  document.getElementById("btnToggleRef").textContent = refPanelVisible ? "Nascondi referenti" : "Vedi referenti";
-});
-
-refList.addEventListener("click", (ev) => {
-  const t = ev.target;
-  if(!(t instanceof HTMLElement)) return;
-  const rmEnc = t.getAttribute("data-rm-ref");
-  if(rmEnc && selectedComuneNome){
-    ev.preventDefault(); ev.stopPropagation();
-    let rm = rmEnc;
-    try { rm = decodeURIComponent(rmEnc); } catch(e){}
-    referentiComune[selectedComuneNome] = (referentiComune[selectedComuneNome] || []).filter(x => x !== rm);
-    saveRefStore(referentiComune);
-
-    aggiornaStiliComuni();
-    aggiornaHUD();
-    aggiornaMapStats();
-    renderReferentiPanel();
-    hudSub.textContent = hasRef(selectedComuneNome) ? `Referenti presenti: ${(referentiComune[selectedComuneNome]||[]).length}` : "Referenti: 0";
-  }
-});
-
-/* ===============================
-   LOAD COMUNI + FARMACIE
-================================ */
-async function loadAll(){
-  try{
-    const comuniRes = await fetchFirst(PATHS_COMUNI, "json");
-    const csvRes = await fetchFirst(PATHS_FARMACIE, "text");
-    window.__loadedPaths = { comuni: comuniRes.path, farmacie: csvRes.path };
-
-    // comuni
-    comuniLayer = L.geoJSON(comuniRes.data, {
+fetch('data/comuni_verona.json')
+  .then(r => r.json())
+  .then(data => {
+    const geo = L.geoJSON(data, {
       style: f => {
-        const nome = nomeComuneFromFeature(f);
-        comuneCanonByNorm[normKey(nome)] = nome;
-        comuniCanon.add(nome);
-        return styleComuneBase(nome);
+        const n = nomeComune(f.properties);
+        comuniSet.add(n);
+        comuneCanonByNorm[normKey(n)] = n;
+        return styleComuneBase(n);
       },
       onEachFeature: (f, layer) => {
-        const nome = nomeComuneFromFeature(f);
-        comuneLayerByNorm[normSearch(nome)] = layer;
-        layer.on("click", () => selezionaComune(layer, nome));
+        const nome = nomeComune(f.properties);
+        layersByNome[nome] = layer;
 
         const center = layer.getBounds().getCenter();
-        const label = L.marker(center, {
-          interactive:false,
-          icon: L.divIcon({ className:"label-comune", html: esc(nome), iconSize:[140,16] })
-        });
+        const label = L.marker(center,{
+          icon: L.divIcon({ className:'label-comune', html: nome, iconSize:[140,16] }),
+          interactive:false
+        }).addTo(map);
         labels.push(label);
+
+        layer.on('click', () => selezionaComune(layer, nome));
       }
     }).addTo(map);
 
-    map.fitBounds(comuniLayer.getBounds());
+    map.fitBounds(geo.getBounds());
+    aggiornaStiliComuni();
+    aggiornaLabels();
 
-    // labels on zoom
-    map.on("zoomend", () => {
+    map.on('zoomend', () => {
       const z = map.getZoom();
-      const prev = (lastZoomLevel === null) ? z : lastZoomLevel;
-      const zoomedOut = z < (prev - 1e-9);
-      lastZoomLevel = z;
+      if(selectedNome && selectedZoomRef !== null && z <= (selectedZoomRef - 0.6)){ resetSelezione(); return; }
+      if(selectedNome && z < 9.5){ resetSelezione(); return; }
+      aggiornaLabels();
+    });
 
-      // Se guardo un comune e faccio zoom-out: salva+chiudi popup, reset selezione, tornano i nomi
-      if(selectedComuneNome && zoomedOut){
-        farmMarkers.forEach(f => {
-          const m = f.marker;
-          if(m && m.isPopupOpen && m.isPopupOpen()){
-            autoSavePopup(m, f.row, f.id, f.isComunale);
-            m._skipAutosave = true;
-            m.closePopup();
-          }
-        });
-        resetSelezione();
+    // carica farmacie dopo comuni (serve canon comune)
+    loadFarmacieAndStats();
+  });
+
+/* ===============================
+   LOAD FARMACIE + STATS
+================================ */
+async function loadFarmacieAndStats(){
+  const farm = await fetchFirstAvailable(DATA_FARMACIE_CANDIDATES);
+  if(!farm){
+    debugBox.innerHTML = `<span class="warn">⚠ Impossibile caricare farmacie.csv</span>`;
+    return;
+  }
+
+  // parse CSV text (evita problemi path/case)
+  Papa.parse(farm.text, {
+    header: true,
+    skipEmptyLines: true,
+    complete: async (res) => {
+      const rows = res.data || [];
+      let added = 0, skippedCoord = 0, noComuneMatch = 0;
+
+      rows.forEach(row => {
+        const comuneRaw = pickFirstNonEmpty(row, ['comune','Comune','COMUNE']);
+        if(!comuneRaw){ return; }
+        const comune = canonComune(comuneRaw);
+        if(!comuneCanonByNorm[normKey(comuneRaw)]) noComuneMatch++;
+
+        const nome = pickFirstNonEmpty(row, ['descrizione_farmacia','denominazione','nome','farmacia','DESCRIZIONE_FARMACIA']) || 'Farmacia';
+        const indirizzoFull = pickFirstNonEmpty(row, ['indirizzo_full','indirizzo','INDIRIZZO']);
+        const cap = pickFirstNonEmpty(row, ['cap','CAP']);
+        const gestione = pickFirstNonEmpty(row, ['gestione','GESTIONE']);
+
+        const coordStr = pickFirstNonEmpty(row, ['coordinate','coords','coord']);
+        const coord = parseCoordPair(coordStr);
+        if(!coord){ skippedCoord++; return; }
+
+        const mapsUrl = pickFirstNonEmpty(row, ['maps_url','maps_share_url','maps_url_addr','maps']);
+        const pharm = {
+          farmacia_id: pickFirstNonEmpty(row, ['farmacia_id','id','ID']),
+          nome,
+          comune,
+          gestione,
+          indirizzo_full: indirizzoFull,
+          cap,
+          lat: coord.lat,
+          lon: coord.lon,
+          maps_url: mapsUrl || ''
+        };
+        const key = getPharmKey(pharm);
+
+        // init status if missing? (no, default handled)
+        const es = effectiveStatus(key);
+
+        const marker = L.marker([pharm.lat, pharm.lon], { icon: iconFarmacia(gestione, es.main, es.sub, es.closedTemp) });
+        marker.__pharmKey = key;
+        marker.__pharmData = { ...pharm, key };
+        marker.bindPopup(popupHtml(marker.__pharmData), { maxWidth: 360 });
+        attachPopupEvents(marker);
+
+        marker.addTo(farmLayer);
+        farmMarkers.push({ marker, comune, gestione, key, data: marker.__pharmData });
+        added++;
+      });
+
+      updateGlobalCounters();
+      if(selectedNome){
+        // se qualcuno ha già selezionato un comune mentre caricava
+        farmMarkers.forEach(x => x.marker.setOpacity(x.comune === selectedNome ? 1 : 0.18));
+        updateComuneCounters();
       }
 
-      const show = (!selectedComuneNome && z>=9 && z<=13);
-      labels.forEach(l => { show ? map.addLayer(l) : map.removeLayer(l); });
-    });
+      // carica stats e confronta
+      const st = await fetchFirstAvailable(DATA_STATS_CANDIDATES);
+      let mismatchMsg = '';
+      if(st){
+        Papa.parse(st.text, {
+          header:true,
+          skipEmptyLines:true,
+          complete:(sr)=>{
+            const srows = sr.data || [];
+            const expectedByComune = {};
+            srows.forEach(r=>{
+              const raw = pickFirstNonEmpty(r, ['comune','Comune','COMUNE']);
+              const exp = parseInt(pickFirstNonEmpty(r, ['n_farmacie','N_FARMACIE','farmacie']), 10);
+              if(raw && isFinite(exp)) expectedByComune[canonComune(raw)] = exp;
+            });
+            // compute actual
+            const actualByComune = {};
+            farmMarkers.forEach(x => { actualByComune[x.comune] = (actualByComune[x.comune]||0) + 1; });
 
-    aggiornaStiliComuni();
-    initComuneSearchUI();
-
-    // farmacie
-    const parsed = Papa.parse(csvRes.data, { header:true, skipEmptyLines:true });
-    window.__farmacieFields = (parsed.meta && parsed.meta.fields) ? parsed.meta.fields.slice() : [];
-    const rows = parsed.data || [];
-
-    rows.forEach(row => {
-      const comuneRaw = (row.comune || "").trim();
-      if(!comuneRaw) return;
-      const comune = canonComune(comuneRaw);
-
-      const coord = parseCoordinateCell(row.coordinate);
-      if(!coord) return;
-
-      const farmaciaId =
-        (row.farmacia_id || row.farmaciaId || row.id || "").toString().trim() ||
-        stableId(`${row.maps_url||""}|${row.descrizione_farmacia||""}|${comune}`);
-
-      if(!statusStore[farmaciaId]) setSt(farmaciaId, getSt(farmaciaId));
-
-      const isComunale = isComunaleFromGestione(row.gestione);
-      const st = getSt(farmaciaId);
-
-      const marker = L.marker([coord.lat, coord.lon], {
-        icon: iconFarmacia(st.state, st.closed, isComunale),
-        opacity: st.closed ? 0.35 : 1
-      });
-
-      // Contenuto popup: viene rigenerato ad ogni apertura per riflettere SEMPRE lo stato salvato
-      // (evita che i chip/nomi "spariscano" dopo Salva e ricompaiano solo dopo un refresh).
-      marker.bindPopup(buildPopupHtml(row, farmaciaId), {
-        maxWidth: (uiMode==="mobile" ? 320 : 420),
-        autoPan: true,
-        keepInView: true
-      });
-
-      // Prima dell'apertura: rigenera contenuto + imposta autoPan padding (così Leaflet panora correttamente)
-      marker.on("click", () => {
-        marker.setPopupContent(buildPopupHtml(row, farmaciaId));
-        const pop = marker.getPopup();
-        if(pop) applyPopupAutoPan(pop);
-      });
-
-      marker.on("popupopen", (ev) => {
-        // Aggiorna layout del popup (dopo eventuale setPopupContent)
-        if(ev && ev.popup){
-          ev.popup.options.keepInView = true;
-          ev.popup.update();
-        }
-        // Mobile: libera la vista e porta il popup in primo piano
-        if(uiMode==="mobile"){
-          document.body.classList.add("ph-popup-open");
-          const hud=document.getElementById("hud");
-          if(hud) hud.classList.add("is-collapsed");
-        }
-          setTimeout(()=>{ try{ panMarkerLowerForPopup(marker.getLatLng()); }catch(e){} }, 60);
-        setTimeout(() => attachPopupHandlers(marker, row, farmaciaId), 0);
-      });
-
-      marker.on("popupclose", () => { if(uiMode==="mobile"){ document.body.classList.remove("ph-popup-open"); } handlePopupClose(marker, row, farmaciaId, isComunale); });
-marker.addTo(farmLayer);
-
-      farmMarkers.push({ id: farmaciaId, comune, gestione: (row.gestione||""), isComunale, marker, row });
-
-      // indicizzazione per ricerca farmacie (tollerante)
-      try{
-        const nomeF = (row.descrizione_farmacia || row.nome || row.farmacia || row.descrizione || "Farmacia").toString().trim();
-        const indF = (row.indirizzo_full || row.indirizzo || "").toString().trim();
-        const capF = (row.cap || "").toString().trim();
-        const label = `${nomeF} · ${comune}${indF ? " — " + indF : ""}`;
-        const norm = normSearch(`${nomeF} ${indF} ${capF} ${comune} ${(row.gestione||"")}`);
-        farmSearchIndex.push({ id: farmaciaId, label, norm, marker, row });
-      }catch(e){}
-
-      applyStatusToMarker(marker, farmaciaId, row, isComunale);
-    });
-
-    // init ricerca farmacie (dopo caricamento markers)
-    initFarmSearchUI();
-
-    aggiornaHUD();
-    aggiornaComuneSelezionato();
-    aggiornaMapStats();
-    applyMarkerVisibility();
-
-    // labels iniziali
-    const z = map.getZoom();
-    const show = (!selectedComuneNome && z>=9 && z<=13);
-    labels.forEach(l => { show ? map.addLayer(l) : map.removeLayer(l); });
-
-  }catch(e){
-    console.error(e);
-    alert("Errore nel caricamento dati (controlla cartelle DATA/data e i file).");
-  }
-}
-
-
-/* ===============================
-   EXPORT / PRINT (Excel/CSV + stampa)
-================================ */
-function getExportScope(){
-  // se un comune è selezionato, proponi export locale (utile sul campo)
-  if(selectedComuneNome){
-    try{
-      return confirm(`Esportare SOLO il comune selezionato (“${selectedComuneNome}”)?\n\nOK = solo comune\nAnnulla = tutta la provincia`) ? selectedComuneNome : null;
-    }catch(e){
-      return null;
+            let mismatches = 0;
+            let example = '';
+            Object.keys(expectedByComune).forEach(c=>{
+              const a = actualByComune[c] || 0;
+              const e = expectedByComune[c] || 0;
+              if(a !== e){
+                mismatches++;
+                if(!example) example = `${c} attese ${e}, caricate ${a}`;
+              }
+            });
+            if(mismatches){
+              mismatchMsg = `<br/><span class="warn">⚠ Mismatch stats (debug): ${mismatches} comuni differiscono. Esempio: ${example}.</span>`;
+            }
+            debugBox.innerHTML =
+              `Farmacie caricate: <b>${added}</b> — comuni nel GeoJSON: <b>${comuniSet.size}</b>` +
+              ` — saltate (coord invalide): <b>${skippedCoord}</b>` +
+              ` — comune non riconosciuto: <b>${noComuneMatch}</b>` +
+              mismatchMsg;
+          }
+        });
+      } else {
+        debugBox.innerHTML =
+          `Farmacie caricate: <b>${added}</b> — comuni nel GeoJSON: <b>${comuniSet.size}</b>` +
+          ` — saltate (coord invalide): <b>${skippedCoord}</b>` +
+          ` — comune non riconosciuto: <b>${noComuneMatch}</b>`;
+      }
     }
-  }
-  return null;
-}
-
-function buildExportRows(scopeComune=null){
-  const rows = farmMarkers
-    .filter(f => !scopeComune || f.comune === scopeComune)
-    .map(f => {
-      const st = getSt(f.id) || defaultStatus();
-      const base = { ...(f.row || {}) };
-
-      // campi "campagna" + utilità
-      base.__id = f.id;
-      base.comune_canon = f.comune;
-      base.stato_campagna = st.state || "contattare";
-      base.chiusa_temporaneamente = !!st.closed;
-      base.incaricati = uniq(normalizeOwners(st.owners)).join("; ");
-      base.note = st.note || "";
-      const fl = st.flags || {};
-      base.flag_poster = !!fl.poster;
-      base.flag_boicotta = !!fl.boicotta;
-      base.flag_promo = !!fl.promo;
-      base.flag_info = !!fl.info;
-      base.updatedAt = st.updatedAt || "";
-
-      return base;
-    });
-
-  return rows;
-}
-
-function computeExportStats(scopeComune=null){
-  const ids = farmMarkers.filter(f => !scopeComune || f.comune === scopeComune).map(f => f.id);
-  const s = computeStats(ids);
-
-  // flags tra gli "aderisce"
-  let poster=0, boicotta=0, promo=0, info=0;
-  ids.forEach(id => {
-    const st = getSt(id);
-    if((st.state||"contattare") !== "aderisce") return;
-    const f = st.flags || {};
-    if(f.poster) poster++;
-    if(f.boicotta) boicotta++;
-    if(f.promo) promo++;
-    if(f.info) info++;
   });
-
-  // comuni coperti/orfani (ridimensionati ma utili in export)
-  let coperti=0;
-  const comuniInScope = new Set();
-  farmMarkers.forEach(f => { if(!scopeComune || f.comune === scopeComune) comuniInScope.add(f.comune); });
-  comuniInScope.forEach(c => { if(hasRef(c)) coperti++; });
-  const orfani = Math.max(0, comuniInScope.size - coperti);
-
-  const aderisce = s.counts.aderisce;
-  const pct = s.total ? Math.round((aderisce/s.total)*100) : 0;
-
-  return {
-    ambito: scopeComune ? scopeComune : "Provincia di Verona",
-    data_export: new Date().toISOString(),
-    totale: s.total,
-    aderisce,
-    aderisce_pct: pct,
-    trattativa: s.counts.trattativa,
-    rifiuta: s.counts.rifiuta,
-    contattare: s.counts.contattare,
-    private: s.priv,
-    comunali: s.comu,
-    comuni_coperti: coperti,
-    comuni_orfani: orfani,
-    flags: { poster, boicotta, promo, info }
-  };
 }
-
-function groupRowsByState(rows){
-  const g = { contattare:[], trattativa:[], aderisce:[], rifiuta:[] };
-  rows.forEach(r => {
-    const st = (r.stato_campagna || "contattare");
-    if(g[st]) g[st].push(r);
-    else g.contattare.push(r);
-  });
-  return g;
-}
-
-function downloadBlob(filename, mime, content){
-  const blob = new Blob([content], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
-}
-
-function csvEscape(v){
-  const s = (v===null || v===undefined) ? "" : String(v);
-  if(/[",\n\r;]/.test(s)){
-    return '"' + s.replace(/"/g,'""') + '"';
-  }
-  return s;
-}
-
-function rowsToCSV(rows, cols){
-  const header = cols.map(csvEscape).join(",");
-  const lines = rows.map(r => cols.map(c => csvEscape(r[c])).join(","));
-  return [header, ...lines].join("\n");
-}
-
-function getExportColumns(){
-  const base = (window.__farmacieFields && window.__farmacieFields.length) ? window.__farmacieFields.slice() : [];
-  // fallback: usa le chiavi del primo record
-  if(base.length === 0 && farmMarkers[0] && farmMarkers[0].row){
-    base.push(...Object.keys(farmMarkers[0].row));
-  }
-
-  // colonne "campagna" (in fondo)
-  const extra = ["__id","comune_canon","stato_campagna","chiusa_temporaneamente","incaricati","note","flag_poster","flag_boicotta","flag_promo","flag_info","updatedAt"];
-  const cols = [];
-  base.forEach(c => { if(!cols.includes(c)) cols.push(c); });
-  extra.forEach(c => { if(!cols.includes(c)) cols.push(c); });
-  return cols;
-}
-
-function exportCSV(){
-  if(!farmMarkers.length){ alert("Nessuna farmacia caricata."); return; }
-
-  const scope = getExportScope();
-  const stats = computeExportStats(scope);
-  const rows = buildExportRows(scope);
-  const grouped = groupRowsByState(rows);
-  const cols = getExportColumns();
-
-  // 1) CSV farmacie (tutte, con colonna stato_campagna)
-  const csvFarm = rowsToCSV(rows, cols);
-  const baseName = scope ? `export_${normKey(scope).replace(/\s+/g,'_')}` : "export_provincia_verona";
-  downloadBlob(`${baseName}_farmacie.csv`, "text/csv;charset=utf-8", csvFarm);
-
-  // 2) CSV statistiche (key-value)
-  const statsRows = [
-    { metrica:"Ambito", valore: stats.ambito },
-    { metrica:"Data export", valore: stats.data_export },
-    { metrica:"Totale farmacie", valore: stats.totale },
-    { metrica:"Aderiscono", valore: stats.aderisce },
-    { metrica:"Aderiscono (%)", valore: stats.aderisce_pct },
-    { metrica:"Trattativa", valore: stats.trattativa },
-    { metrica:"Non aderisce", valore: stats.rifiuta },
-    { metrica:"Da contattare", valore: stats.contattare },
-    { metrica:"Private", valore: stats.private },
-    { metrica:"Comunali", valore: stats.comunali },
-    { metrica:"Comuni coperti", valore: stats.comuni_coperti },
-    { metrica:"Comuni orfani", valore: stats.comuni_orfani },
-    { metrica:"Aderisce: Poster", valore: stats.flags.poster },
-    { metrica:"Aderisce: Boicotta", valore: stats.flags.boicotta },
-    { metrica:"Aderisce: Promo", valore: stats.flags.promo },
-    { metrica:"Aderisce: Info", valore: stats.flags.info },
-  ];
-  const csvStats = rowsToCSV(statsRows, ["metrica","valore"]);
-  downloadBlob(`${baseName}_statistiche.csv`, "text/csv;charset=utf-8", csvStats);
-
-  // 3) opzionale: CSV divisi per stato (4 file)
-  let wantSplit = false;
-  try{
-    wantSplit = confirm("Vuoi scaricare anche 4 CSV separati (uno per stato: Aderisce/Trattativa/Non aderisce/Da contattare)?");
-  }catch(e){ wantSplit = false; }
-
-  if(wantSplit){
-    const order = [
-      ["aderisce","aderisce"],
-      ["trattativa","trattativa"],
-      ["rifiuta","non_aderisce"],
-      ["contattare","da_contattare"],
-    ];
-    order.forEach(([k, suffix]) => {
-      const csv = rowsToCSV(grouped[k], cols);
-      downloadBlob(`${baseName}_${suffix}.csv`, "text/csv;charset=utf-8", csv);
-    });
-  }
-}
-
-function exportXLSX(){
-  if(!farmMarkers.length){ alert("Nessuna farmacia caricata."); return; }
-  if(!window.XLSX){
-    alert("Libreria Excel non caricata. Uso CSV.");
-    exportCSV();
-    return;
-  }
-
-  const scope = getExportScope();
-  const stats = computeExportStats(scope);
-  const rows = buildExportRows(scope);
-  const grouped = groupRowsByState(rows);
-  const cols = getExportColumns();
-
-  // Statistiche (key-value)
-  const statsAOA = [
-    ["Ambito", stats.ambito],
-    ["Data export", stats.data_export],
-    ["Totale farmacie", stats.totale],
-    ["Aderiscono", stats.aderisce],
-    ["Aderiscono (%)", stats.aderisce_pct],
-    ["Trattativa", stats.trattativa],
-    ["Non aderisce", stats.rifiuta],
-    ["Da contattare", stats.contattare],
-    ["Private", stats.private],
-    ["Comunali", stats.comunali],
-    ["Comuni coperti", stats.comuni_coperti],
-    ["Comuni orfani", stats.comuni_orfani],
-    ["Aderisce: Poster", stats.flags.poster],
-    ["Aderisce: Boicotta", stats.flags.boicotta],
-    ["Aderisce: Promo", stats.flags.promo],
-    ["Aderisce: Info", stats.flags.info],
-  ];
-
-  // Statistiche per comune (sempre utile, anche se scope=null)
-  const comuniSet = new Set();
-  farmMarkers.forEach(f => { if(!scope || f.comune === scope) comuniSet.add(f.comune); });
-  const comuniArr = Array.from(comuniSet).sort((a,b)=>a.localeCompare(b));
-  const comuniAOA = [["Comune","Totale","Aderisce","Aderisce (%)","Trattativa","Non aderisce","Da contattare","Private","Comunali","Referenti"]];
-  comuniArr.forEach(c => {
-    const ids = farmMarkers.filter(f => f.comune===c && (!scope || f.comune===scope)).map(f=>f.id);
-    const s = computeStats(ids);
-    const ader = s.counts.aderisce;
-    const pct = s.total ? Math.round((ader/s.total)*100) : 0;
-    const refs = (referentiComune[c] || []).join(", ");
-    comuniAOA.push([c, s.total, ader, pct, s.counts.trattativa, s.counts.rifiuta, s.counts.contattare, s.priv, s.comu, refs]);
-  });
-
-  function sheetFromAOA(aoa){ return XLSX.utils.aoa_to_sheet(aoa); }
-  function sheetFromRows(rs){
-    const aoa = [cols];
-    rs.forEach(r => aoa.push(cols.map(c => (r[c]===undefined? "" : r[c]))));
-    return XLSX.utils.aoa_to_sheet(aoa);
-  }
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, sheetFromAOA(statsAOA), "Statistiche");
-  XLSX.utils.book_append_sheet(wb, sheetFromAOA(comuniAOA), "Statistiche comuni");
-  XLSX.utils.book_append_sheet(wb, sheetFromRows(rows), "Tutte");
-
-  // divise per stato (sheet separati)
-  XLSX.utils.book_append_sheet(wb, sheetFromRows(grouped.aderisce), "Aderisce");
-  XLSX.utils.book_append_sheet(wb, sheetFromRows(grouped.trattativa), "Trattativa");
-  XLSX.utils.book_append_sheet(wb, sheetFromRows(grouped.rifiuta), "Non aderisce");
-  XLSX.utils.book_append_sheet(wb, sheetFromRows(grouped.contattare), "Da contattare");
-
-  const file = scope ? `export_spg_${normKey(scope).replace(/\s+/g,'_')}.xlsx` : "export_spg_provincia_verona.xlsx";
-  XLSX.writeFile(wb, file);
-}
-
-
-function exportSoloAderisce(){
-  if(!farmMarkers.length){ alert("Nessuna farmacia caricata."); return; }
-
-  const scope = getExportScope();
-  const stats = computeExportStats(scope);
-  const rows = buildExportRows(scope);
-  const aderisceRows = rows.filter(r => (r.stato_campagna || "contattare") === "aderisce");
-
-  // Se non c'è XLSX => CSV
-  if(!window.XLSX){
-    const cols = getExportColumns();
-    const csv = rowsToCSV(aderisceRows, cols);
-    const baseName = scope ? `export_${normKey(scope).replace(/\s+/g,'_')}` : "export_provincia_verona";
-    downloadBlob(`${baseName}_solo_aderisce.csv`, "text/csv;charset=utf-8", csv);
-    return;
-  }
-
-  const wb = XLSX.utils.book_new();
-  const statsAOA = [
-    ["Campo","Valore"],
-    ["Ambito", scope ? scope : "Provincia di Verona"],
-    ["Data export", stats.data_export],
-    ["Totale farmacie", stats.totale],
-    ["Aderiscono", stats.aderisce],
-    ["Aderiscono (%)", stats.aderisce_pct + "%"],
-    ["Trattativa", stats.trattativa],
-    ["Non aderisce", stats.rifiuta],
-    ["Da contattare", stats.contattare],
-  ];
-  XLSX.utils.book_append_sheet(wb, sheetFromAOA(statsAOA), "Statistiche");
-  XLSX.utils.book_append_sheet(wb, sheetFromRows(aderisceRows), "Aderisce");
-
-  const file = scope ? `solo_aderisce_spg_${normKey(scope).replace(/\s+/g,'_')}.xlsx`
-                     : "solo_aderisce_spg_provincia_verona.xlsx";
-  XLSX.writeFile(wb, file);
-}
-
-function printSoloAderisce(){
-  if(!farmMarkers.length){ alert("Nessuna farmacia caricata."); return; }
-
-  const scope = getExportScope();
-  const stats = computeExportStats(scope);
-  const rows = buildExportRows(scope).filter(r => (r.stato_campagna || "contattare") === "aderisce");
-
-  const cols = [
-    { key:"descrizione_farmacia", label:"Farmacia" },
-    { key:"gestione", label:"Gestione" },
-    { key:"indirizzo_full", label:"Indirizzo" },
-    { key:"cap", label:"CAP" },
-    { key:"comune", label:"Comune" },
-    { key:"telefono", label:"Telefono" },
-    { key:"email", label:"Email" },
-    { key:"maps_url", label:"Maps" },
-    { key:"incaricati", label:"Incaricati" },
-    { key:"note", label:"Note" },
-  ];
-
-  const header = cols.map(c => `<th>${esc(c.label)}</th>`).join("");
-  const body = rows.map(r => `<tr>${cols.map(c => {
-    let v = r[c.key] ?? "";
-    if(c.key==="maps_url" && v) return `<td><a href="${esc(String(v))}" target="_blank" rel="noopener">Apri</a></td>`;
-    return `<td>${esc(String(v))}</td>`;
-  }).join("")}</tr>`).join("");
-
-  const title = scope ? `Solo aderisce — ${scope}` : "Solo aderisce — Provincia di Verona";
-
-  const html = `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"/>
-  <title>${esc(title)}</title>
-  <style>
-    body{ font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin:18px; }
-    h1{ margin:0 0 6px; font-size:20px; }
-    .meta{ color:#333; font-size:12px; margin:0 0 14px; }
-    .pill{ display:inline-block; background:#00ff9c; color:#111; padding:2px 10px; border-radius:999px; font-weight:900; }
-    table{ width:100%; border-collapse:collapse; font-size:12px; }
-    th,td{ border:1px solid #ddd; padding:6px 8px; vertical-align:top; }
-    th{ background:#f4f4f4; text-align:left; }
-    a{ color:#111; font-weight:800; }
-  
-/* === Quando il selettore UI è aperto, nascondi overlay per evitare confusione === */
-body.chooser-open #hud,
-body.chooser-open #hudFab,
-body.chooser-open #modeToggle,
-body.chooser-open #mapStats,
-body.chooser-open #banner{
-  display:none !important;
-}
-
-/* === Mobile: overlay avanzamento in alto, più compatto === */
-body.ui-mobile #mapStats{
-  top:58px;
-  bottom:auto;
-  right:12px;
-  left:auto;
-  width: min(300px, calc(100vw - 24px));
-  padding:10px 10px 8px;
-}
-body.ui-mobile .ms-main{ font-size:15px; }
-body.ui-mobile .ms-line{ margin-top:4px; }
-body.ui-mobile .ms-bar{ height:8px; }
-body.ui-mobile .ms-bar2{ height:6px; }
-body.ui-mobile .ms-mini{ font-size:11px; }
-body.ui-mobile .ms-tag{ font-size:10px; }
-
-/* === Mobile: toggle modalità in alto per non sovrapporsi === */
-body.ui-mobile #modeToggle{
-  top:12px;
-  bottom:auto;
-  left:12px;
-  transform:none;
-  border-radius: 16px;
-}
-
-/* === Popup: sempre dentro lo schermo su mobile === */
-body.ui-mobile .leaflet-popup{
-  max-width: calc(100vw - 24px) !important;
-}
-body.ui-mobile .leaflet-popup-content-wrapper{
-  max-width: calc(100vw - 24px) !important;
-}
-body.ui-mobile .leaflet-popup-content{
-  max-width: calc(100vw - 48px) !important;
-}
-
-
-/* === Mobile hint toast === */
-#mobileHint{
-  position:fixed;
-  left:50%;
-  transform:translateX(-50%);
-  bottom:96px;
-  z-index:10006;
-  background:rgba(0,0,0,.72);
-  border:1px solid rgba(0,255,156,.22);
-  color:#eafff7;
-  padding:10px 12px;
-  border-radius: 14px;
-  font-size:12px;
-  font-weight:800;
-  letter-spacing:.02em;
-  max-width: calc(100vw - 24px);
-  box-shadow: 0 0 18px rgba(0,0,0,.55);
-  backdrop-filter: blur(3px);
-  opacity:0;
-  transition: opacity .2s ease;
-  pointer-events:none;
-  display:none;
-}
-body.ui-mobile #mobileHint{ display:block; }
-#mobileHint.show{ opacity:1; }
-
-</style></head><body>
-    <h1>${esc(title)}</h1>
-    <div class="meta">Export: ${esc(stats.data_export)} · <span class="pill">Aderiscono: ${stats.aderisce}/${stats.totale} (${stats.aderisce_pct}%)</span></div>
-    <table><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table>
-    <script>window.onload = () => setTimeout(()=>window.print(), 50);<\/script>
-  </body></html>`;
-
-  const w = window.open("", "_blank");
-  if(!w){ alert("Popup bloccato dal browser."); return; }
-  w.document.open(); w.document.write(html); w.document.close();
-}
-
-function printReport(){
-  if(!farmMarkers.length){ alert("Nessuna farmacia caricata."); return; }
-
-  const scope = getExportScope();
-  const stats = computeExportStats(scope);
-  const rows = buildExportRows(scope);
-  const grouped = groupRowsByState(rows);
-
-  const nice = {
-    contattare: "Da contattare",
-    trattativa: "Trattativa",
-    aderisce: "Aderisce",
-    rifiuta: "Non aderisce"
-  };
-
-  const cols = [
-    "comune_canon","descrizione_farmacia","gestione","indirizzo_full","telefono",
-    "stato_campagna","chiusa_temporaneamente","incaricati","note","flag_poster","flag_boicotta","flag_promo","flag_info","updatedAt","maps_url"
-  ];
-
-  function td(v){
-    const s = (v===null||v===undefined) ? "" : String(v);
-    return `<td>${esc(s)}</td>`;
-  }
-  function tableFor(list){
-    const head = `<tr>${cols.map(c=>`<th>${esc(c)}</th>`).join("")}</tr>`;
-    const body = list.map(r=>`<tr>${cols.map(c=>td(r[c])).join("")}</tr>`).join("");
-    return `<table><thead>${head}</thead><tbody>${body}</tbody></table>`;
-  }
-
-  const html = `
-<!DOCTYPE html>
-<html lang="it">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Report SpG - ${esc(stats.ambito)}</title>
-<style>
-  body{ font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:18px; color:#111; }
-  h1{ margin:0 0 8px; font-size:20px; }
-  .meta{ color:#444; font-size:12px; margin-bottom:14px; }
-  .cards{ display:grid; grid-template-columns:repeat(4,minmax(150px,1fr)); gap:10px; margin:12px 0 16px; }
-  .card{ border:1px solid #ddd; border-radius:10px; padding:10px; }
-  .card .k{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#666; }
-  .card .v{ font-size:22px; font-weight:800; margin-top:2px; }
-  .bar{ height:10px; border:1px solid #ddd; border-radius:999px; overflow:hidden; background:#f4f4f4; }
-  .bar > div{ height:100%; width:${stats.aderisce_pct}%; background:#00c37a; }
-  h2{ margin:18px 0 8px; font-size:16px; page-break-after: avoid; }
-  table{ width:100%; border-collapse:collapse; font-size:11px; }
-  th, td{ border:1px solid #e3e3e3; padding:6px 6px; vertical-align:top; }
-  th{ background:#f5f5f5; text-align:left; }
-  .pb{ page-break-before: always; }
-  @media print{
-    body{ margin:10mm; }
-    .cards{ grid-template-columns:repeat(4,minmax(0,1fr)); }
-    a{ color:inherit; text-decoration:none; }
-  }
-
-/* === Quando il selettore UI è aperto, nascondi overlay per evitare confusione === */
-body.chooser-open #hud,
-body.chooser-open #hudFab,
-body.chooser-open #modeToggle,
-body.chooser-open #mapStats,
-body.chooser-open #banner{
-  display:none !important;
-}
-
-/* === Mobile: overlay avanzamento in alto, più compatto === */
-body.ui-mobile #mapStats{
-  top:58px;
-  bottom:auto;
-  right:12px;
-  left:auto;
-  width: min(300px, calc(100vw - 24px));
-  padding:10px 10px 8px;
-}
-body.ui-mobile .ms-main{ font-size:15px; }
-body.ui-mobile .ms-line{ margin-top:4px; }
-body.ui-mobile .ms-bar{ height:8px; }
-body.ui-mobile .ms-bar2{ height:6px; }
-body.ui-mobile .ms-mini{ font-size:11px; }
-body.ui-mobile .ms-tag{ font-size:10px; }
-
-/* === Mobile: toggle modalità in alto per non sovrapporsi === */
-body.ui-mobile #modeToggle{
-  top:12px;
-  bottom:auto;
-  left:12px;
-  transform:none;
-  border-radius: 16px;
-}
-
-/* === Popup: sempre dentro lo schermo su mobile === */
-body.ui-mobile .leaflet-popup{
-  max-width: calc(100vw - 24px) !important;
-}
-body.ui-mobile .leaflet-popup-content-wrapper{
-  max-width: calc(100vw - 24px) !important;
-}
-body.ui-mobile .leaflet-popup-content{
-  max-width: calc(100vw - 48px) !important;
-}
-
-
-/* === Mobile hint toast === */
-#mobileHint{
-  position:fixed;
-  left:50%;
-  transform:translateX(-50%);
-  bottom:96px;
-  z-index:10006;
-  background:rgba(0,0,0,.72);
-  border:1px solid rgba(0,255,156,.22);
-  color:#eafff7;
-  padding:10px 12px;
-  border-radius: 14px;
-  font-size:12px;
-  font-weight:800;
-  letter-spacing:.02em;
-  max-width: calc(100vw - 24px);
-  box-shadow: 0 0 18px rgba(0,0,0,.55);
-  backdrop-filter: blur(3px);
-  opacity:0;
-  transition: opacity .2s ease;
-  pointer-events:none;
-  display:none;
-}
-body.ui-mobile #mobileHint{ display:block; }
-#mobileHint.show{ opacity:1; }
-
-</style>
-</head>
-<body>
-  <h1>Report campagna SpG — ${esc(stats.ambito)}</h1>
-  <div class="meta">Export: ${esc(stats.data_export)} · Totale: ${stats.totale} · Aderiscono: ${stats.aderisce} (${stats.aderisce_pct}%)</div>
-  <div class="bar"><div></div></div>
-
-  <div class="cards">
-    <div class="card"><div class="k">Aderiscono</div><div class="v">${stats.aderisce}/${stats.totale}</div></div>
-    <div class="card"><div class="k">Trattativa</div><div class="v">${stats.trattativa}</div></div>
-    <div class="card"><div class="k">Non aderisce</div><div class="v">${stats.rifiuta}</div></div>
-    <div class="card"><div class="k">Da contattare</div><div class="v">${stats.contattare}</div></div>
-  </div>
-
-  <div class="cards" style="grid-template-columns:repeat(4,minmax(150px,1fr)); margin-top:0">
-    <div class="card"><div class="k">Private</div><div class="v">${stats.private}</div></div>
-    <div class="card"><div class="k">Comunali</div><div class="v">${stats.comunali}</div></div>
-    <div class="card"><div class="k">Comuni coperti</div><div class="v">${stats.comuni_coperti}</div></div>
-    <div class="card"><div class="k">Comuni orfani</div><div class="v">${stats.comuni_orfani}</div></div>
-  </div>
-
-  <div class="cards" style="grid-template-columns:repeat(4,minmax(150px,1fr)); margin-top:0">
-    <div class="card"><div class="k">Poster</div><div class="v">${stats.flags.poster}</div></div>
-    <div class="card"><div class="k">Boicotta</div><div class="v">${stats.flags.boicotta}</div></div>
-    <div class="card"><div class="k">Promo</div><div class="v">${stats.flags.promo}</div></div>
-    <div class="card"><div class="k">Info</div><div class="v">${stats.flags.info}</div></div>
-  </div>
-
-  ${["aderisce","trattativa","rifiuta","contattare"].map((k, idx)=>`
-    <h2 class="${idx? "pb":""}">${nice[k]} — ${grouped[k].length}</h2>
-    ${tableFor(grouped[k])}
-  `).join("")}
-
-  <script>window.onload = () => setTimeout(()=>window.print(), 50);<\/script>
-</body>
-</html>`;
-
-  const w = window.open("", "_blank");
-  if(!w){ alert("Popup bloccato dal browser."); return; }
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
-}
-
-// wiring bottoni
-document.getElementById("btnExportXLSX")?.addEventListener("click", exportXLSX);
-document.getElementById("btnExportCSV")?.addEventListener("click", exportCSV);
-document.getElementById("btnPrintReport")?.addEventListener("click", printReport);
-document.getElementById("btnExportAderisce")?.addEventListener("click", () => {
-  const ok = confirm("SOLO ADERISCE\n\nOK = scarica file (Excel se disponibile, altrimenti CSV)\nAnnulla = stampa elenco");
-  if(ok) exportSoloAderisce(); else printSoloAderisce();
-});
 
 /* ===============================
-   UI: wiring (rev2.1.6)
+   INITIAL
 ================================ */
-(function(){
-  const hud = document.getElementById("hud");
-  const hudFab = document.getElementById("hudFab");
-  const hudToggleBtn = document.getElementById("hudToggleBtn");
-  const hudUiBtn = document.getElementById("hudUiBtn");
-  const btnChangeUI = document.getElementById("btnChangeUI");
-  const btnUiMobile = document.getElementById("btnUiMobile");
-  const btnUiDesktop = document.getElementById("btnUiDesktop");
-  const btnUiClose = document.getElementById("btnUiChooserClose");
-  const btnModeComuni = document.getElementById("btnModeComuni");
-  const btnModeFarmacie = document.getElementById("btnModeFarmacie");
-
-  // MapStats (tap to expand on mobile when collapsed)
-  const __ms = document.getElementById("mapStats");
-  if(__ms){
-    __ms.addEventListener("click", ()=>{
-      if(uiMode!=="mobile") return;
-      if(!__ms.classList.contains("ms-collapsed")) return;
-      __ms.classList.remove("ms-collapsed");
-      clearTimeout(window.__msAutoTimer);
-      window.__msAutoTimer = setTimeout(()=>{ __ms.classList.add("ms-collapsed"); }, 3000);
-    });
-  }
-
-  // Toggle pannello
-  const updateHudChrome = () => {
-    if(!hud) return;
-    const collapsed = hud.classList.contains("is-collapsed");
-    if(hudToggleBtn) hudToggleBtn.textContent = collapsed ? "⌃" : "✕";
-    if(hudFab) hudFab.textContent = collapsed ? "☰" : "✕";
-  };
-  const toggleHud = () => {
-    if(!hud) return;
-    hud.classList.toggle("is-collapsed");
-    updateHudChrome();
-  };
-  if(hudFab) hudFab.addEventListener("click", (e)=>{ e.preventDefault(); toggleHud(); });
-  if(hudToggleBtn) hudToggleBtn.addEventListener("click", (e)=>{ e.preventDefault(); toggleHud(); });
-  const hudHandle = document.getElementById("hudHandle");
-  if(hudHandle) hudHandle.addEventListener("click", (e)=>{
-    // click sul maniglione (non sull'icona): toggle
-    const t = e.target;
-    if(t && t instanceof HTMLElement && (t.id === "hudToggleBtn" || t.id === "hudUiBtn")) return;
-    toggleHud();
-  });
-
-  // UI chooser
-  if(btnChangeUI) btnChangeUI.addEventListener("click", (e)=>{ e.preventDefault(); openUiChooser(); });
-  if(hudUiBtn) hudUiBtn.addEventListener("click", (e)=>{ e.preventDefault(); openUiChooser(); });
-  if(btnUiMobile) btnUiMobile.addEventListener("click", (e)=>{ e.preventDefault(); closeUiChooser(); setUiMode("mobile"); showChooser=false; });
-  if(btnUiDesktop) btnUiDesktop.addEventListener("click", (e)=>{ e.preventDefault(); closeUiChooser(); setUiMode("desktop"); showChooser=false; });
-  if(btnUiClose) btnUiClose.addEventListener("click", (e)=>{ e.preventDefault(); closeUiChooser(); showChooser=false; applyUiMode(); });
-
-  // Modalità selezione
-  if(btnModeComuni) btnModeComuni.addEventListener("click", (e)=>{ e.preventDefault(); setInteractionMode("comuni"); });
-  if(btnModeFarmacie) btnModeFarmacie.addEventListener("click", (e)=>{ e.preventDefault(); setInteractionMode("farmacie"); });
-
-  // Applica UI mode iniziale (IMPORTANTE: dopo che farmMarkers è definito)
-  applyUiMode();
-
-  // Se è la prima visita, mostra scelta UI (ma la mappa può già caricarsi dietro)
-  if(showChooser){
-    openUiChooser();
-  }
-})();
-
-// START
-loadAll();
+resetSelezione();
 </script>
 </body>
 </html>
