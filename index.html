@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Campagna SpG Verona · rev2.1.6.5</title>
+<title>Campagna SpG Verona · rev2.1.6.6</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -429,6 +429,28 @@ textarea.inlineInput{ min-height: 64px; resize: vertical; }
 .btnGroup.grpExport{ border-left:3px solid #4da6ff; }
 .btnGroup.grpTools{ border-left:3px solid #ffaa00; }
 
+/* === Collapsible action groups (desktop + mobile) === */
+.btnGroup .grpTitle{
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  user-select:none;
+}
+.btnGroup .grpTitle::after{
+  content:"⌄";
+  opacity:.85;
+  font-size:14px;
+}
+.btnGroup[data-open="1"] .grpTitle::after{ content:"⌃"; }
+.btnGroup[data-open="0"] .grpBtns{ display:none; }
+.btnGroup[data-open="0"] #refPanel{ display:none !important; }
+/* Comune group more prominent */
+.btnGroup.grpComune{ border-left-width:5px; }
+
+.btnGroup.grpComune .grpTitle{ color:#00ff9c; }
+.btnGroup[data-open="0"]{ padding:8px 10px; }
+
 body.ui-mobile #hudFab{ display:none !important; } /* rimuove doppio pulsante chiudi */
 body.ui-mobile .leaflet-popup-close-button{
   width:36px !important;
@@ -695,7 +717,7 @@ body.ui-mobile .leaflet-popup-content{
 }
 body.ui-mobile .leaflet-popup-content-wrapper{ border-radius: 14px; }
 
-body.ui-mobile #banner{ top:10px; }
+body.ui-mobile #banner{ display:none !important; }
 body.ui-mobile .leaflet-control-zoom{ display:none; }
 
 body.ui-mobile #hud.is-collapsed{
@@ -792,7 +814,7 @@ body.ui-mobile #mobileHint{ display:block; }
 #mobileHint.show{ opacity:1; }
 
 
-/* === PATCH mobile usability (rev2.1.6.5) === */
+/* === PATCH mobile usability (rev2.1.6.6) === */
 
 /* Center custom markers inside Leaflet div icon container */
 .leaflet-div-icon{
@@ -808,7 +830,7 @@ body.ui-mobile #mobileHint{ display:block; }
 }
 
 /* Mobile: render pharmacy markers as tiny dots (less “fat finger”) */
-body.ui-mobile .mrk{ width:9px; height:9px; }
+body.ui-mobile .mrk{ width:7px; height:7px; }
 body.ui-mobile .mrk.square{ border-radius:2px; }
 
 /* Mobile: grouped HUD buttons become collapsible (titles only) */
@@ -828,23 +850,6 @@ body.ui-mobile .btnGroup{
   width: 100% !important;
   padding: 10px 10px 8px !important;
 }
-body.ui-mobile .grpTitle{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  user-select:none;
-  cursor:pointer;
-}
-body.ui-mobile .grpTitle::after{
-  content:"⌄";
-  opacity:.85;
-  font-size:14px;
-}
-body.ui-mobile .btnGroup[data-open="1"] .grpTitle::after{
-  content:"⌃";
-}
-body.ui-mobile .btnGroup .grpBtns{ display:none !important; }
-body.ui-mobile .btnGroup[data-open="1"] .grpBtns{ display:flex !important; }
 
 /* Mobile: mode toggle smaller + never blocks popup close */
 body.ui-mobile #modeToggle{
@@ -853,8 +858,8 @@ body.ui-mobile #modeToggle{
   border-radius: 14px !important;
 }
 body.ui-mobile .modeBtn{
-  padding:6px 8px !important;
-  font-size:11px !important;
+  padding:5px 7px !important;
+  font-size:10px !important;
   border-radius: 12px !important;
 }
 body.ui-mobile .modeHelp{ display:none !important; }
@@ -888,6 +893,62 @@ body.ui-mobile .leaflet-popup-content-wrapper{
   padding-top: 2px !important;
 }
 
+
+/* === Mobile: stats button (richiamo) + overlay espandibile === */
+#msFab{
+  display:none;
+  align-items:center;
+  justify-content:center;
+  width:42px;
+  height:40px;
+  border-radius: 14px;
+  border:1px solid rgba(0,255,156,.65);
+  background: rgba(0,255,156,.12);
+  color:#eafff7;
+  font-weight:1000;
+  cursor:pointer;
+  z-index:10007;
+  box-shadow:0 0 18px rgba(0,0,0,.55);
+  backdrop-filter: blur(3px);
+}
+body.ui-mobile #msFab{
+  display:flex;
+  position:fixed;
+  left:12px;
+  top:58px; /* sotto i toggle */
+}
+
+/* di default su mobile: stats non intercettano tocchi */
+body.ui-mobile #mapStats{ pointer-events:none !important; left:60px !important; right:auto !important; top:58px !important; }
+body.ui-mobile #mapStats.ms-expanded{ pointer-events:auto !important; }
+
+/* quando espanso: mostra il box completo (poi si richiude da solo) */
+body.ui-mobile #mapStats.ms-expanded{
+  width: min(320px, calc(100vw - 24px)) !important;
+  padding:10px 10px 8px !important;
+  border-radius: 12px !important;
+}
+body.ui-mobile #mapStats.ms-expanded .ms-title,
+body.ui-mobile #mapStats.ms-expanded .ms-line,
+body.ui-mobile #mapStats.ms-expanded .ms-bar,
+body.ui-mobile #mapStats.ms-expanded .ms-bar2,
+body.ui-mobile #mapStats.ms-expanded .ms-mini,
+body.ui-mobile #mapStats.ms-expanded .ms-tag,
+body.ui-mobile #mapStats.ms-expanded #ms_filter{
+  display:block !important;
+}
+
+
+/* === Mobile: quando un popup farmacia è aperto, libera la vista === */
+body.ui-mobile.ph-popup-open #modeToggle{ display:none !important; }
+body.ui-mobile.ph-popup-open #msFab{ display:none !important; }
+body.ui-mobile.ph-popup-open #mapStats{ display:none !important; }
+body.ui-mobile.ph-popup-open #hud{ transform: translateY(calc(100% - 74px)) !important; }
+body.ui-mobile.ph-popup-open .leaflet-popup{ z-index:10050 !important; }
+
+/* Popup: niente scroll orizzontale su mobile */
+body.ui-mobile .popupWrap{ min-width:220px; max-width:100%; }
+body.ui-mobile .leaflet-popup-content{ overflow-x:hidden !important; }
 </style>
 </head>
 
@@ -1002,6 +1063,10 @@ body.ui-mobile .leaflet-popup-content-wrapper{
         <button class="hud-btn" id="btnAddRef">Aggiungi referente</button>
         <button class="hud-btn" id="btnToggleRef">Vedi referenti</button>
       </div>
+    
+      <div id="refPanel" style="display:none; margin-top:8px;">
+        <ul id="refList"></ul>
+      </div>
     </div>
 
     <div class="btnGroup grpExport" data-open="0">
@@ -1022,16 +1087,13 @@ body.ui-mobile .leaflet-popup-content-wrapper{
       </div>
     </div>
   </div>
-
-  <div id="refPanel">
-
-    <ul id="refList"></ul>
-  </div>
 </div>
   </div>
 </div>
 
 <!-- Overlay sempre visibile in mappa -->
+
+<button id="msFab" title="Statistiche" aria-label="Mostra statistiche">📊</button>
 <div id="mapStats" aria-hidden="true">
   <div class="ms-title" id="ms_title">Avanzamento campagna</div>
     <div id="ms_compact" class="ms-compact" title="Tocca per vedere le statistiche">
@@ -1139,52 +1201,57 @@ function setUiMode(mode){
   uiMode = (mode === "desktop") ? "desktop" : "mobile";
   localStorage.setItem(UI_MODE_KEY, uiMode);
   
-  /* === Mobile UX: mapStats auto-collapsing + gruppi pulsanti collassabili === */
-  function __initMobileUx(){
-    // Collapsible button groups (one open at a time)
+  
+  /* === UX: gruppi pulsanti collassabili + stats button su mobile === */
+  function __initUxOnce(){
+    // Collapsible button groups (one open at a time) - desktop + mobile
     document.querySelectorAll(".btnGroup .grpTitle").forEach(t=>{
-      t.addEventListener("click", (e)=>{
-        if(uiMode !== "mobile") return;
+      if(t.dataset.bound === "1") return;
+      t.dataset.bound = "1";
+      t.addEventListener("click", ()=>{
         const g = t.closest(".btnGroup");
         if(!g) return;
         const wasOpen = g.getAttribute("data-open")==="1";
         document.querySelectorAll(".btnGroup").forEach(x=>x.setAttribute("data-open","0"));
         g.setAttribute("data-open", wasOpen ? "0" : "1");
-        // piccolo feedback
-        try{ navigator.vibrate && navigator.vibrate(8); }catch(_){}
       });
     });
 
-    // MapStats: start collapsed, tap to expand (auto collapse after 3s)
+    // MapStats: su mobile resta sempre compatto; il dettaglio si apre solo col pulsante 📊
     const ms = document.getElementById("mapStats");
-    if(ms){
-      const collapse = ()=> ms.classList.add("ms-collapsed");
-      const expand = ()=> ms.classList.remove("ms-collapsed");
-      const scheduleCollapse = ()=>{
-        clearTimeout(window.__msAutoTimer);
-        window.__msAutoTimer = setTimeout(()=>{ collapse(); }, 3000);
-      };
-
-      // Start collapsed immediately on mobile
-      collapse();
-
-      ms.addEventListener("click", ()=>{
+    const msFab = document.getElementById("msFab");
+    if(ms && uiMode === "mobile"){
+      ms.classList.add("ms-collapsed");
+      ms.classList.remove("ms-expanded");
+    }
+    if(msFab && ms && !msFab.dataset.bound){
+      msFab.dataset.bound = "1";
+      msFab.addEventListener("click", (e)=>{
+        e.preventDefault(); e.stopPropagation();
         if(uiMode !== "mobile") return;
-        if(ms.classList.contains("ms-collapsed")){
-          expand();
-          scheduleCollapse();
-        }else{
-          collapse();
-        }
-      });
+        if(document.body.classList.contains("ph-popup-open")) return;
 
-      // When user interacts with the map, keep it collapsed
-      map.on("movestart zoomstart", ()=>{ if(uiMode==="mobile") collapse(); });
+        const isOpen = ms.classList.contains("ms-expanded");
+        clearTimeout(window.__msFabTimer);
+
+        if(isOpen){
+          ms.classList.remove("ms-expanded");
+          ms.classList.add("ms-collapsed");
+          return;
+        }
+
+        ms.classList.remove("ms-collapsed");
+        ms.classList.add("ms-expanded");
+        window.__msFabTimer = setTimeout(()=>{
+          ms.classList.remove("ms-expanded");
+          ms.classList.add("ms-collapsed");
+        }, 3000);
+      });
     }
   }
 
   applyUiMode();
-  __initMobileUx();
+  __initUxOnce();
 }
 
 function applyUiMode(){
@@ -1199,7 +1266,8 @@ function applyUiMode(){
     hud.classList.add("is-collapsed"); // default: pannello chiuso
     if(fab) fab.style.display = "";
     if(modeToggle) modeToggle.style.display = "";
-    setInteractionMode("comuni"); // su mobile: priorità comuni
+    setInteractionMode("comuni");     try{ const ms=document.getElementById("mapStats"); if(ms){ ms.classList.add("ms-collapsed"); ms.classList.remove("ms-expanded"); } }catch(e){}
+// su mobile: priorità comuni
     setTimeout(() => showMobileHintOnce(), 600);
   }else{
     hud.classList.remove("is-collapsed");
@@ -2450,10 +2518,16 @@ async function loadAll(){
           ev.popup.options.keepInView = true;
           ev.popup.update();
         }
+        // Mobile: libera la vista e porta il popup in primo piano
+        if(uiMode==="mobile"){
+          document.body.classList.add("ph-popup-open");
+          const hud=document.getElementById("hud");
+          if(hud) hud.classList.add("is-collapsed");
+        }
         setTimeout(() => attachPopupHandlers(marker, row, farmaciaId), 0);
       });
 
-      marker.on("popupclose", () => handlePopupClose(marker, row, farmaciaId, isComunale));
+      marker.on("popupclose", () => { if(uiMode==="mobile"){ document.body.classList.remove("ph-popup-open"); } handlePopupClose(marker, row, farmaciaId, isComunale); });
 marker.addTo(farmLayer);
 
       farmMarkers.push({ id: farmaciaId, comune, gestione: (row.gestione||""), isComunale, marker, row });
