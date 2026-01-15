@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Campagna SpG Verona · rev2.1.6.7</title>
+<title>Campagna SpG Verona · rev2.1.6.8</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -171,7 +171,12 @@ html, body { margin:0; height:100%; background:#000; font-family:system-ui, -app
   pointer-events:none;
 }
 
-.leaflet-control-zoom{ margin-top: 88px !important; } /* evita sovrapposizione col HUD */
+.leaflet-control-zoom{ margin-top: 88px !important; }
+
+/* Popups sempre in primo piano (sopra HUD/banner) */
+.leaflet-pane.leaflet-popup-pane{ z-index: 10060 !important; }
+.leaflet-popup{ z-index: 10061 !important; }
+ /* evita sovrapposizione col HUD */
 
 /* === Barra non contattate (arancione) === */
 .ms-bar2{
@@ -238,19 +243,37 @@ html, body { margin:0; height:100%; background:#000; font-family:system-ui, -app
   color:#0b0b0b;
 }
 
-/* Popup: link compatti in alto a destra */
+/* Popup: quick actions (Maps/Materiali) - smart & tappabili */
 .popupTop{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
-.popupTopLinks{ display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
-.pillLink{
-  display:inline-flex; align-items:center; justify-content:center;
-  padding:5px 9px; border-radius:999px;
-  font-size:12px; font-weight:1000; text-decoration:none; line-height:1;
-  border:1px solid rgba(0,0,0,.22);
-  color:#0b0b0b; background: rgba(255,255,255,.55);
+.popupTop h3{ flex:1; margin:0 0 2px; padding-right:54px; } /* lascia spazio al bottone X Leaflet */
+.popupQuick{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin:8px 0 10px;
 }
-.pillMaps{ border-color: rgba(0,255,156,.95); box-shadow: 0 0 0 2px rgba(0,255,156,.18) inset; }
-.pillMat{ border-color: rgba(77,166,255,.95); box-shadow: 0 0 0 2px rgba(77,166,255,.18) inset; }
-body.ui-mobile .pillLink{ font-size:11px; padding:5px 8px; }
+.quickBtn{
+  flex: 1 1 140px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:8px 10px;
+  border-radius: 12px;
+  font-size:12px;
+  font-weight:950;
+  text-decoration:none;
+  line-height:1;
+  background: rgba(255,255,255,.88);
+  color:#0b0b0b;
+  border:2px solid rgba(0,0,0,.18);
+  box-shadow: 0 0 0 2px rgba(0,0,0,.06) inset;
+}
+.quickBtn:active{ transform: translateY(1px); }
+.quickMaps{ border-color: rgba(0,255,156,.95); box-shadow: 0 0 0 3px rgba(0,255,156,.16) inset; }
+.quickMat{ border-color: rgba(77,166,255,.95); box-shadow: 0 0 0 3px rgba(77,166,255,.16) inset; }
+body.ui-mobile .quickBtn{ padding:10px 10px; border-radius: 14px; font-size:12px; }
+
 
 .popupMeta{ color:#3b3b3b; font-size:12px; }
 .popupDivider{ height:1px; background:#e6e6e6; margin:10px 0; }
@@ -697,8 +720,10 @@ body.ui-mobile .modeHelp{ font-size:12px; max-width: calc(100vw - 24px); }
 
 /* Ricerca comune (suggerimenti) */
 .comuneSearchWrap{ margin-top:10px; position:relative; }
+.farmSearchWrap{ margin-top:10px; }
 .comuneSearchRow{ display:flex; gap:8px; align-items:stretch; }
-#btnComuneSearchGo{
+#btnComuneSearchGo,
+#btnFarmSearchGo{
   width:64px;
   border-radius: 12px;
   border:1px solid rgba(0,255,156,.65);
@@ -707,7 +732,7 @@ body.ui-mobile .modeHelp{ font-size:12px; max-width: calc(100vw - 24px); }
   font-weight:1000;
   cursor:pointer;
 }
-#comuneSearchSuggs{
+#comuneSearchSuggs, #farmSearchSuggs{
   position:absolute;
   left:0; right:0;
   top: calc(100% + 6px);
@@ -850,7 +875,7 @@ body.ui-mobile #mobileHint{ display:block; }
 #mobileHint.show{ opacity:1; }
 
 
-/* === PATCH mobile usability (rev2.1.6.7) === */
+/* === PATCH mobile usability (rev2.1.6.8) === */
 
 /* Center custom markers inside Leaflet div icon container */
 .leaflet-div-icon{
@@ -1087,6 +1112,15 @@ body.ui-mobile .leaflet-popup-content{ overflow-x:hidden !important; }
         <button id="btnComuneSearchGo" type="button">Vai</button>
       </div>
       <div id="comuneSearchSuggs" style="display:none"></div>
+    </div>
+
+
+    <div class="comuneSearchWrap farmSearchWrap">
+      <div class="comuneSearchRow">
+        <input id="farmSearchInput" class="inlineInput" placeholder="Cerca farmacia (nome/indirizzo)…" autocomplete="off" />
+        <button id="btnFarmSearchGo" type="button">Vai</button>
+      </div>
+      <div id="farmSearchSuggs" style="display:none"></div>
     </div>
 
     <div class="grid2" id="comuneCounts"></div>
@@ -1670,6 +1704,9 @@ let selectedComuneLayer = null;
 let selectedComuneNome = null;
 const comuneLayerByNorm = {}; // norm -> layer (per ricerca)
 
+// ricerca farmacie (UI)
+const farmSearchIndex = []; // {id,label,norm,marker,row}
+
 /* pharmacy markers */
 const farmLayer = L.layerGroup().addTo(map);
 /* { id, comune, gestione, isComunale, marker, row } */
@@ -1787,10 +1824,10 @@ function buildPopupHtml(row, farmaciaId){
   <div class="popupWrap" data-farm-id="${esc(farmaciaId)}">
     <div class="popupTop">
       <h3>${esc(nome)}</h3>
-      <div class="popupTopLinks">
-        <a class="pillLink pillMaps" href="${esc(maps||"#")}" target="_blank" rel="noopener" title="Apri in Maps">🗺️</a>
-        <a class="pillLink pillMat" href="${esc(DRIVE_MATERIALI)}" target="_blank" rel="noopener" title="Materiali">📁</a>
-      </div>
+    </div>
+    <div class="popupQuick">
+      <a class="quickBtn quickMaps" href="${esc(maps||"#")}" target="_blank" rel="noopener">🗺️ Apri in Maps</a>
+      <a class="quickBtn quickMat" href="${esc(DRIVE_MATERIALI)}" target="_blank" rel="noopener">📁 Materiali</a>
     </div>
     <div class="popupMeta">${esc(indirizzo)}${cap?` – ${esc(cap)}`:""} – <b>${esc(comune)}</b>${gestione?` · ${esc(gestione)}`:""}</div>
 
@@ -2457,6 +2494,107 @@ function initComuneSearchUI(){
   });
 }
 
+/* ===============================
+   RICERCA FARMACIA (tollerante)
+================================ */
+function getFarmMatches(q){
+  const nq = normSearch(q || "");
+  if(!nq) return [];
+  const terms = nq.split(" ").filter(Boolean);
+  const out = [];
+  for(const r of farmSearchIndex){
+    if(!r || !r.norm) continue;
+    let ok = true;
+    for(const t of terms){
+      if(!r.norm.includes(t)){ ok = false; break; }
+    }
+    if(ok) out.push(r);
+  }
+  const first = terms[0] || "";
+  out.sort((a,b)=> (a.norm.indexOf(first) - b.norm.indexOf(first)) || (a.label.length - b.label.length));
+  return out.slice(0, 8);
+}
+
+function openFarmaciaRecord(rec){
+  if(!rec || !rec.marker) return;
+  setInteractionMode("farmacie");
+  try{
+    const latlng = rec.marker.getLatLng();
+    const zTarget = (uiMode === "mobile") ? Math.max(map.getZoom(), 16) : Math.max(map.getZoom(), 15);
+    map.setView(latlng, zTarget, { animate:true });
+    // prepara contenuto e autopan "smart" prima di aprire
+    rec.marker.setPopupContent(buildPopupHtml(rec.row, rec.id));
+    const pop = rec.marker.getPopup();
+    if(pop) applyPopupAutoPan(pop);
+    // mobile: chiudi pannello per dare spazio
+    if(uiMode === "mobile"){
+      const hud=document.getElementById("hud");
+      if(hud) hud.classList.add("is-collapsed");
+    }
+    rec.marker.openPopup();
+  }catch(e){}
+}
+
+function initFarmSearchUI(){
+  const input = document.getElementById("farmSearchInput");
+  const suggs = document.getElementById("farmSearchSuggs");
+  const go = document.getElementById("btnFarmSearchGo");
+  if(!input || !suggs || !go) return;
+
+  let hideTimer = null;
+  const closeSuggs = () => { suggs.style.display="none"; suggs.innerHTML=""; };
+  const renderSuggs = (arr) => {
+    if(!arr || !arr.length){ closeSuggs(); return; }
+    suggs.innerHTML = arr.map(r => `<div class="suggItem" data-id="${esc(r.id)}">${esc(r.label)}</div>`).join("");
+    suggs.style.display = "";
+  };
+
+  suggs.addEventListener("click", (e)=>{
+    const item = e.target.closest(".suggItem");
+    if(!item) return;
+    const id = item.getAttribute("data-id");
+    const rec = farmSearchIndex.find(x => String(x.id) === String(id));
+    if(rec){
+      closeSuggs();
+      openFarmaciaRecord(rec);
+    }
+  });
+
+  const doSearch = () => {
+    const q = input.value || "";
+    const matches = getFarmMatches(q);
+    if(matches.length === 1){
+      closeSuggs();
+      openFarmaciaRecord(matches[0]);
+      return;
+    }
+    // match esatto (nome/indirizzo)
+    const nq = normSearch(q);
+    const exact = matches.find(r => r.norm === nq);
+    if(exact){
+      closeSuggs();
+      openFarmaciaRecord(exact);
+      return;
+    }
+    renderSuggs(matches);
+  };
+
+  const debounced = () => {
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(doSearch, 120);
+  };
+
+  input.addEventListener("input", debounced);
+  input.addEventListener("focus", debounced);
+  input.addEventListener("blur", ()=> setTimeout(closeSuggs, 180));
+  input.addEventListener("keydown", (e)=>{
+    if(e.key === "Enter"){ e.preventDefault(); doSearch(); }
+    if(e.key === "Escape"){ closeSuggs(); input.blur(); }
+  });
+  go.addEventListener("click", doSearch);
+}
+
+
 
 /* ===============================
    REFERENTI COMUNE UI
@@ -2653,8 +2791,21 @@ marker.addTo(farmLayer);
 
       farmMarkers.push({ id: farmaciaId, comune, gestione: (row.gestione||""), isComunale, marker, row });
 
+      // indicizzazione per ricerca farmacie (tollerante)
+      try{
+        const nomeF = (row.descrizione_farmacia || row.nome || row.farmacia || row.descrizione || "Farmacia").toString().trim();
+        const indF = (row.indirizzo_full || row.indirizzo || "").toString().trim();
+        const capF = (row.cap || "").toString().trim();
+        const label = `${nomeF} · ${comune}${indF ? " — " + indF : ""}`;
+        const norm = normSearch(`${nomeF} ${indF} ${capF} ${comune} ${(row.gestione||"")}`);
+        farmSearchIndex.push({ id: farmaciaId, label, norm, marker, row });
+      }catch(e){}
+
       applyStatusToMarker(marker, farmaciaId, row, isComunale);
     });
+
+    // init ricerca farmacie (dopo caricamento markers)
+    initFarmSearchUI();
 
     aggiornaHUD();
     aggiornaComuneSelezionato();
