@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Campagna SpG Verona · rev2.1.6.8</title>
+<title>Campagna SpG Verona · rev2.2 LIVE</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -875,7 +875,7 @@ body.ui-mobile #mobileHint{ display:block; }
 #mobileHint.show{ opacity:1; }
 
 
-/* === PATCH mobile usability (rev2.1.6.8) === */
+/* === PATCH mobile usability (rev2.2) === */
 
 /* Center custom markers inside Leaflet div icon container */
 .leaflet-div-icon{
@@ -1010,6 +1010,24 @@ body.ui-mobile.ph-popup-open .leaflet-popup{ z-index:10050 !important; }
 /* Popup: niente scroll orizzontale su mobile */
 body.ui-mobile .popupWrap{ min-width:220px; max-width:100%; }
 body.ui-mobile .leaflet-popup-content{ overflow-x:hidden !important; }
+
+/* SYNC BADGE (LIVE DB) */
+.syncBadge{
+  display:inline-flex; align-items:center; gap:6px;
+  margin-left:10px; padding:3px 9px;
+  border-radius:999px; font-size:11px; font-weight:800;
+  background:rgba(255,255,255,.08); color:#e9e9e9;
+  border:1px solid rgba(255,255,255,.18);
+  vertical-align:middle;
+}
+.syncDot{ width:8px; height:8px; border-radius:50%; background:#ffcc00; box-shadow:0 0 10px rgba(255,204,0,.35); }
+.syncBadge.online .syncDot{ background:#00ff9c; box-shadow:0 0 10px rgba(0,255,156,.35); }
+.syncBadge.offline .syncDot{ background:#ff5c5c; box-shadow:0 0 10px rgba(255,92,92,.35); }
+.syncBadge small{ font-weight:700; opacity:.85; }
+
+/* Mobile: avoid horizontal scroll in popups */
+body.ui-mobile .leaflet-popup-content{ overflow-x:hidden; }
+
 </style>
 </head>
 
@@ -1045,8 +1063,9 @@ body.ui-mobile .leaflet-popup-content{ overflow-x:hidden !important; }
 <div id="hudHandle">
   <div class="hudGrab"></div>
   <div class="hudHandleRow">
-    <div class="hudHandleTitle">Campagna SpG Verona</div>
+    <div class="hudHandleTitle">Campagna SpG Verona <span id="syncBadge" class="syncBadge offline"><span class="syncDot"></span><span id="syncText">LOCAL</span> <small id="syncTime"></small></span></div>
     <div style="display:flex; gap:8px">
+      <button id="hudSyncBtn" class="hudIconBtn" title="Sincronizza dati condivisi">↻</button>
       <button id="hudUiBtn" class="hudIconBtn" title="Cambia interfaccia">UI</button>
       <button id="hudToggleBtn" class="hudIconBtn" title="Apri/chiudi pannello">⌃</button>
     </div>
@@ -1195,7 +1214,7 @@ body.ui-mobile .leaflet-popup-content{ overflow-x:hidden !important; }
 /* ===============================
    CONFIG
 ================================ */
-const DRIVE_MATERIALI = "https://drive.google.com/drive/folders/1oMqJ_6ZLthMK73FkpirBtvQ_Ycif4OYS";
+const DRIVE_MATERIALI = "https://drive.google.com/drive/folders/11JX9TPhUrjCcenzjqSddSQZjqTVma-qM?usp=drive_link";
 
 /* Path robusti: prova prima DATA/ (GitHub case-sensitive), poi data/ */
 const PATHS_FARMACIE = ["data/farmacie.csv", "DATA/farmacie.csv"];
@@ -1266,6 +1285,17 @@ async function fetchFirst(paths, type){
 ================================ */
 const UI_MODE_KEY = "spg_ui_mode_rev2";
 const AUTO_MOBILE = window.matchMedia("(max-width: 720px)").matches || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+
+/* ===============================
+   LIVE DB (Google Apps Script)
+   - GET via JSONP (no CORS)
+   - POST via hidden form + iframe (no CORS)
+================================ */
+const REMOTE_API_URL = "https://script.google.com/macros/s/AKfycbzHOqje8TunaF5IgtjQR-5_wsy9c9-tH7rjhE9qTGrUskxWcoFiQ6hhkw_DNVg8woza/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
+const REMOTE_WRITE_KEY = ""; // opzionale: parola chiave anti-spam (se la imposti anche nello script)
+const REMOTE_POLL_MS = 20000;
+
 let uiMode = localStorage.getItem(UI_MODE_KEY) || (AUTO_MOBILE ? "mobile" : "desktop");
 let showChooser = true;
 function setUiMode(mode){
@@ -1364,6 +1394,15 @@ function setUiMode(mode){
   }catch(e){}
 
   __initUxOnce();
+
+// LIVE: init sync UI
+document.getElementById('hudSyncBtn')?.addEventListener('click', ()=>fetchRemoteAll('manual'));
+// first pull (non-blocking)
+setTimeout(()=>fetchRemoteAll('boot'), 800);
+// poll
+if(__remotePollTimer) clearInterval(__remotePollTimer);
+__remotePollTimer = setInterval(()=>fetchRemoteAll('poll'), REMOTE_POLL_MS);
+
 }
 
 function applyUiMode(){
@@ -1494,6 +1533,7 @@ function getSt(id){
 function setSt(id, next){
   statusStore[id] = next;
   saveStatusStore(statusStore);
+  try{ if(REMOTE_API_URL){ remotePost('status', toRemoteStatus(id, next)); setSyncBadge(__remoteOnline, __remoteOnline?'ONLINE':'OFFLINE'); } }catch(e){}
 }
 
 /* ===============================
@@ -1515,6 +1555,174 @@ if(Object.keys(referentiComune).length === 0){
   saveRefStore(referentiComune);
 }
 function hasRef(nome){ return (referentiComune[nome] && referentiComune[nome].length>0); }
+
+// ===== LIVE DB runtime state =====
+let __remoteOnline = false;
+let __remoteLastSync = null;
+let __remotePollTimer = null;
+let __remotePulling = false;
+const DEVICE_ID = (() => {
+  try{
+    const k = 'spg_device_id';
+    let v = localStorage.getItem(k);
+    if(!v){ v = 'dev_' + Math.random().toString(36).slice(2) + '_' + Date.now().toString(36); localStorage.setItem(k,v); }
+    return v;
+  }catch(e){ return 'dev_unknown'; }
+})();
+
+function setSyncBadge(online, label){
+  const b = document.getElementById('syncBadge');
+  const t = document.getElementById('syncText');
+  const tm = document.getElementById('syncTime');
+  if(!b || !t || !tm) return;
+  b.classList.toggle('online', !!online);
+  b.classList.toggle('offline', !online);
+  t.textContent = label || (online ? 'ONLINE' : 'OFFLINE');
+  if(__remoteLastSync){
+    const d = __remoteLastSync;
+    tm.textContent = '· ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+  } else tm.textContent = '';
+}
+
+function jsonp(url){
+  return new Promise((resolve,reject)=>{
+    const cb = 'spgcb_' + Math.random().toString(36).slice(2);
+    const s = document.createElement('script');
+    const timer = setTimeout(()=>{ cleanup(); reject(new Error('timeout')); }, 8000);
+    function cleanup(){
+      clearTimeout(timer);
+      try{ delete window[cb]; }catch(e){}
+      if(s && s.parentNode) s.parentNode.removeChild(s);
+    }
+    window[cb] = (data)=>{ cleanup(); resolve(data); };
+    s.onerror = ()=>{ cleanup(); reject(new Error('load error')); };
+    const sep = url.includes('?') ? '&' : '?';
+    s.src = url + sep + 'callback=' + cb + '&ts=' + Date.now();
+    document.head.appendChild(s);
+  });
+}
+
+function ensureRemoteForm(){
+  if(document.getElementById('remotePostFrame')) return;
+  const ifr = document.createElement('iframe');
+  ifr.id = 'remotePostFrame';
+  ifr.name = 'remotePostFrame';
+  ifr.style.display = 'none';
+  document.body.appendChild(ifr);
+
+  const form = document.createElement('form');
+  form.id = 'remotePostForm';
+  form.method = 'POST';
+  form.target = 'remotePostFrame';
+  form.style.display = 'none';
+
+  const inputPayload = document.createElement('input');
+  inputPayload.type = 'hidden';
+  inputPayload.name = 'payload';
+
+  const inputKind = document.createElement('input');
+  inputKind.type = 'hidden';
+  inputKind.name = 'kind';
+
+  const inputKey = document.createElement('input');
+  inputKey.type = 'hidden';
+  inputKey.name = 'k';
+
+  form.appendChild(inputKind);
+  form.appendChild(inputKey);
+  form.appendChild(inputPayload);
+  document.body.appendChild(form);
+}
+
+function remotePost(kind, payloadObj){
+  if(!REMOTE_API_URL) return;
+  ensureRemoteForm();
+  const form = document.getElementById('remotePostForm');
+  const inputs = form.querySelectorAll('input');
+  const byName = { };
+  inputs.forEach(i=>{ byName[i.name]=i; });
+  byName.kind.value = kind;
+  byName.k.value = REMOTE_WRITE_KEY || '';
+  byName.payload.value = JSON.stringify(payloadObj || {});
+  form.action = REMOTE_API_URL;
+  form.submit();
+}
+
+function toRemoteStatus(id, st){
+  const flags = st.flags || { poster:false, boicotta:false, promo:false, info:false };
+  return {
+    farmacia_id: id,
+    stato: st.state || 'contattare',
+    chiusa: !!st.closed,
+    incaricati: Array.isArray(st.owners) ? st.owners.join('|') : '',
+    note: st.note || '',
+    poster: !!flags.poster,
+    boicotta: !!flags.boicotta,
+    promo: !!flags.promo,
+    info: !!flags.info,
+    deviceId: DEVICE_ID
+  };
+}
+
+function fromRemoteStatus(obj){
+  const owners = String(obj.incaricati || '').split('|').map(s=>s.trim()).filter(Boolean);
+  return {
+    state: obj.stato || 'contattare',
+    owners: owners,
+    note: obj.note || '',
+    flags: { poster: !!obj.poster, boicotta: !!obj.boicotta, promo: !!obj.promo, info: !!obj.info },
+    closed: !!obj.chiusa
+  };
+}
+
+function refreshAfterRemote(){
+  try{
+    farmMarkers.forEach(f=>{ applyStatusToMarker(f.marker, f.id, f.row, f.isComunale); });
+    applyMarkerVisibility();
+    aggiornaStiliComuni();
+    aggiornaHUD();
+    aggiornaComuneSelezionato();
+    aggiornaMapStats();
+  }catch(e){}
+}
+
+async function fetchRemoteAll(reason){
+  if(!REMOTE_API_URL) { setSyncBadge(false, 'LOCAL'); return; }
+  if(__remotePulling) return;
+  __remotePulling = true;
+  try{
+    const data = await jsonp(REMOTE_API_URL + '?action=getAll');
+    if(data && data.ok){
+      __remoteOnline = true;
+      __remoteLastSync = new Date();
+
+      if(data.status && typeof data.status === 'object'){
+        for(const [id, row] of Object.entries(data.status)){
+          try{ statusStore[id] = fromRemoteStatus(row || {}); }catch(e){}
+        }
+        saveStatusStore(statusStore);
+      }
+      if(data.refs && typeof data.refs === 'object'){
+        for(const [com, arr] of Object.entries(data.refs)){
+          try{ referentiComune[com] = Array.isArray(arr) ? arr : []; }catch(e){}
+        }
+        saveRefStore(referentiComune);
+      }
+
+      setSyncBadge(true, 'ONLINE');
+      refreshAfterRemote();
+    } else {
+      __remoteOnline = false;
+      setSyncBadge(false, 'OFFLINE');
+    }
+  }catch(e){
+    __remoteOnline = false;
+    setSyncBadge(false, 'OFFLINE');
+  }finally{
+    __remotePulling = false;
+  }
+}
+
 
 /* ===============================
    MAPPA
@@ -2659,6 +2867,7 @@ refList.addEventListener("click", (ev) => {
     try { rm = decodeURIComponent(rmEnc); } catch(e){}
     referentiComune[selectedComuneNome] = (referentiComune[selectedComuneNome] || []).filter(x => x !== rm);
     saveRefStore(referentiComune);
+    try{ if(REMOTE_API_URL){ remotePost('ref', { comune: selectedComuneNome, referenti: referentiComune[selectedComuneNome]||[], deviceId: DEVICE_ID }); } }catch(e){}
 
     aggiornaStiliComuni();
     aggiornaHUD();
