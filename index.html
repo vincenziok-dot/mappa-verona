@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Campagna SpG Verona · rev2.2 LIVE</title>
+<title>index_ver2.2.2 - Campagna SpG Verona · rev2.2 LIVE</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -1073,7 +1073,7 @@ body.ui-mobile .leaflet-popup-content{ overflow-x:hidden; }
 </div>
 <div id="hudScroll">
 
-  <div class="hud-title" id="hudTitle">Provincia di Verona</div>
+  <div class="hud-title" id="hudTitle"><span id="hudTitleText">Provincia di Verona</span> <span id="syncBadgeDesk" class="syncBadge offline"><span class="syncDot"></span><span id="syncTextDesk">LOCAL</span> <small id="syncTimeDesk"></small></span></div>
   <div class="hud-sub" id="hudSub">Vista generale</div>
 
   <div class="section-chip">Avanzamento <small id="g_hint"></small></div>
@@ -1571,19 +1571,45 @@ const DEVICE_ID = (() => {
 })();
 
 function setSyncBadge(online, label){
-  const b = document.getElementById('syncBadge');
-  const t = document.getElementById('syncText');
-  const tm = document.getElementById('syncTime');
-  if(!b || !t || !tm) return;
-  b.classList.toggle('online', !!online);
-  b.classList.toggle('offline', !online);
-  t.textContent = label || (online ? 'ONLINE' : 'OFFLINE');
-  if(__remoteLastSync){
-    const d = __remoteLastSync;
-    tm.textContent = '· ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
-  } else tm.textContent = '';
+  function upd(bId, tId, tmId){
+    const b = document.getElementById(bId);
+    const t = document.getElementById(tId);
+    const tm = document.getElementById(tmId);
+    if(!b || !t || !tm) return;
+    b.classList.toggle('online', !!online);
+    b.classList.toggle('offline', !online);
+    t.textContent = label || (online ? 'ONLINE' : 'OFFLINE');
+    if(__remoteLastSync){
+      const d = __remoteLastSync;
+      tm.textContent = '· ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    } else tm.textContent = '';
+  }
+  upd('syncBadge','syncText','syncTime');        // mobile handle
+  upd('syncBadgeDesk','syncTextDesk','syncTimeDesk'); // desktop HUD
 }
 
+
+
+function openRemoteDiag(){
+  try{
+    if(!REMOTE_API_URL){ alert('REMOTE_API_URL vuoto: la mappa e' in LOCAL.'); return; }
+    const u = REMOTE_API_URL + '?action=ping&ts=' + Date.now();
+    window.open(u, '_blank');
+  }catch(e){}
+}
+// click su badge = diagnostica
+setTimeout(()=>{
+  try{
+    ['syncBadge','syncBadgeDesk'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(!el || el.dataset.bound==='1') return;
+      el.dataset.bound='1';
+      el.style.cursor='pointer';
+      el.title = 'Apri diagnostica connessione (ping server)';
+      el.addEventListener('click', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); openRemoteDiag(); });
+    });
+  }catch(e){}
+}, 1200);
 function jsonp(url){
   return new Promise((resolve,reject)=>{
     const cb = 'spgcb_' + Math.random().toString(36).slice(2);
@@ -1904,6 +1930,15 @@ let lastZoomLevel = null;
 
 const banner   = document.getElementById("banner");
 const hudTitle = document.getElementById("hudTitle");
+const hudTitleText = document.getElementById("hudTitleText");
+const hudTitleTextEl = document.getElementById("hudTitleText");
+function setHudTitleText(txt){
+  try{
+    if(hudTitleTextEl){ hudTitleTextEl.textContent = txt; }
+    else if(hudTitle){ (hudTitleText||hudTitle).textContent = txt; }
+  }catch(e){}
+}
+
 const hudSub   = document.getElementById("hudSub");
 const selNomeEl = document.getElementById("sel_nome");
 
@@ -2560,7 +2595,7 @@ function selezionaComune(layer, nome){
   const lbl = document.getElementById("modeComuneLabel");
   if(lbl) lbl.textContent = nome;
 
-  hudTitle.textContent = `Comune di ${nome}`;
+  setHudTitleText(`Comune di ${nome}`);
   const nRef = hasRef(nome) ? (referentiComune[nome].length) : 0;
   hudSub.textContent = hasRef(nome) ? `Referenti presenti: ${nRef}` : `Referenti: 0`;
 
@@ -2579,7 +2614,7 @@ function resetSelezione(){
   const lbl = document.getElementById("modeComuneLabel");
   if(lbl) lbl.textContent = "Vista generale";;
 
-  hudTitle.textContent="Provincia di Verona";
+  setHudTitleText("Provincia di Verona");
   hudSub.textContent="Vista generale";
 
   aggiornaStiliComuni();
@@ -3363,7 +3398,7 @@ function printSoloAderisce(){
   const title = scope ? `Solo aderisce — ${scope}` : "Solo aderisce — Provincia di Verona";
 
   const html = `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"/>
-  <title>${esc(title)}</title>
+  <title>index_ver2.2.2 - ${esc(title)}</title>
   <style>
     body{ font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin:18px; }
     h1{ margin:0 0 6px; font-size:20px; }
@@ -3494,7 +3529,7 @@ function printReport(){
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Report SpG - ${esc(stats.ambito)}</title>
+<title>index_ver2.2.2 - Report SpG - ${esc(stats.ambito)}</title>
 <style>
   body{ font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:18px; color:#111; }
   h1{ margin:0 0 8px; font-size:20px; }
