@@ -1718,16 +1718,46 @@ function ensureRemoteForm(){
 
 function remotePost(kind, payloadObj){
   if(!REMOTE_API_URL) return;
-  ensureRemoteForm();
-  const form = document.getElementById('remotePostForm');
-  const inputs = form.querySelectorAll('input');
-  const byName = { };
-  inputs.forEach(i=>{ byName[i.name]=i; });
-  byName.kind.value = kind;
-  byName.k.value = REMOTE_WRITE_KEY || '';
-  byName.payload.value = JSON.stringify(payloadObj || {});
-  form.action = REMOTE_API_URL;
-  form.submit();
+  const payloadStr = JSON.stringify(payloadObj || {});
+  const body = new URLSearchParams();
+  body.set('kind', kind);
+  body.set('k', REMOTE_WRITE_KEY || '');
+  body.set('payload', payloadStr);
+
+  // 1) Prefer sendBeacon (molto affidabile su mobile; non richiede CORS perché non leggiamo la risposta)
+  try{
+    if(navigator.sendBeacon){
+      const blob = new Blob([body.toString()], { type: 'application/x-www-form-urlencoded;charset=UTF-8' });
+      const ok = navigator.sendBeacon(REMOTE_API_URL, blob);
+      if(ok) return;
+    }
+  }catch(e){}
+
+  // 2) Fallback: fetch keepalive (no-cors)
+  try{
+    fetch(REMOTE_API_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      keepalive: true,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+      body: body.toString()
+    });
+    return;
+  }catch(e){}
+
+  // 3) Ultimo fallback: form hidden (compatibilità massima)
+  try{
+    ensureRemoteForm();
+    const form = document.getElementById('remotePostForm');
+    const inputs = form.querySelectorAll('input');
+    const byName = {};
+    inputs.forEach(i=>{ byName[i.name]=i; });
+    byName.kind.value = kind;
+    byName.k.value = REMOTE_WRITE_KEY || '';
+    byName.payload.value = payloadStr;
+    form.action = REMOTE_API_URL;
+    form.submit();
+  }catch(e){}
 }
 
 function toRemoteStatus(id, st){
@@ -1757,6 +1787,21 @@ function fromRemoteStatus(obj){
   };
 }
 
+
+function refreshOpenPopupsFromCloud(){
+  try{
+    farmMarkers.forEach(f=>{
+      const m = f.marker;
+      if(!m || !(m.isPopupOpen && m.isPopupOpen())) return;
+      if(POPUP_DIRTY && POPUP_DIRTY.has(f.id)) return;
+      m.setPopupContent(buildPopupHtml(f.row, f.id));
+      const pop = m.getPopup && m.getPopup();
+      if(pop) applyPopupAutoPan(pop);
+      setTimeout(()=>{ try{ attachPopupHandlers(m, f.row, f.id); }catch(e){} }, 0);
+    });
+  }catch(e){}
+}
+
 function refreshAfterRemote(){
   try{
     farmMarkers.forEach(f=>{ applyStatusToMarker(f.marker, f.id, f.row, f.isComunale); });
@@ -1766,6 +1811,7 @@ function refreshAfterRemote(){
     aggiornaComuneSelezionato();
     aggiornaMapStats();
     if(typeof renderReferentiPanel === 'function' && refPanelVisible) renderReferentiPanel();
+    refreshOpenPopupsFromCloud();
   }catch(e){}
 }
 
@@ -2239,6 +2285,7 @@ function buildPopupHtml(row, farmaciaId){
 const POPUP_BINDERS = new WeakMap();
 // Cache "bozza" per autosave affidabile anche se il DOM del popup non è più disponibile al momento del close
 const POPUP_DRAFT_CACHE = new Map(); // farmaciaId -> { state, owners, note, flags, closed }
+const POPUP_DIRTY = new Set(); // farmaciaId -> popup modificato localmente (non sovrascrivere live)
 
 function collectPopupDraft(wrap){
   const onBtn = wrap.querySelector('button[data-role="state"][data-on="1"]');
@@ -2291,6 +2338,7 @@ function autoSavePopup(marker, row, farmaciaId, isComunale){
   if(!root) return;
   const wrap = root.querySelector(".popupWrap");
   if(!wrap) return;
+
   const draft = collectPopupDraft(wrap);
   applyDraftToStore(marker, row, farmaciaId, isComunale, draft);
 }
@@ -2320,6 +2368,7 @@ function handlePopupClose(marker, row, farmaciaId, isComunale){
       applyDraftToStore(marker, row, farmaciaId, isComunale, cached);
     }
   }
+  try{ POPUP_DIRTY.delete(farmaciaId); }catch(e){}
   POPUP_DRAFT_CACHE.delete(farmaciaId);
 }
 
@@ -2335,6 +2384,11 @@ function attachPopupHandlers(marker, row, farmaciaId){
 
   const wrap = root.querySelector(".popupWrap");
   if(!wrap) return;
+
+  // dirty tracking: se stai modificando, non sovrascrivo il popup con update live
+  try{ wrap.setAttribute('data-dirty', (POPUP_DIRTY.has(farmaciaId) ? '1' : '0')); }catch(e){}
+  const markDirty = () => { try{ POPUP_DIRTY.add(farmaciaId); wrap.setAttribute('data-dirty','1'); }catch(e){} };
+  const clearDirty = () => { try{ POPUP_DIRTY.delete(farmaciaId); wrap.setAttribute('data-dirty','0'); }catch(e){} };
 
   // Mantieni una bozza aggiornata per autosave affidabile (anche se Leaflet rimuove il DOM al close)
   const cacheNow = () => {
@@ -2357,6 +2411,7 @@ function attachPopupHandlers(marker, row, farmaciaId){
       btn.setAttribute("data-on","1");
       const st = getCurrentState();
       if(flagsBox) flagsBox.style.display = (st==="aderisce") ? "" : "none";
+      markDirty();
       cacheNow();
     }, { signal });
   });
@@ -2364,10 +2419,10 @@ function attachPopupHandlers(marker, row, farmaciaId){
   // note + checkbox (closed + flags) -> aggiorna cache bozza
   const noteEl = wrap.querySelector('[data-role="note"]');
   if(noteEl){
-    noteEl.addEventListener("input", () => cacheNow(), { signal });
+    noteEl.addEventListener("input", () => { markDirty(); cacheNow(); }, { signal });
   }
   wrap.querySelectorAll('input[type=checkbox]').forEach(cb => {
-    cb.addEventListener("change", () => cacheNow(), { signal });
+    cb.addEventListener("change", () => { markDirty(); cacheNow(); }, { signal });
   });
 
   // remove owner chip (delegation)
@@ -2380,6 +2435,7 @@ function attachPopupHandlers(marker, row, farmaciaId){
       ev.preventDefault(); ev.stopPropagation();
       const chip = t.closest(".chip");
       if(chip) chip.remove();
+      markDirty();
       cacheNow();
     }
   }, { signal });
@@ -2391,6 +2447,7 @@ function attachPopupHandlers(marker, row, farmaciaId){
       ev.preventDefault(); ev.stopPropagation();
       marker._skipAutosave = true;
       POPUP_DRAFT_CACHE.delete(farmaciaId);
+      clearDirty();
       marker.closePopup();
     }, { signal });
   }
@@ -2404,6 +2461,7 @@ function attachPopupHandlers(marker, row, farmaciaId){
       const rec = farmMarkers.find(x => x.id === farmaciaId);
       const isComunale = rec ? rec.isComunale : isComunaleFromGestione(row.gestione);
       applyDraftToStore(marker, row, farmaciaId, isComunale, draft);
+      clearDirty();
 
       // aggiorna contenuto "bound" per coerenza immediata
       marker.setPopupContent(buildPopupHtml(row, farmaciaId));
@@ -2435,6 +2493,7 @@ function attachPopupHandlers(marker, row, farmaciaId){
     const merged = uniq([...existing, ...names]);
     ownersChips.innerHTML = merged.map(o => `<span class="chip">${esc(o)} <span class="xbtn" data-role="rmOwner" data-owner="${encodeURIComponent(o)}">×</span></span>`).join("");
     ownersInput.value = "";
+    markDirty();
     cacheNow();
   };
 
