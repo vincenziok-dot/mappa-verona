@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Campagna SpG Verona · rev2.2.3 LIVE</title>
+<title>Campagna SpG Verona · rev2.2.4 LIVE</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -771,6 +771,13 @@ body.ui-mobile #hudHandle{ display:block; }
 body.ui-mobile #hudFab{ display:block; }
 body.ui-mobile #modeToggle{ display:flex; }
 
+/* Evita overflow orizzontale (barra di scorrimento) nella "maniglia" su schermi piccoli */
+body.ui-mobile .hudHandleRow{ flex-wrap:wrap; align-items:flex-start; }
+body.ui-mobile .hudHandleTitle{ flex: 1 1 100%; }
+body.ui-mobile .hudHandleRow > div:last-child{ width:100%; display:flex; justify-content:flex-end; gap:6px; }
+body.ui-mobile #syncBadge small{ display:none; }
+body.ui-mobile .hudIconBtn{ width:36px; height:34px; border-radius: 12px; }
+
 body.ui-mobile .leaflet-popup-content{
   max-width: 320px;
   max-height: 52vh;
@@ -1175,10 +1182,10 @@ body.ui-mobile .leaflet-popup-content{ overflow-x:hidden; }
     <div class="btnGroup grpExport" data-open="0">
       <div class="grpTitle">Export & stampa</div>
       <div class="grpBtns">
-        <button class="hud-btn" id="btnExportXLSX" title="Scarica un... Excel con statistiche + liste per stato">Export DB (Excel)</button>
-        <button class="hud-btn" id="btnExportCSV" title="Scarica un ...) con tutte le farmacie e i campi campagna">Export DB (CSV)</button>
+        <button class="hud-btn" id="btnExportXLSX" title="Scarica un file Excel con statistiche + liste per stato">Export DB (Excel)</button>
+        <button class="hud-btn" id="btnExportCSV" title="Scarica un file CSV con tutte le farmacie e i campi campagna">Export DB (CSV)</button>
         <button class="hud-btn" id="btnPrintReport" title="Apri una pagina stampabile con statistiche + liste per stato">Stampa</button>
-        <button class="hud-btn" id="btnExportAderisce" title="Export... per coordinamento: elenco SOLO ADERISCE">Solo aderisce</button>
+        <button class="hud-btn" id="btnExportAderisce" title="Export rapido per coordinamento: elenco SOLO ADERISCE">Solo aderisce</button>
       </div>
     </div>
 
@@ -1307,7 +1314,8 @@ const AUTO_MOBILE = window.matchMedia("(max-width: 720px)").matches || /Mobi|And
 ================================ */
 const REMOTE_API_URL = "https://script.google.com/macros/s/AKfycbzHOqje8TunaF5IgtjQR-5_wsy9c9-tH7rjhE9qTGrUskxWcoFiQ6hhkw_DNVg8woza/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
 const REMOTE_WRITE_KEY = ""; // opzionale: parola chiave anti-spam (se la imposti anche nello script)
-const REMOTE_POLL_MS = 20000;
+// Poll piu' frequente per vedere gli aggiornamenti degli altri utenti piu' rapidamente
+const REMOTE_POLL_MS = 8000;
 
 let uiMode = localStorage.getItem(UI_MODE_KEY) || (AUTO_MOBILE ? "mobile" : "desktop");
 let showChooser = true;
@@ -1533,7 +1541,27 @@ function saveStatusStore(obj){
   try { localStorage.setItem(STATUS_STORE_KEY, JSON.stringify(obj)); }
   catch(e){}
 }
-const statusStore = loadStatusStore();
+let statusStore = loadStatusStore();
+
+// Quando il cloud e' attivo, teniamo traccia delle modifiche locali in attesa di essere viste dal cloud
+// (evita che un pull immediato sovrascriva una modifica appena fatta).
+const STATUS_PENDING_TTL_MS = 60 * 60 * 1000; // 1 ora
+const REF_PENDING_TTL_MS = 60 * 60 * 1000;
+const REF_PENDING_KEY = 'spg_refs_pending_rev2';
+function loadRefPending(){
+  try{ return JSON.parse(localStorage.getItem(REF_PENDING_KEY) || '{}'); }catch(e){ return {}; }
+}
+function saveRefPending(obj){
+  try{ localStorage.setItem(REF_PENDING_KEY, JSON.stringify(obj)); }catch(e){}
+}
+let refPending = loadRefPending();
+
+let __remotePullSoonTimer = null;
+function scheduleRemotePullSoon(){
+  if(!REMOTE_API_URL) return;
+  clearTimeout(__remotePullSoonTimer);
+  __remotePullSoonTimer = setTimeout(()=>{ fetchRemoteAll('soon'); }, 1200);
+}
 
 function normalizeOwners(val){
   if(Array.isArray(val)){
@@ -1550,6 +1578,25 @@ function uniq(arr){
   return out;
 }
 
+function canonStatus(st){
+  const s = st || {};
+  const flags = s.flags || {};
+  const owners = Array.isArray(s.owners) ? s.owners.map(x=>String(x||'').trim()).filter(Boolean).sort() : [];
+  return JSON.stringify({
+    state: s.state || 'contattare',
+    closed: !!s.closed,
+    owners,
+    note: String(s.note || ''),
+    flags: { poster: !!flags.poster, boicotta: !!flags.boicotta, promo: !!flags.promo, info: !!flags.info }
+  });
+}
+function statusEquivalent(a,b){
+  try{ return canonStatus(a) === canonStatus(b); }catch(e){ return false; }
+}
+function canonRefs(arr){
+  return (Array.isArray(arr)?arr:[]).map(x=>String(x||'').trim()).filter(Boolean).sort().join('|');
+}
+
 function defaultStatus(){
   return { state:"contattare", owners:[], note:"", flags:{poster:false, boicotta:false, promo:false, info:false}, closed:false };
 }
@@ -1557,9 +1604,15 @@ function getSt(id){
   return statusStore[id] || defaultStatus();
 }
 function setSt(id, next){
+  // marca come "pending" per non perdere la modifica prima che il cloud la rifletta
+  try{
+    next.__localTs = Date.now();
+    next.__pending = true;
+    next.__deviceId = DEVICE_ID;
+  }catch(e){}
   statusStore[id] = next;
   saveStatusStore(statusStore);
-  try{ if(REMOTE_API_URL){ remotePost('status', toRemoteStatus(id, next)); setSyncBadge(__remoteOnline, __remoteOnline?'ONLINE':'OFFLINE'); } }catch(e){}
+  try{ if(REMOTE_API_URL){ remotePost('status', toRemoteStatus(id, next)); setSyncBadge(__remoteOnline, __remoteOnline?'ONLINE':'OFFLINE'); scheduleRemotePullSoon(); } }catch(e){}
 }
 
 /* ===============================
@@ -1617,7 +1670,7 @@ function jsonp(url){
   return new Promise((resolve,reject)=>{
     const cb = 'spgcb_' + Math.random().toString(36).slice(2);
     const s = document.createElement('script');
-    const timer = setTimeout(()=>{ cleanup(); reject(new Error('timeout')); }, 20000);
+    const timer = setTimeout(()=>{ cleanup(); reject(new Error('timeout')); }, 9000);
     function cleanup(){
       clearTimeout(timer);
       try{ delete window[cb]; }catch(e){}
@@ -1712,6 +1765,7 @@ function refreshAfterRemote(){
     aggiornaHUD();
     aggiornaComuneSelezionato();
     aggiornaMapStats();
+    if(typeof renderReferentiPanel === 'function' && refPanelVisible) renderReferentiPanel();
   }catch(e){}
 }
 
@@ -1734,32 +1788,65 @@ async function fetchRemoteAll(reason){
 
       if(data.status && typeof data.status === 'object'){
         const remoteObj = data.status || {};
-        const remoteIds = Object.keys(remoteObj);
-        const remoteCount = remoteIds.length;
-        // Pulizia: se il cloud ha dati, rimuovi chiavi locali non presenti (risolve 'dati sporchi' su vecchi device)
-        if(remoteCount > 0){
-          try{ localStorage.setItem('spg_status_local_backup', JSON.stringify(statusStore)); }catch(e){}
-          const keep = new Set(remoteIds);
-          for(const k of Object.keys(statusStore)){ if(!keep.has(k)) delete statusStore[k]; }
+        const now = Date.now();
+        const oldStore = statusStore || {};
+        const newStore = {};
+        // 1) carica TUTTO quello che arriva dal cloud
+        for(const id of Object.keys(remoteObj)){
+          try{
+            const st = fromRemoteStatus(remoteObj[id] || {});
+            st.__remoteTs = now;
+            st.__pending = false;
+            newStore[id] = st;
+          }catch(e){}
         }
-        for(const id of remoteIds){
-          try{ statusStore[id] = fromRemoteStatus(remoteObj[id] || {}); }catch(e){}
+
+        // 2) mantieni eventuali modifiche locali "pending" (evita che spariscano al prossimo poll)
+        for(const id of Object.keys(oldStore)){
+          const st = oldStore[id];
+          if(!st || !st.__pending || !st.__localTs) continue;
+          if((now - st.__localTs) > STATUS_PENDING_TTL_MS) continue;
+          const r = newStore[id];
+          if(r && statusEquivalent(r, st)){
+            // Il cloud ha recepito: ok, pending risolto
+            continue;
+          }
+          // Il cloud non ha ancora la modifica: tieni la versione locale
+          newStore[id] = st;
         }
+
+        statusStore = newStore;
         saveStatusStore(statusStore);
       }
+
       if(data.refs && typeof data.refs === 'object'){
         const remoteObj = data.refs || {};
+        const now = Date.now();
         const remoteKeys = Object.keys(remoteObj);
-        const remoteCount = remoteKeys.length;
-        // Pulizia referenti: solo se il cloud ha almeno un record (evita perdite quando il progetto parte da zero)
-        if(remoteCount > 0){
-          try{ localStorage.setItem('spg_refs_local_backup', JSON.stringify(referentiComune)); }catch(e){}
-          const keep = new Set(remoteKeys);
-          for(const k of Object.keys(referentiComune)){ if(!keep.has(k)) delete referentiComune[k]; }
+        const oldRefs = { ...referentiComune };
+
+        // 1) cloud e' fonte di verita': pulisci e poi applica remote
+        if(remoteKeys.length > 0){
+          for(const k of Object.keys(referentiComune)) delete referentiComune[k];
         }
         for(const com of remoteKeys){
           try{ referentiComune[com] = Array.isArray(remoteObj[com]) ? remoteObj[com] : []; }catch(e){}
         }
+
+        // 2) mantieni pending locali (anti-revert) finche' il cloud non li riflette
+        for(const com of Object.keys(refPending || {})){
+          const ts = refPending[com];
+          if(!ts || (now - ts) > REF_PENDING_TTL_MS){ delete refPending[com]; continue; }
+          const localArr = Array.isArray(oldRefs[com]) ? oldRefs[com] : (Array.isArray(referentiComune[com]) ? referentiComune[com] : []);
+          const remoteArr = Array.isArray(remoteObj[com]) ? remoteObj[com] : [];
+          if(canonRefs(localArr) === canonRefs(remoteArr)){
+            delete refPending[com];
+          }else{
+            referentiComune[com] = localArr;
+          }
+        }
+
+        saveRefPending(refPending);
         saveRefStore(referentiComune);
       }
 
@@ -2893,7 +2980,14 @@ document.getElementById("btnAddRef").addEventListener("click", () => {
   if(!referentiComune[selectedComuneNome].includes(n)) referentiComune[selectedComuneNome].push(n);
 
   saveRefStore(referentiComune);
-  try{ if(REMOTE_API_URL){ remotePost('ref', { comune: selectedComuneNome, referenti: referentiComune[selectedComuneNome]||[], deviceId: DEVICE_ID }); } }catch(e){}
+  try{
+    if(REMOTE_API_URL){
+      refPending[selectedComuneNome] = Date.now();
+      saveRefPending(refPending);
+      remotePost('ref', { comune: selectedComuneNome, referenti: referentiComune[selectedComuneNome]||[], deviceId: DEVICE_ID });
+      scheduleRemotePullSoon();
+    }
+  }catch(e){}
   aggiornaStiliComuni();
   aggiornaHUD();
   aggiornaMapStats();
@@ -2922,7 +3016,14 @@ refList.addEventListener("click", (ev) => {
     try { rm = decodeURIComponent(rmEnc); } catch(e){}
     referentiComune[selectedComuneNome] = (referentiComune[selectedComuneNome] || []).filter(x => x !== rm);
     saveRefStore(referentiComune);
-    try{ if(REMOTE_API_URL){ remotePost('ref', { comune: selectedComuneNome, referenti: referentiComune[selectedComuneNome]||[], deviceId: DEVICE_ID }); } }catch(e){}
+    try{
+      if(REMOTE_API_URL){
+        refPending[selectedComuneNome] = Date.now();
+        saveRefPending(refPending);
+        remotePost('ref', { comune: selectedComuneNome, referenti: referentiComune[selectedComuneNome]||[], deviceId: DEVICE_ID });
+        scheduleRemotePullSoon();
+      }
+    }catch(e){}
 
     aggiornaStiliComuni();
     aggiornaHUD();
