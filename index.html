@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Campagna SpG Verona · rev2.2 LIVE</title>
+<title>Campagna SpG Verona · rev2.2.3 LIVE</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -1072,6 +1072,7 @@ body.ui-mobile .leaflet-popup-content{ overflow-x:hidden; }
     <div class="hudHandleTitle">Campagna SpG Verona <span id="syncBadge" class="syncBadge offline"><span class="syncDot"></span><span id="syncText">LOCAL</span> <small id="syncTime"></small></span></div>
     <div style="display:flex; gap:8px">
       <button id="hudSyncBtn" class="hudIconBtn" title="Sincronizza dati condivisi">↻</button>
+      <button id="hudClearBtn" class="hudIconBtn" title="Pulisci cache locale (status+referenti) e ricarica">♻</button>
       <button id="hudUiBtn" class="hudIconBtn" title="Cambia interfaccia">UI</button>
       <button id="hudToggleBtn" class="hudIconBtn" title="Apri/chiudi pannello">⌃</button>
     </div>
@@ -1085,6 +1086,7 @@ body.ui-mobile .leaflet-popup-content{ overflow-x:hidden; }
   Dati condivisi:
   <span id="syncBadgeDesk" class="syncBadge offline"><span class="syncDot"></span><span id="syncTextDesk">LOCAL</span> <small id="syncTimeDesk"></small></span>
   <button id="hudSyncBtnDesk" class="hud-btn" style="padding:6px 8px; font-size:11px; border-radius:10px; margin-left:6px" title="Sincronizza ora">↻</button>
+  <button id="hudClearBtnDesk" class="hud-btn" style="padding:6px 8px; font-size:11px; border-radius:10px" title="Pulisci cache locale (status+referenti) e ricarica">♻</button>
 </div>
 
   <div class="section-chip">Avanzamento <small id="g_hint"></small></div>
@@ -1173,8 +1175,8 @@ body.ui-mobile .leaflet-popup-content{ overflow-x:hidden; }
     <div class="btnGroup grpExport" data-open="0">
       <div class="grpTitle">Export & stampa</div>
       <div class="grpBtns">
-        <button class="hud-btn" id="btnExportXLSX" title="Scarica un... Excel con statistiche + liste per stato">Esporta Excel</button>
-        <button class="hud-btn" id="btnExportCSV" title="Scarica un ...) con tutte le farmacie e i campi campagna">Esporta CSV</button>
+        <button class="hud-btn" id="btnExportXLSX" title="Scarica un... Excel con statistiche + liste per stato">Export DB (Excel)</button>
+        <button class="hud-btn" id="btnExportCSV" title="Scarica un ...) con tutte le farmacie e i campi campagna">Export DB (CSV)</button>
         <button class="hud-btn" id="btnPrintReport" title="Apri una pagina stampabile con statistiche + liste per stato">Stampa</button>
         <button class="hud-btn" id="btnExportAderisce" title="Export... per coordinamento: elenco SOLO ADERISCE">Solo aderisce</button>
       </div>
@@ -1303,7 +1305,7 @@ const AUTO_MOBILE = window.matchMedia("(max-width: 720px)").matches || /Mobi|And
    - GET via JSONP (no CORS)
    - POST via hidden form + iframe (no CORS)
 ================================ */
-const REMOTE_API_URL = "https://script.google.com/macros/s/AKfycbyMePMXCmpb09GgQiKpmLA671CfoLjDFQCyZFgAig_7g7BLikaIsklCw6jdP45ZrlVNCw/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
+const REMOTE_API_URL = "https://script.google.com/macros/s/AKfycbzHOqje8TunaF5IgtjQR-5_wsy9c9-tH7rjhE9qTGrUskxWcoFiQ6hhkw_DNVg8woza/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
 const REMOTE_WRITE_KEY = ""; // opzionale: parola chiave anti-spam (se la imposti anche nello script)
 const REMOTE_POLL_MS = 20000;
 
@@ -1409,6 +1411,18 @@ function setUiMode(mode){
 // LIVE: init sync UI
 document.getElementById('hudSyncBtn')?.addEventListener('click', ()=>fetchRemoteAll('manual'));
 document.getElementById('hudSyncBtnDesk')?.addEventListener('click', ()=>fetchRemoteAll('manual'));
+document.getElementById('hudClearBtn')?.addEventListener('click', ()=>{
+  if(confirm('Pulire la cache locale (status + referenti) e ricaricare?\n\nNon tocca i dati cloud.')){
+    clearLocalCampaignCache();
+    location.reload();
+  }
+});
+document.getElementById('hudClearBtnDesk')?.addEventListener('click', ()=>{
+  if(confirm('Pulire la cache locale (status + referenti) e ricaricare?\n\nNon tocca i dati cloud.')){
+    clearLocalCampaignCache();
+    location.reload();
+  }
+});
 // first pull (non-blocking)
 setTimeout(()=>fetchRemoteAll('boot'), 800);
 // poll
@@ -1561,8 +1575,8 @@ function saveRefStore(obj){
   catch(e){}
 }
 const referentiComune = loadRefStore();
-// seed minimo se vuoto
-if(Object.keys(referentiComune).length === 0){
+// seed minimo se vuoto (solo in modalità LOCAL, evita di inquinare il cloud)
+if(Object.keys(referentiComune).length === 0 && !REMOTE_API_URL){
   referentiComune["Verona"] = ["Vincenzo Russo"];
   saveRefStore(referentiComune);
 }
@@ -1701,6 +1715,13 @@ function refreshAfterRemote(){
   }catch(e){}
 }
 
+function clearLocalCampaignCache(){
+  try{
+    localStorage.removeItem(STATUS_STORE_KEY);
+    localStorage.removeItem(REF_STORE_KEY);
+  }catch(e){}
+}
+
 async function fetchRemoteAll(reason){
   if(!REMOTE_API_URL) { setSyncBadge(false, 'LOCAL'); return; }
   if(__remotePulling) return;
@@ -1712,14 +1733,32 @@ async function fetchRemoteAll(reason){
       __remoteLastSync = new Date();
 
       if(data.status && typeof data.status === 'object'){
-        for(const [id, row] of Object.entries(data.status)){
-          try{ statusStore[id] = fromRemoteStatus(row || {}); }catch(e){}
+        const remoteObj = data.status || {};
+        const remoteIds = Object.keys(remoteObj);
+        const remoteCount = remoteIds.length;
+        // Pulizia: se il cloud ha dati, rimuovi chiavi locali non presenti (risolve 'dati sporchi' su vecchi device)
+        if(remoteCount > 0){
+          try{ localStorage.setItem('spg_status_local_backup', JSON.stringify(statusStore)); }catch(e){}
+          const keep = new Set(remoteIds);
+          for(const k of Object.keys(statusStore)){ if(!keep.has(k)) delete statusStore[k]; }
+        }
+        for(const id of remoteIds){
+          try{ statusStore[id] = fromRemoteStatus(remoteObj[id] || {}); }catch(e){}
         }
         saveStatusStore(statusStore);
       }
       if(data.refs && typeof data.refs === 'object'){
-        for(const [com, arr] of Object.entries(data.refs)){
-          try{ referentiComune[com] = Array.isArray(arr) ? arr : []; }catch(e){}
+        const remoteObj = data.refs || {};
+        const remoteKeys = Object.keys(remoteObj);
+        const remoteCount = remoteKeys.length;
+        // Pulizia referenti: solo se il cloud ha almeno un record (evita perdite quando il progetto parte da zero)
+        if(remoteCount > 0){
+          try{ localStorage.setItem('spg_refs_local_backup', JSON.stringify(referentiComune)); }catch(e){}
+          const keep = new Set(remoteKeys);
+          for(const k of Object.keys(referentiComune)){ if(!keep.has(k)) delete referentiComune[k]; }
+        }
+        for(const com of remoteKeys){
+          try{ referentiComune[com] = Array.isArray(remoteObj[com]) ? remoteObj[com] : []; }catch(e){}
         }
         saveRefStore(referentiComune);
       }
@@ -2854,6 +2893,7 @@ document.getElementById("btnAddRef").addEventListener("click", () => {
   if(!referentiComune[selectedComuneNome].includes(n)) referentiComune[selectedComuneNome].push(n);
 
   saveRefStore(referentiComune);
+  try{ if(REMOTE_API_URL){ remotePost('ref', { comune: selectedComuneNome, referenti: referentiComune[selectedComuneNome]||[], deviceId: DEVICE_ID }); } }catch(e){}
   aggiornaStiliComuni();
   aggiornaHUD();
   aggiornaMapStats();
@@ -2969,7 +3009,7 @@ async function loadAll(){
         (row.farmacia_id || row.farmaciaId || row.id || "").toString().trim() ||
         stableId(`${row.maps_url||""}|${row.descrizione_farmacia||""}|${comune}`);
 
-      if(!statusStore[farmaciaId]) setSt(farmaciaId, getSt(farmaciaId));
+      // Stato di default: implicito. Evitiamo di creare record (e scritture cloud) inutili
 
       const isComunale = isComunaleFromGestione(row.gestione);
       const st = getSt(farmaciaId);
@@ -3083,6 +3123,8 @@ function buildExportRows(scopeComune=null){
       base.flag_promo = !!fl.promo;
       base.flag_info = !!fl.info;
       base.updatedAt = st.updatedAt || "";
+      // referenti del comune (sincronizzati)
+      base.referenti_comune = (referentiComune[f.comune] || []).join('; ');
 
       return base;
     });
@@ -3648,9 +3690,9 @@ body.ui-mobile #mobileHint{ display:block; }
 }
 
 // wiring bottoni
-document.getElementById("btnExportXLSX")?.addEventListener("click", exportXLSX);
-document.getElementById("btnExportCSV")?.addEventListener("click", exportCSV);
-document.getElementById("btnPrintReport")?.addEventListener("click", printReport);
+document.getElementById("btnExportXLSX")?.addEventListener("click", async ()=>{ await fetchRemoteAll('export'); exportXLSX(); });
+document.getElementById("btnExportCSV")?.addEventListener("click", async ()=>{ await fetchRemoteAll('export'); exportCSV(); });
+document.getElementById("btnPrintReport")?.addEventListener("click", async ()=>{ await fetchRemoteAll('export'); printReport(); });
 document.getElementById("btnExportAderisce")?.addEventListener("click", () => {
   const ok = confirm("SOLO ADERISCE\n\nOK = scarica file (Excel se disponibile, altrimenti CSV)\nAnnulla = stampa elenco");
   if(ok) exportSoloAderisce(); else printSoloAderisce();
