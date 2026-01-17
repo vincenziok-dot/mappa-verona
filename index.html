@@ -1011,6 +1011,12 @@ body.ui-mobile.ph-popup-open .leaflet-popup{ z-index:10050 !important; }
 body.ui-mobile .popupWrap{ min-width:220px; max-width:100%; }
 body.ui-mobile .leaflet-popup-content{ overflow-x:hidden !important; }
 
+
+/* Desktop: riga sync sempre visibile; Mobile: la badge è già nella maniglia */
+body.ui-mobile #syncDeskRow{ display:none !important; }
+#syncDeskRow{ margin-top:6px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+#syncDeskRow .hud-btn{ border-color: rgba(0,255,156,.55); background: rgba(0,255,156,.10); }
+
 /* SYNC BADGE (LIVE DB) */
 .syncBadge{
   display:inline-flex; align-items:center; gap:6px;
@@ -1075,6 +1081,11 @@ body.ui-mobile .leaflet-popup-content{ overflow-x:hidden; }
 
   <div class="hud-title" id="hudTitle">Provincia di Verona</div>
   <div class="hud-sub" id="hudSub">Vista generale</div>
+  <div class="hud-sub" id="syncDeskRow">
+  Dati condivisi:
+  <span id="syncBadgeDesk" class="syncBadge offline"><span class="syncDot"></span><span id="syncTextDesk">LOCAL</span> <small id="syncTimeDesk"></small></span>
+  <button id="hudSyncBtnDesk" class="hud-btn" style="padding:6px 8px; font-size:11px; border-radius:10px; margin-left:6px" title="Sincronizza ora">↻</button>
+</div>
 
   <div class="section-chip">Avanzamento <small id="g_hint"></small></div>
   <div class="progressBox">
@@ -1292,7 +1303,7 @@ const AUTO_MOBILE = window.matchMedia("(max-width: 720px)").matches || /Mobi|And
    - GET via JSONP (no CORS)
    - POST via hidden form + iframe (no CORS)
 ================================ */
-const REMOTE_API_URL = "https://script.google.com/macros/s/AKfycbxUwp6h11sJPpFlx1fmxWcwyPCb9OxuvgXEzbqUPqMRa8jNrxR5mCttQ1WTXf2f77uWPg/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
+const REMOTE_API_URL = "https://script.google.com/macros/s/AKfycbyMePMXCmpb09GgQiKpmLA671CfoLjDFQCyZFgAig_7g7BLikaIsklCw6jdP45ZrlVNCw/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
 const REMOTE_WRITE_KEY = ""; // opzionale: parola chiave anti-spam (se la imposti anche nello script)
 const REMOTE_POLL_MS = 20000;
 
@@ -1397,6 +1408,7 @@ function setUiMode(mode){
 
 // LIVE: init sync UI
 document.getElementById('hudSyncBtn')?.addEventListener('click', ()=>fetchRemoteAll('manual'));
+document.getElementById('hudSyncBtnDesk')?.addEventListener('click', ()=>fetchRemoteAll('manual'));
 // first pull (non-blocking)
 setTimeout(()=>fetchRemoteAll('boot'), 800);
 // poll
@@ -1571,24 +1583,27 @@ const DEVICE_ID = (() => {
 })();
 
 function setSyncBadge(online, label){
-  const b = document.getElementById('syncBadge');
-  const t = document.getElementById('syncText');
-  const tm = document.getElementById('syncTime');
-  if(!b || !t || !tm) return;
-  b.classList.toggle('online', !!online);
-  b.classList.toggle('offline', !online);
-  t.textContent = label || (online ? 'ONLINE' : 'OFFLINE');
-  if(__remoteLastSync){
-    const d = __remoteLastSync;
-    tm.textContent = '· ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
-  } else tm.textContent = '';
+  function upd(bId, tId, tmId){
+    const b = document.getElementById(bId);
+    const t = document.getElementById(tId);
+    const tm = document.getElementById(tmId);
+    if(!b || !t || !tm) return;
+    b.classList.toggle('online', !!online);
+    b.classList.toggle('offline', !online);
+    t.textContent = label || (online ? 'ONLINE' : 'OFFLINE');
+    if(__remoteLastSync){
+      const d = __remoteLastSync;
+      tm.textContent = '· ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    } else tm.textContent = '';
+  }
+  upd('syncBadge','syncText','syncTime');
+  upd('syncBadgeDesk','syncTextDesk','syncTimeDesk');
 }
-
 function jsonp(url){
   return new Promise((resolve,reject)=>{
     const cb = 'spgcb_' + Math.random().toString(36).slice(2);
     const s = document.createElement('script');
-    const timer = setTimeout(()=>{ cleanup(); reject(new Error('timeout')); }, 8000);
+    const timer = setTimeout(()=>{ cleanup(); reject(new Error('timeout')); }, 20000);
     function cleanup(){
       clearTimeout(timer);
       try{ delete window[cb]; }catch(e){}
