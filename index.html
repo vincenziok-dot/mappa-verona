@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Campagna SpG Verona · rev2.2.8 LIVE</title>
+<title>Campagna SpG Verona · rev2.2.9 LIVE</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -349,6 +349,11 @@ textarea.inlineInput{ min-height: 64px; resize: vertical; }
   background: rgba(255, 170, 0, 0.18);
   border: 1px solid rgba(255, 170, 0, 0.45);
   color: #7a4b00;
+}
+.savePending.err{
+  background: rgba(255, 60, 60, 0.14);
+  border: 1px solid rgba(255, 60, 60, 0.45);
+  color: #7a0000;
 }
 .smallLink{ font-size:12px; }
 .smallLink a{ color:#0b0b0b; font-weight:700; text-decoration:none; }
@@ -1359,6 +1364,7 @@ function setUiMode(mode){
       msFab.dataset.bound = "1";
       msFab.addEventListener("click", (e)=>{
         e.preventDefault(); e.stopPropagation();
+        try{ window.__msUserTs = Date.now(); }catch(_e){}
         if(uiMode !== "mobile") return;
         if(document.body.classList.contains("ph-popup-open")) return;
 
@@ -1616,7 +1622,9 @@ function setSt(id, next){
   // marca come "pending" per non perdere la modifica prima che il cloud la rifletta
   try{
     next.__localTs = Date.now();
-    next.__pending = true;
+    next.__pending = !!REMOTE_API_URL;
+    next.__saveState = REMOTE_API_URL ? 'saving' : 'local';
+    next.__saveErr = '';
     next.__deviceId = DEVICE_ID;
   }catch(e){}
   statusStore[id] = next;
@@ -1778,22 +1786,22 @@ function remotePutStatus(payload){
   const url = REMOTE_API_URL + '?action=putStatus&k=' + k + '&payload=' + encodeURIComponent(JSON.stringify(payload || {}));
 
   return jsonp(url).then((res)=>{
-    try{
-      if(res && res.ok){
+    if(res && res.ok){
+      try{
         __remoteOnline = true;
         __remoteLastSync = new Date();
         setSyncBadge(true, 'ONLINE');
-        // Nota: NON togliamo __pending qui; lo risolviamo solo quando il pull vede il dato nel cloud.
-        return res;
-      }
-    }catch(e){}
-
-    // ok:false oppure risposta non valida -> fallback
+        // Pull ravvicinato per propagare sugli altri device
+        scheduleRemotePullSoon();
+      }catch(e){}
+      return res;
+    }
+    // ok:false oppure risposta non valida -> fallback POST
     try{ remotePost('status', payload || {}); }catch(e){}
     try{ scheduleRemotePullSoon(); }catch(e){}
     return res || { ok:false, error:'write failed' };
   }).catch((err)=>{
-    // timeout/load error -> fallback
+    // timeout/load error -> fallback POST
     try{ remotePost('status', payload || {}); }catch(e){}
     try{ scheduleRemotePullSoon(); }catch(e){}
     return { ok:false, error:String(err || 'error') };
@@ -1803,28 +1811,45 @@ function remotePutStatus(payload){
 // Scrittura cloud status: usa POST (piu' robusto, niente limiti URL), poi un pull rapido.
 // Se il payload e' piccolo prova anche JSONP per ottenere un ACK leggibile (solo per badge online).
 function remoteWriteStatus(payload){
-  if(!REMOTE_API_URL) return;
+  // Strategia definitiva:
+  // - usa SEMPRE JSONP GET (action=putStatus) perché è ciò che sappiamo funzionare su GitHub Pages senza CORS
+  // - la risposta ci permette anche di togliere subito il flag "pending" (evita scritta "sincronizzazione in corso" bloccata)
+  if(!REMOTE_API_URL) return Promise.resolve({ ok:false, error:'no REMOTE_API_URL' });
   const obj = payload || {};
-  // 1) POST fire-and-forget (beacon/fetch/form) -> affidabile anche con note lunghe
-  try{ remotePost('status', obj); }catch(e){}
-  // 2) Pull ravvicinato per riflettere subito le modifiche sugli altri dispositivi
-  try{ scheduleRemotePullSoon(); }catch(e){}
-
-  // 3) ACK opzionale via JSONP solo se piccolo (evita problemi di lunghezza URL)
-  try{
-    const str = JSON.stringify(obj);
-    if(str.length < 900){
-      const k = encodeURIComponent(REMOTE_WRITE_KEY || '');
-      const url = REMOTE_API_URL + '?action=putStatus&k=' + k + '&payload=' + encodeURIComponent(str);
-      jsonp(url).then((res)=>{
-        if(res && res.ok){
-          __remoteOnline = true;
-          __remoteLastSync = new Date();
-          setSyncBadge(true, 'ONLINE');
-        }
-      }).catch(()=>{});
-    }
-  }catch(e){}
+  return remotePutStatus(obj).then((res)=>{
+    try{
+      const id = String(obj.farmacia_id || '').trim();
+      if(!id) return res;
+      const cur = statusStore[id];
+      if(!cur) return res;
+      if(res && res.ok){
+        cur.__pending = false;
+        cur.__saveState = 'ok';
+        cur.__saveErr = '';
+        cur.__lastSavedAt = Date.now();
+      } else {
+        cur.__pending = true;
+        cur.__saveState = 'error';
+        cur.__saveErr = (res && res.error) ? String(res.error) : 'write failed';
+      }
+      statusStore[id] = cur;
+      saveStatusStore(statusStore);
+    }catch(e){}
+    return res;
+  }).catch((err)=>{
+    try{
+      const id = String(obj.farmacia_id || '').trim();
+      const cur = statusStore[id];
+      if(cur){
+        cur.__pending = true;
+        cur.__saveState = 'error';
+        cur.__saveErr = String(err || 'error');
+        statusStore[id] = cur;
+        saveStatusStore(statusStore);
+      }
+    }catch(e){}
+    return { ok:false, error:String(err || 'error') };
+  });
 }
 
 function remotePutRef(payload){
@@ -1869,7 +1894,11 @@ function toRemoteStatus(id, st){
 }
 
 function fromRemoteStatus(obj){
-  const owners = String(obj.incaricati || '').split('|').map(s=>s.trim()).filter(Boolean);
+  // Compat: in passato potevano arrivare separatori diversi (| oppure , ; newline)
+  const owners = String(obj.incaricati || '')
+    .split(/[|,;\n]+/)
+    .map(s=>s.trim())
+    .filter(Boolean);
   return {
     state: obj.stato || 'contattare',
     owners: owners,
@@ -2368,7 +2397,11 @@ function buildPopupHtml(row, farmaciaId){
       <button data-role="save">Salva e chiudi</button>
       <button class="secondary" data-role="reset">Chiudi senza salvare</button>
     </div>
-    ${st.__pending ? `<div class="savePending">⚠️ Salvataggio online in corso… (se resta così, premi “Sincronizza ora”)</div>` : ``}
+    ${
+      (st.__saveState === 'error')
+        ? `<div class="savePending err">❌ <b>Non salvato online</b>: ${esc(st.__saveErr||'errore')}<br/><small>Premi “Sincronizza ora” o riprova più tardi.</small></div>`
+        : (st.__pending ? `<div class="savePending">⏳ Salvataggio online…</div>` : ``)
+    }
   </div>`;
 }
 
@@ -2804,36 +2837,39 @@ elTr.textContent = String(counts.trattativa);
   if(cTot) cTot.textContent = String(total || 0);
   if(cNc) cNc.textContent = String(counts.contattare || 0);
 
-  // Mobile: NON aprire automaticamente ad ogni refresh.
-  // Regola: mostra "aperto" solo all'avvio (1 volta) o se cambiano i numeri (stesso scope).
+  // Mobile: auto-espansione SOLO:
+  // - alla prima apertura pagina
+  // - se cambiano i numeri "Aderisce" o "Da contattare" (vista globale)
+  // Mai durante la selezione di un comune (lì l'utente sta già guardando la mappa).
   const ms = document.getElementById("mapStats");
   if(ms && uiMode==="mobile"){
-    const scope = selectedComuneNome ? ('comune:' + selectedComuneNome) : 'global';
-    const key = [counts.aderisce, counts.contattare, counts.trattativa, counts.rifiuta, total].join('|');
+    if(selectedComuneNome) return; // mai disturbare in vista comune
 
     const first = !window.__msShownOnce;
-    const sameScope = (window.__msPrevScope === scope);
+    const key = [counts.aderisce, counts.contattare, total].join('|');
     const prevKey = window.__msPrevKey;
-
-    const countsChanged = sameScope && (prevKey != null) && (prevKey !== key);
-
-    // Salva tracking per la prossima chiamata
-    window.__msPrevScope = scope;
+    const changed = (prevKey != null) && (prevKey !== key);
     window.__msPrevKey = key;
 
-    // Se cambio scope (es. selezione comune) non disturbare l'utente.
-    if(!sameScope && !first) return;
+    // Se l'utente ha appena usato il pulsante 📊, non auto-aprire.
+    const recentlyTouched = window.__msUserTs && (Date.now() - window.__msUserTs) < 12000;
+    if(recentlyTouched) { window.__msShownOnce = true; return; }
 
-    // Mostra solo: (a) prima volta oppure (b) numeri cambiati
-    if(first || countsChanged){
+    if(first || changed){
       window.__msShownOnce = true;
+      if(window.__msFabPinned) return; // se è "pinned", decide l'utente
 
-      // Non forzare apertura se l'utente l'ha già aperta manualmente (ms-expanded)
+      // Apri per 4s, poi collassa (solo se non è già aperto manualmente)
       if(!ms.classList.contains("ms-expanded")){
         ms.classList.remove("ms-collapsed");
+        ms.classList.add("ms-expanded");
       }
       clearTimeout(window.__msAutoTimer);
-      window.__msAutoTimer = setTimeout(()=>{ ms.classList.add("ms-collapsed"); }, 4000);
+      window.__msAutoTimer = setTimeout(()=>{
+        if(window.__msFabPinned) return;
+        ms.classList.remove("ms-expanded");
+        ms.classList.add("ms-collapsed");
+      }, 4000);
     }
   }
 }
