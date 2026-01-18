@@ -1312,7 +1312,7 @@ const AUTO_MOBILE = window.matchMedia("(max-width: 720px)").matches || /Mobi|And
    - GET via JSONP (no CORS)
    - POST via hidden form + iframe (no CORS)
 ================================ */
-const REMOTE_API_URL = "https://script.google.com/macros/s/AKfycbzHOqje8TunaF5IgtjQR-5_wsy9c9-tH7rjhE9qTGrUskxWcoFiQ6hhkw_DNVg8woza/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
+const REMOTE_API_URL = "https://script.google.com/macros/s/AKfycbwsG88UnPzTXDzjcTLHEMF1okA9cVAZo-ISdC8CTg_VLZXR43sBO5j10drm8WsAJxUCZA/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
 const REMOTE_WRITE_KEY = ""; // opzionale: parola chiave anti-spam (se la imposti anche nello script)
 // Poll piu' frequente per vedere gli aggiornamenti degli altri utenti piu' rapidamente
 const REMOTE_POLL_MS = 8000;
@@ -1762,42 +1762,61 @@ function remotePost(kind, payloadObj){
 
 // Scrittura cloud via JSONP GET (piu' affidabile su GitHub Pages: nessun CORS, risposta leggibile)
 function remotePutStatus(payload){
+  // Scrittura cloud dello status farmacia.
+  // Robustezza: prova JSONP (con risposta). Se fallisce o ok:false, fallback a POST (fire-and-forget).
   if(!REMOTE_API_URL) return Promise.resolve({ ok:false, error:'no REMOTE_API_URL' });
-  const url = REMOTE_API_URL + '?action=putStatus&payload=' + encodeURIComponent(JSON.stringify(payload));
+  const k = encodeURIComponent(REMOTE_WRITE_KEY || '');
+  const url = REMOTE_API_URL + '?action=putStatus&k=' + k + '&payload=' + encodeURIComponent(JSON.stringify(payload || {}));
+
   return jsonp(url).then((res)=>{
     try{
-      setSyncBadge(true, 'online');
-      // se il cloud conferma, tolgo pending per questa farmacia
-      if(res && res.ok && payload && payload.farmacia_id){
+      if(res && res.ok){
+        __remoteOnline = true;
+        __remoteLastSync = new Date();
+        setSyncBadge(true, 'ONLINE');
+        // Se il cloud conferma, togli pending locale (se presente)
         try{
-          delete statusPending[payload.farmacia_id];
-          saveStatusPending(statusPending);
+          if(payload && payload.farmacia_id && statusStore[payload.farmacia_id]){
+            statusStore[payload.farmacia_id].__pending = false;
+          }
         }catch(e){}
+        return res;
       }
     }catch(e){}
-    return res;
+
+    // ok:false oppure risposta non valida -> fallback
+    try{ remotePost('status', payload || {}); }catch(e){}
+    try{ scheduleRemotePullSoon(); }catch(e){}
+    return res || { ok:false, error:'write failed' };
   }).catch((err)=>{
-    try{ setSyncBadge(false, 'offline'); }catch(e){}
-    return { ok:false, error:String(err||'error') };
+    // timeout/load error -> fallback
+    try{ remotePost('status', payload || {}); }catch(e){}
+    try{ scheduleRemotePullSoon(); }catch(e){}
+    return { ok:false, error:String(err || 'error') };
   });
 }
 function remotePutRef(payload){
   if(!REMOTE_API_URL) return Promise.resolve({ ok:false, error:'no REMOTE_API_URL' });
-  const url = REMOTE_API_URL + '?action=putRef&payload=' + encodeURIComponent(JSON.stringify(payload));
+  const k = encodeURIComponent(REMOTE_WRITE_KEY || '');
+  const url = REMOTE_API_URL + '?action=putRef&k=' + k + '&payload=' + encodeURIComponent(JSON.stringify(payload || {}));
+
   return jsonp(url).then((res)=>{
     try{
-      setSyncBadge(true, 'online');
-      if(res && res.ok && payload && payload.comune){
-        try{
-          delete refPending[payload.comune];
-          saveRefPending(refPending);
-        }catch(e){}
+      if(res && res.ok){
+        __remoteOnline = true;
+        __remoteLastSync = new Date();
+        setSyncBadge(true, 'ONLINE');
+        return res;
       }
     }catch(e){}
-    return res;
+    // fallback POST (compat)
+    try{ remotePost('ref', payload || {}); }catch(e){}
+    try{ scheduleRemotePullSoon(); }catch(e){}
+    return res || { ok:false, error:'write failed' };
   }).catch((err)=>{
-    try{ setSyncBadge(false, 'offline'); }catch(e){}
-    return { ok:false, error:String(err||'error') };
+    try{ remotePost('ref', payload || {}); }catch(e){}
+    try{ scheduleRemotePullSoon(); }catch(e){}
+    return { ok:false, error:String(err || 'error') };
   });
 }
 
