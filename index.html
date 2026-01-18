@@ -1326,7 +1326,8 @@ const AUTO_MOBILE = window.matchMedia("(max-width: 720px)").matches || /Mobi|And
    - GET via JSONP (no CORS)
    - POST via hidden form + iframe (no CORS)
 ================================ */
-const REMOTE_API_URL = "https://script.google.com/macros/s/AKfycbzHOqje8TunaF5IgtjQR-5_wsy9c9-tH7rjhE9qTGrUskxWcoFiQ6hhkw_DNVg8woza/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
+const REMOTE_API_URL_RAW = "https://script.google.com/macros/s/AKfycbwsG88UnPzTXDzjcTLHEMF1okA9cVAZo-ISdC8CTg_VLZXR43sBO5j10drm8WsAJxUCZA/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
+const REMOTE_API_URL = (REMOTE_API_URL_RAW || "").split('#')[0].split('?')[0]; // sicurezza: rimuove ?action=... se incollato per sbaglio
 const REMOTE_WRITE_KEY = ""; // opzionale: parola chiave anti-spam (se la imposti anche nello script)
 // Poll piu' frequente per vedere gli aggiornamenti degli altri utenti piu' rapidamente
 const REMOTE_POLL_MS = 8000;
@@ -1629,7 +1630,7 @@ function setSt(id, next){
   }catch(e){}
   statusStore[id] = next;
   saveStatusStore(statusStore);
-  try{ if(REMOTE_API_URL){ remoteWriteStatus(toRemoteStatus(id, next)); } }catch(e){}
+  try{ if(REMOTE_API_URL){ remoteWriteStatus(id, next); } }catch(e){}
 }
 
 /* ===============================
@@ -1655,6 +1656,8 @@ function hasRef(nome){ return (referentiComune[nome] && referentiComune[nome].le
 // ===== LIVE DB runtime state =====
 let __remoteOnline = false;
 let __remoteLastSync = null;
+let __remoteServerVer = "";
+
 let __remotePollTimer = null;
 let __remotePulling = false;
 const DEVICE_ID = (() => {
@@ -1675,6 +1678,7 @@ function setSyncBadge(online, label){
     b.classList.toggle('online', !!online);
     b.classList.toggle('offline', !online);
     t.textContent = label || (online ? 'ONLINE' : 'OFFLINE');
+    try{ if(__remoteServerVer){ t.textContent += ' v' + __remoteServerVer; } }catch(e){}
     if(__remoteLastSync){
       const d = __remoteLastSync;
       tm.textContent = '· ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
@@ -1790,6 +1794,7 @@ function remotePutStatus(payload){
       try{
         __remoteOnline = true;
         __remoteLastSync = new Date();
+      try{ if(data.version){ __remoteServerVer = String(data.version); } }catch(e){}
         setSyncBadge(true, 'ONLINE');
         // Pull ravvicinato per propagare sugli altri device
         scheduleRemotePullSoon();
@@ -1810,41 +1815,110 @@ function remotePutStatus(payload){
 
 // Scrittura cloud status: usa POST (piu' robusto, niente limiti URL), poi un pull rapido.
 // Se il payload e' piccolo prova anche JSONP per ottenere un ACK leggibile (solo per badge online).
-function remoteWriteStatus(payload){
-  // Strategia definitiva:
-  // - usa SEMPRE JSONP GET (action=putStatus) perché è ciò che sappiamo funzionare su GitHub Pages senza CORS
-  // - la risposta ci permette anche di togliere subito il flag "pending" (evita scritta "sincronizzazione in corso" bloccata)
-  if(!REMOTE_API_URL) return Promise.resolve({ ok:false, error:'no REMOTE_API_URL' });
-  const obj = payload || {};
-  return remotePutStatus(obj).then((res)=>{
+
+function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
+
+function remotePostFormOnly(kind, payloadObj){
+  if(!REMOTE_API_URL) return;
+  try{
+    ensureRemoteForm();
+    const form = document.getElementById('remotePostForm');
+    const byName = {};
+    form.querySelectorAll('input').forEach(i=>{ byName[i.name]=i; });
+    byName.kind.value = kind;
+    byName.k.value = REMOTE_WRITE_KEY || '';
+    byName.payload.value = JSON.stringify(payloadObj || {});
+    form.action = REMOTE_API_URL;
+    form.submit();
+  }catch(e){}
+}
+
+async function remoteGetSnapshot(){
+  if(!REMOTE_API_URL) throw new Error('no REMOTE_API_URL');
+  return await jsonp(REMOTE_API_URL + '?action=getAll');
+}
+
+async function confirmRemoteStatus(id, localSt, attempts=6, waitMs=1200){
+  const fid = String(id||'').trim();
+  for(let i=0;i<attempts;i++){
+    await sleep(waitMs);
     try{
-      const id = String(obj.farmacia_id || '').trim();
-      if(!id) return res;
-      const cur = statusStore[id];
-      if(!cur) return res;
-      if(res && res.ok){
-        cur.__pending = false;
-        cur.__saveState = 'ok';
-        cur.__saveErr = '';
-        cur.__lastSavedAt = Date.now();
-      } else {
-        cur.__pending = true;
-        cur.__saveState = 'error';
-        cur.__saveErr = (res && res.error) ? String(res.error) : 'write failed';
+      const data = await remoteGetSnapshot();
+      if(data && data.ok){
+        if(data.version) __remoteServerVer = String(data.version);
+        __remoteOnline = true;
+        __remoteLastSync = new Date();
+      try{ if(data.version){ __remoteServerVer = String(data.version); } }catch(e){}
+        setSyncBadge(true, 'ONLINE');
+        const r = data.status && data.status[fid];
+        if(r){
+          const st = fromRemoteStatus(r);
+          if(statusEquivalent(st, localSt)) return { ok:true, serverTime:data.serverTime, version:data.version };
+        }
       }
-      statusStore[id] = cur;
-      saveStatusStore(statusStore);
+    }catch(e){}
+  }
+  return { ok:false, error:'not confirmed' };
+}
+
+async function confirmRemoteRefs(comune, arr, attempts=6, waitMs=1200){
+  const com = String(comune||'').trim();
+  const want = canonRefs(arr);
+  for(let i=0;i<attempts;i++){
+    await sleep(waitMs);
+    try{
+      const data = await remoteGetSnapshot();
+      if(data && data.ok){
+        if(data.version) __remoteServerVer = String(data.version);
+        __remoteOnline = true;
+        __remoteLastSync = new Date();
+      try{ if(data.version){ __remoteServerVer = String(data.version); } }catch(e){}
+        setSyncBadge(true, 'ONLINE');
+        const got = canonRefs((data.refs && data.refs[com]) ? data.refs[com] : []);
+        if(got === want) return { ok:true, serverTime:data.serverTime, version:data.version };
+      }
+    }catch(e){}
+  }
+  return { ok:false, error:'not confirmed' };
+}
+
+// Scrittura cloud status: POST (form hidden) + conferma via GET getAll
+function remoteWriteStatus(id, localSt){
+  if(!REMOTE_API_URL) return Promise.resolve({ ok:false, error:'no REMOTE_API_URL' });
+  const fid = String(id||'').trim();
+  const payload = toRemoteStatus(fid, localSt || defaultStatus());
+
+  // invio (non leggiamo la risposta)
+  remotePostFormOnly('status', payload);
+
+  // conferma dal cloud
+  return confirmRemoteStatus(payload.farmacia_id || fid, localSt || defaultStatus()).then((res)=>{
+    try{
+      const cur = statusStore[fid];
+      if(cur && statusEquivalent(cur, localSt)){
+        if(res && res.ok){
+          cur.__pending = false;
+          cur.__saveState = 'ok';
+          cur.__saveErr = '';
+          cur.__lastSavedAt = Date.now();
+        }else{
+          cur.__pending = true;
+          cur.__saveState = 'error';
+          cur.__saveErr = (res && res.error) ? String(res.error) : 'not confirmed';
+        }
+        statusStore[fid] = cur;
+        saveStatusStore(statusStore);
+      }
     }catch(e){}
     return res;
   }).catch((err)=>{
     try{
-      const id = String(obj.farmacia_id || '').trim();
-      const cur = statusStore[id];
-      if(cur){
+      const cur = statusStore[fid];
+      if(cur && statusEquivalent(cur, localSt)){
         cur.__pending = true;
         cur.__saveState = 'error';
         cur.__saveErr = String(err || 'error');
-        statusStore[id] = cur;
+        statusStore[fid] = cur;
         saveStatusStore(statusStore);
       }
     }catch(e){}
@@ -1852,7 +1926,24 @@ function remoteWriteStatus(payload){
   });
 }
 
+function remoteWriteRef(comune, refsArr){
+  if(!REMOTE_API_URL) return Promise.resolve({ ok:false, error:'no REMOTE_API_URL' });
+  const com = String(comune||'').trim();
+  const payload = { comune: com, referenti: Array.isArray(refsArr)?refsArr:[], deviceId: DEVICE_ID };
+  remotePostFormOnly('ref', payload);
+
+  return confirmRemoteRefs(com, payload.referenti).then((res)=>{
+    try{
+      if(res && res.ok){
+        if(refPending && refPending[com]){ delete refPending[com]; saveRefPending(refPending); }
+      }
+    }catch(e){}
+    return res;
+  }).catch((err)=>({ ok:false, error:String(err||'error') }));
+}
+
 function remotePutRef(payload){
+
   if(!REMOTE_API_URL) return Promise.resolve({ ok:false, error:'no REMOTE_API_URL' });
   const k = encodeURIComponent(REMOTE_WRITE_KEY || '');
   const url = REMOTE_API_URL + '?action=putRef&k=' + k + '&payload=' + encodeURIComponent(JSON.stringify(payload || {}));
@@ -1862,6 +1953,7 @@ function remotePutRef(payload){
       if(res && res.ok){
         __remoteOnline = true;
         __remoteLastSync = new Date();
+      try{ if(data.version){ __remoteServerVer = String(data.version); } }catch(e){}
         setSyncBadge(true, 'ONLINE');
         return res;
       }
@@ -1952,6 +2044,7 @@ async function fetchRemoteAll(reason){
     if(data && data.ok){
       __remoteOnline = true;
       __remoteLastSync = new Date();
+      try{ if(data.version){ __remoteServerVer = String(data.version); } }catch(e){}
 
       if(data.status && typeof data.status === 'object'){
         const remoteObj = data.status || {};
@@ -2846,7 +2939,7 @@ elTr.textContent = String(counts.trattativa);
     if(selectedComuneNome) return; // mai disturbare in vista comune
 
     const first = !window.__msShownOnce;
-    const key = [counts.aderisce, counts.contattare, total].join('|');
+    const key = [counts.aderisce, counts.contattare].join('|');
     const prevKey = window.__msPrevKey;
     const changed = (prevKey != null) && (prevKey !== key);
     window.__msPrevKey = key;
@@ -3197,7 +3290,7 @@ document.getElementById("btnAddRef").addEventListener("click", () => {
     if(REMOTE_API_URL){
       refPending[selectedComuneNome] = Date.now();
       saveRefPending(refPending);
-      remotePutRef({ comune: selectedComuneNome, referenti: referentiComune[selectedComuneNome]||[], deviceId: DEVICE_ID }).then(()=>{ scheduleRemotePullSoon(); }).catch(()=>{});
+      remoteWriteRef(selectedComuneNome, referentiComune[selectedComuneNome]||[]).then(()=>{ scheduleRemotePullSoon(); }).catch(()=>{});
     }
   }catch(e){}
   aggiornaStiliComuni();
@@ -3232,7 +3325,7 @@ refList.addEventListener("click", (ev) => {
       if(REMOTE_API_URL){
         refPending[selectedComuneNome] = Date.now();
         saveRefPending(refPending);
-        remotePutRef({ comune: selectedComuneNome, referenti: referentiComune[selectedComuneNome]||[], deviceId: DEVICE_ID }).then(()=>{ scheduleRemotePullSoon(); }).catch(()=>{});
+        remoteWriteRef(selectedComuneNome, referentiComune[selectedComuneNome]||[]).then(()=>{ scheduleRemotePullSoon(); }).catch(()=>{});
         scheduleRemotePullSoon();
       }
     }catch(e){}
