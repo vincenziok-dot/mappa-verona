@@ -1612,7 +1612,7 @@ function setSt(id, next){
   }catch(e){}
   statusStore[id] = next;
   saveStatusStore(statusStore);
-  try{ if(REMOTE_API_URL){ remotePost('status', toRemoteStatus(id, next)); setSyncBadge(__remoteOnline, __remoteOnline?'ONLINE':'OFFLINE'); scheduleRemotePullSoon(); } }catch(e){}
+  try{ if(REMOTE_API_URL){ remotePutStatus(toRemoteStatus(id, next)).then(()=>{ scheduleRemotePullSoon(); }).catch(()=>{}); setSyncBadge(__remoteOnline, __remoteOnline?'ONLINE':'OFFLINE'); scheduleRemotePullSoon(); } }catch(e){}
 }
 
 /* ===============================
@@ -1670,7 +1670,7 @@ function jsonp(url){
   return new Promise((resolve,reject)=>{
     const cb = 'spgcb_' + Math.random().toString(36).slice(2);
     const s = document.createElement('script');
-    const timer = setTimeout(()=>{ cleanup(); reject(new Error('timeout')); }, 9000);
+    const timer = setTimeout(()=>{ cleanup(); reject(new Error('timeout')); }, 15000);
     function cleanup(){
       clearTimeout(timer);
       try{ delete window[cb]; }catch(e){}
@@ -1758,6 +1758,47 @@ function remotePost(kind, payloadObj){
     form.action = REMOTE_API_URL;
     form.submit();
   }catch(e){}
+}
+
+// Scrittura cloud via JSONP GET (piu' affidabile su GitHub Pages: nessun CORS, risposta leggibile)
+function remotePutStatus(payload){
+  if(!REMOTE_API_URL) return Promise.resolve({ ok:false, error:'no REMOTE_API_URL' });
+  const url = REMOTE_API_URL + '?action=putStatus&payload=' + encodeURIComponent(JSON.stringify(payload));
+  return jsonp(url).then((res)=>{
+    try{
+      setSyncBadge(true, 'online');
+      // se il cloud conferma, tolgo pending per questa farmacia
+      if(res && res.ok && payload && payload.farmacia_id){
+        try{
+          delete statusPending[payload.farmacia_id];
+          saveStatusPending(statusPending);
+        }catch(e){}
+      }
+    }catch(e){}
+    return res;
+  }).catch((err)=>{
+    try{ setSyncBadge(false, 'offline'); }catch(e){}
+    return { ok:false, error:String(err||'error') };
+  });
+}
+function remotePutRef(payload){
+  if(!REMOTE_API_URL) return Promise.resolve({ ok:false, error:'no REMOTE_API_URL' });
+  const url = REMOTE_API_URL + '?action=putRef&payload=' + encodeURIComponent(JSON.stringify(payload));
+  return jsonp(url).then((res)=>{
+    try{
+      setSyncBadge(true, 'online');
+      if(res && res.ok && payload && payload.comune){
+        try{
+          delete refPending[payload.comune];
+          saveRefPending(refPending);
+        }catch(e){}
+      }
+    }catch(e){}
+    return res;
+  }).catch((err)=>{
+    try{ setSyncBadge(false, 'offline'); }catch(e){}
+    return { ok:false, error:String(err||'error') };
+  });
 }
 
 function toRemoteStatus(id, st){
@@ -3043,8 +3084,7 @@ document.getElementById("btnAddRef").addEventListener("click", () => {
     if(REMOTE_API_URL){
       refPending[selectedComuneNome] = Date.now();
       saveRefPending(refPending);
-      remotePost('ref', { comune: selectedComuneNome, referenti: referentiComune[selectedComuneNome]||[], deviceId: DEVICE_ID });
-      scheduleRemotePullSoon();
+      remotePutRef({ comune: selectedComuneNome, referenti: referentiComune[selectedComuneNome]||[], deviceId: DEVICE_ID }).then(()=>{ scheduleRemotePullSoon(); }).catch(()=>{});
     }
   }catch(e){}
   aggiornaStiliComuni();
@@ -3079,7 +3119,7 @@ refList.addEventListener("click", (ev) => {
       if(REMOTE_API_URL){
         refPending[selectedComuneNome] = Date.now();
         saveRefPending(refPending);
-        remotePost('ref', { comune: selectedComuneNome, referenti: referentiComune[selectedComuneNome]||[], deviceId: DEVICE_ID });
+        remotePutRef({ comune: selectedComuneNome, referenti: referentiComune[selectedComuneNome]||[], deviceId: DEVICE_ID }).then(()=>{ scheduleRemotePullSoon(); }).catch(()=>{});
         scheduleRemotePullSoon();
       }
     }catch(e){}
