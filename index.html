@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Campagna SpG Verona · rev2.2.4 LIVE</title>
+<title>Campagna SpG Verona · rev2.2.8 LIVE</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -340,6 +340,15 @@ textarea.inlineInput{ min-height: 64px; resize: vertical; }
   background:#ffffff;
   color:#0b0b0b;
   border-color:#d8d8d8;
+}
+.savePending{
+  margin-top:8px;
+  font-size:12px;
+  padding:6px 8px;
+  border-radius: 10px;
+  background: rgba(255, 170, 0, 0.18);
+  border: 1px solid rgba(255, 170, 0, 0.45);
+  color: #7a4b00;
 }
 .smallLink{ font-size:12px; }
 .smallLink a{ color:#0b0b0b; font-weight:700; text-decoration:none; }
@@ -1312,7 +1321,7 @@ const AUTO_MOBILE = window.matchMedia("(max-width: 720px)").matches || /Mobi|And
    - GET via JSONP (no CORS)
    - POST via hidden form + iframe (no CORS)
 ================================ */
-const REMOTE_API_URL = "https://script.google.com/macros/s/AKfycbwsG88UnPzTXDzjcTLHEMF1okA9cVAZo-ISdC8CTg_VLZXR43sBO5j10drm8WsAJxUCZA/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
+const REMOTE_API_URL = "https://script.google.com/macros/s/AKfycbzHOqje8TunaF5IgtjQR-5_wsy9c9-tH7rjhE9qTGrUskxWcoFiQ6hhkw_DNVg8woza/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
 const REMOTE_WRITE_KEY = ""; // opzionale: parola chiave anti-spam (se la imposti anche nello script)
 // Poll piu' frequente per vedere gli aggiornamenti degli altri utenti piu' rapidamente
 const REMOTE_POLL_MS = 8000;
@@ -1612,7 +1621,7 @@ function setSt(id, next){
   }catch(e){}
   statusStore[id] = next;
   saveStatusStore(statusStore);
-  try{ if(REMOTE_API_URL){ remotePutStatus(toRemoteStatus(id, next)).then(()=>{ scheduleRemotePullSoon(); }).catch(()=>{}); setSyncBadge(__remoteOnline, __remoteOnline?'ONLINE':'OFFLINE'); scheduleRemotePullSoon(); } }catch(e){}
+  try{ if(REMOTE_API_URL){ remoteWriteStatus(toRemoteStatus(id, next)); } }catch(e){}
 }
 
 /* ===============================
@@ -1774,12 +1783,7 @@ function remotePutStatus(payload){
         __remoteOnline = true;
         __remoteLastSync = new Date();
         setSyncBadge(true, 'ONLINE');
-        // Se il cloud conferma, togli pending locale (se presente)
-        try{
-          if(payload && payload.farmacia_id && statusStore[payload.farmacia_id]){
-            statusStore[payload.farmacia_id].__pending = false;
-          }
-        }catch(e){}
+        // Nota: NON togliamo __pending qui; lo risolviamo solo quando il pull vede il dato nel cloud.
         return res;
       }
     }catch(e){}
@@ -1795,6 +1799,34 @@ function remotePutStatus(payload){
     return { ok:false, error:String(err || 'error') };
   });
 }
+
+// Scrittura cloud status: usa POST (piu' robusto, niente limiti URL), poi un pull rapido.
+// Se il payload e' piccolo prova anche JSONP per ottenere un ACK leggibile (solo per badge online).
+function remoteWriteStatus(payload){
+  if(!REMOTE_API_URL) return;
+  const obj = payload || {};
+  // 1) POST fire-and-forget (beacon/fetch/form) -> affidabile anche con note lunghe
+  try{ remotePost('status', obj); }catch(e){}
+  // 2) Pull ravvicinato per riflettere subito le modifiche sugli altri dispositivi
+  try{ scheduleRemotePullSoon(); }catch(e){}
+
+  // 3) ACK opzionale via JSONP solo se piccolo (evita problemi di lunghezza URL)
+  try{
+    const str = JSON.stringify(obj);
+    if(str.length < 900){
+      const k = encodeURIComponent(REMOTE_WRITE_KEY || '');
+      const url = REMOTE_API_URL + '?action=putStatus&k=' + k + '&payload=' + encodeURIComponent(str);
+      jsonp(url).then((res)=>{
+        if(res && res.ok){
+          __remoteOnline = true;
+          __remoteLastSync = new Date();
+          setSyncBadge(true, 'ONLINE');
+        }
+      }).catch(()=>{});
+    }
+  }catch(e){}
+}
+
 function remotePutRef(payload){
   if(!REMOTE_API_URL) return Promise.resolve({ ok:false, error:'no REMOTE_API_URL' });
   const k = encodeURIComponent(REMOTE_WRITE_KEY || '');
@@ -1826,7 +1858,7 @@ function toRemoteStatus(id, st){
     farmacia_id: id,
     stato: st.state || 'contattare',
     chiusa: !!st.closed,
-    incaricati: Array.isArray(st.owners) ? st.owners.join('|') : '',
+    incaricati: normalizeOwners(st.owners).join('|'),
     note: st.note || '',
     poster: !!flags.poster,
     boicotta: !!flags.boicotta,
@@ -2336,6 +2368,7 @@ function buildPopupHtml(row, farmaciaId){
       <button data-role="save">Salva e chiudi</button>
       <button class="secondary" data-role="reset">Chiudi senza salvare</button>
     </div>
+    ${st.__pending ? `<div class="savePending">⚠️ Salvataggio online in corso… (se resta così, premi “Sincronizza ora”)</div>` : ``}
   </div>`;
 }
 
@@ -2771,12 +2804,37 @@ elTr.textContent = String(counts.trattativa);
   if(cTot) cTot.textContent = String(total || 0);
   if(cNc) cNc.textContent = String(counts.contattare || 0);
 
-  // Auto-collapse (mobile) dopo 3s
+  // Mobile: NON aprire automaticamente ad ogni refresh.
+  // Regola: mostra "aperto" solo all'avvio (1 volta) o se cambiano i numeri (stesso scope).
   const ms = document.getElementById("mapStats");
   if(ms && uiMode==="mobile"){
-    ms.classList.remove("ms-collapsed");
-    clearTimeout(window.__msAutoTimer);
-    window.__msAutoTimer = setTimeout(()=>{ ms.classList.add("ms-collapsed"); }, 3000);
+    const scope = selectedComuneNome ? ('comune:' + selectedComuneNome) : 'global';
+    const key = [counts.aderisce, counts.contattare, counts.trattativa, counts.rifiuta, total].join('|');
+
+    const first = !window.__msShownOnce;
+    const sameScope = (window.__msPrevScope === scope);
+    const prevKey = window.__msPrevKey;
+
+    const countsChanged = sameScope && (prevKey != null) && (prevKey !== key);
+
+    // Salva tracking per la prossima chiamata
+    window.__msPrevScope = scope;
+    window.__msPrevKey = key;
+
+    // Se cambio scope (es. selezione comune) non disturbare l'utente.
+    if(!sameScope && !first) return;
+
+    // Mostra solo: (a) prima volta oppure (b) numeri cambiati
+    if(first || countsChanged){
+      window.__msShownOnce = true;
+
+      // Non forzare apertura se l'utente l'ha già aperta manualmente (ms-expanded)
+      if(!ms.classList.contains("ms-expanded")){
+        ms.classList.remove("ms-collapsed");
+      }
+      clearTimeout(window.__msAutoTimer);
+      window.__msAutoTimer = setTimeout(()=>{ ms.classList.add("ms-collapsed"); }, 4000);
+    }
   }
 }
 
