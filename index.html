@@ -1326,7 +1326,7 @@ const AUTO_MOBILE = window.matchMedia("(max-width: 720px)").matches || /Mobi|And
    - GET via JSONP (no CORS)
    - POST via hidden form + iframe (no CORS)
 ================================ */
-const REMOTE_API_URL_RAW = "https://script.google.com/macros/s/AKfycbwsG88UnPzTXDzjcTLHEMF1okA9cVAZo-ISdC8CTg_VLZXR43sBO5j10drm8WsAJxUCZA/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
+const REMOTE_API_URL_RAW = "https://script.google.com/macros/s/AKfycby8M6TcvBdZ0abjO2Ct1QS0vC6X5PvS_R6Bctwj-MqBMcHUB8NB35I9KXfitoorKyk7_g/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
 const REMOTE_API_URL = (REMOTE_API_URL_RAW || "").split('#')[0].split('?')[0]; // sicurezza: rimuove ?action=... se incollato per sbaglio
 const REMOTE_WRITE_KEY = ""; // opzionale: parola chiave anti-spam (se la imposti anche nello script)
 // Poll piu' frequente per vedere gli aggiornamenti degli altri utenti piu' rapidamente
