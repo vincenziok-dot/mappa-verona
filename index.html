@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Campagna SpG Verona · rev2.2.9 LIVE</title>
+<title>Campagna SpG Verona · ver3.0.1 LIVE</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -1326,11 +1326,12 @@ const AUTO_MOBILE = window.matchMedia("(max-width: 720px)").matches || /Mobi|And
    - GET via JSONP (no CORS)
    - POST via hidden form + iframe (no CORS)
 ================================ */
-const REMOTE_API_URL_RAW = "https://script.google.com/macros/s/AKfycbzHOqje8TunaF5IgtjQR-5_wsy9c9-tH7rjhE9qTGrUskxWcoFiQ6hhkw_DNVg8woza/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
+const REMOTE_API_URL_RAW = "https://script.google.com/macros/s/AKfycbwsG88UnPzTXDzjcTLHEMF1okA9cVAZo-ISdC8CTg_VLZXR43sBO5j10drm8WsAJxUCZA/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
 const REMOTE_API_URL = (REMOTE_API_URL_RAW || "").split('#')[0].split('?')[0]; // sicurezza: rimuove ?action=... se incollato per sbaglio
 const REMOTE_WRITE_KEY = ""; // opzionale: parola chiave anti-spam (se la imposti anche nello script)
 // Poll piu' frequente per vedere gli aggiornamenti degli altri utenti piu' rapidamente
 const REMOTE_POLL_MS = 8000;
+const CLIENT_VERSION = '3.0.1';
 
 let uiMode = localStorage.getItem(UI_MODE_KEY) || (AUTO_MOBILE ? "mobile" : "desktop");
 let showChooser = true;
@@ -1514,6 +1515,25 @@ function closeUiChooser(){
   document.body.classList.remove("chooser-open");
 }
 
+
+// Toast (desktop + mobile)
+let __toastTimer = null;
+function showToast(msg, type='info', ms=2600){
+  try{
+    let t = document.getElementById('toast');
+    if(!t){
+      t = document.createElement('div');
+      t.id = 'toast';
+      document.body.appendChild(t);
+    }
+    t.setAttribute('data-type', type);
+    t.textContent = String(msg||'');
+    t.classList.add('show');
+    clearTimeout(__toastTimer);
+    __toastTimer = setTimeout(()=>{ try{ t.classList.remove('show'); }catch(e){} }, ms);
+  }catch(e){}
+}
+
 let interactionMode = "farmacie"; // "comuni" | "farmacie"
 function setInteractionMode(mode){
   interactionMode = (mode === "comuni") ? "comuni" : "farmacie";
@@ -1564,6 +1584,10 @@ let statusStore = loadStatusStore();
 const STATUS_PENDING_TTL_MS = 60 * 60 * 1000; // 1 ora
 const REF_PENDING_TTL_MS = 60 * 60 * 1000;
 const REF_PENDING_KEY = 'spg_refs_pending_rev2';
+const REF_REMOTE_AT_KEY = 'spg_refs_remote_at_rev3';
+function loadRefRemoteAt(){ try{ return JSON.parse(localStorage.getItem(REF_REMOTE_AT_KEY)||'{}'); }catch(e){ return {}; } }
+function saveRefRemoteAt(obj){ try{ localStorage.setItem(REF_REMOTE_AT_KEY, JSON.stringify(obj||{})); }catch(e){} }
+let refRemoteAt = loadRefRemoteAt();
 function loadRefPending(){
   try{ return JSON.parse(localStorage.getItem(REF_PENDING_KEY) || '{}'); }catch(e){ return {}; }
 }
@@ -1783,34 +1807,12 @@ function remotePost(kind, payloadObj){
 
 // Scrittura cloud via JSONP GET (piu' affidabile su GitHub Pages: nessun CORS, risposta leggibile)
 function remotePutStatus(payload){
-  // Scrittura cloud dello status farmacia.
-  // Robustezza: prova JSONP (con risposta). Se fallisce o ok:false, fallback a POST (fire-and-forget).
+  // JSONP write (leggiamo l'ACK, niente CORS).
   if(!REMOTE_API_URL) return Promise.resolve({ ok:false, error:'no REMOTE_API_URL' });
   const k = encodeURIComponent(REMOTE_WRITE_KEY || '');
-  const url = REMOTE_API_URL + '?action=putStatus&k=' + k + '&payload=' + encodeURIComponent(JSON.stringify(payload || {}));
-
-  return jsonp(url).then((res)=>{
-    if(res && res.ok){
-      try{
-        __remoteOnline = true;
-        __remoteLastSync = new Date();
-      try{ if(data.version){ __remoteServerVer = String(data.version); } }catch(e){}
-        setSyncBadge(true, 'ONLINE');
-        // Pull ravvicinato per propagare sugli altri device
-        scheduleRemotePullSoon();
-      }catch(e){}
-      return res;
-    }
-    // ok:false oppure risposta non valida -> fallback POST
-    try{ remotePost('status', payload || {}); }catch(e){}
-    try{ scheduleRemotePullSoon(); }catch(e){}
-    return res || { ok:false, error:'write failed' };
-  }).catch((err)=>{
-    // timeout/load error -> fallback POST
-    try{ remotePost('status', payload || {}); }catch(e){}
-    try{ scheduleRemotePullSoon(); }catch(e){}
-    return { ok:false, error:String(err || 'error') };
-  });
+  const p = encodeURIComponent(JSON.stringify(payload || {}));
+  const url = REMOTE_API_URL + '?action=putStatus&k=' + k + '&payload=' + p;
+  return jsonp(url);
 }
 
 // Scrittura cloud status: usa POST (piu' robusto, niente limiti URL), poi un pull rapido.
@@ -1886,87 +1888,149 @@ async function confirmRemoteRefs(comune, arr, attempts=6, waitMs=1200){
 function remoteWriteStatus(id, localSt){
   if(!REMOTE_API_URL) return Promise.resolve({ ok:false, error:'no REMOTE_API_URL' });
   const fid = String(id||'').trim();
+  const base = statusStore[fid] || {};
   const payload = toRemoteStatus(fid, localSt || defaultStatus());
+  payload.deviceId = DEVICE_ID;
+  payload.ifMatchUpdatedAt = base.__remoteUpdatedAt || '';
 
-  // invio (non leggiamo la risposta)
-  remotePostFormOnly('status', payload);
+  // marca saving subito
+  try{
+    const cur = statusStore[fid];
+    if(cur && statusEquivalent(cur, localSt)){
+      cur.__pending = true;
+      cur.__saveState = 'saving';
+      cur.__saveErr = '';
+      cur.__localTs = Date.now();
+      statusStore[fid] = cur;
+      saveStatusStore(statusStore);
+    }
+  }catch(e){}
 
-  // conferma dal cloud
-  return confirmRemoteStatus(payload.farmacia_id || fid, localSt || defaultStatus()).then((res)=>{
+  const payloadStr = JSON.stringify(payload||{});
+  const canGet = payloadStr.length <= 1600; // evita URL troppo lunghi
+
+  const finalize = (res)=>{
     try{
       const cur = statusStore[fid];
-      if(cur && statusEquivalent(cur, localSt)){
-        if(res && res.ok){
-          cur.__pending = false;
-          cur.__saveState = 'ok';
-          cur.__saveErr = '';
-          cur.__lastSavedAt = Date.now();
-        }else{
-          cur.__pending = true;
-          cur.__saveState = 'error';
-          cur.__saveErr = (res && res.error) ? String(res.error) : 'not confirmed';
-        }
-        statusStore[fid] = cur;
+      if(!cur) return res;
+      if(!statusEquivalent(cur, localSt)) return res;
+
+      if(res && res.ok){
+        cur.__pending = false;
+        cur.__saveState = 'ok';
+        cur.__saveErr = '';
+        cur.__lastSavedAt = Date.now();
+        if(res.updated_at) cur.__remoteUpdatedAt = String(res.updated_at);
         saveStatusStore(statusStore);
-      }
-    }catch(e){}
-    return res;
-  }).catch((err)=>{
-    try{
-      const cur = statusStore[fid];
-      if(cur && statusEquivalent(cur, localSt)){
+        showToast('✅ Salvato online', 'ok');
+      }else{
+        const err = (res && (res.error || res.message)) ? String(res.error || res.message) : 'errore';
         cur.__pending = true;
-        cur.__saveState = 'error';
-        cur.__saveErr = String(err || 'error');
-        statusStore[fid] = cur;
+        cur.__saveState = (err === 'conflict') ? 'conflict' : 'error';
+        cur.__saveErr = (err === 'conflict') ? 'conflitto: qualcun altro ha salvato prima. Aggiorna e riprova.' : err;
         saveStatusStore(statusStore);
+        showToast('❌ Non salvato online: ' + cur.__saveErr, (err==='conflict')?'warn':'error', 3800);
       }
     }catch(e){}
-    return { ok:false, error:String(err || 'error') };
-  });
+    try{ scheduleRemotePullSoon(); }catch(e){}
+    return res;
+  };
+
+  // 1) prova JSONP (ACK immediato)
+  if(canGet){
+    return remotePutStatus(payload).then((res)=>{
+      try{
+        if(res && res.version) __remoteServerVer = String(res.version);
+        __remoteOnline = !!(res && res.ok);
+        __remoteLastSync = new Date();
+        setSyncBadge(true, 'ONLINE');
+      }catch(e){}
+      return finalize(res);
+    }).catch((err)=>{
+      return finalize({ ok:false, error:String(err||'error') });
+    });
+  }
+
+  // 2) fallback POST + conferma via snapshot
+  try{ remotePostFormOnly('status', payload); }catch(e){}
+  return confirmRemoteStatus(payload.farmacia_id || fid, localSt || defaultStatus()).then((res)=>{
+    if(res && res.ok){
+      // prova ad aggiornare remoteUpdatedAt pescandolo dal cloud
+      try{
+        return remoteGetSnapshot().then(d=>{
+          try{
+            const r = d && d.status && d.status[fid];
+            if(r && r.updated_at){
+              res.updated_at = r.updated_at;
+              res.version = d.version;
+            }
+          }catch(_e){}
+          return finalize(res);
+        }).catch(()=>finalize(res));
+      }catch(e){ return finalize(res); }
+    }
+    return finalize(res);
+  }).catch((err)=> finalize({ ok:false, error:String(err||'error') }));
 }
 
 function remoteWriteRef(comune, refsArr){
   if(!REMOTE_API_URL) return Promise.resolve({ ok:false, error:'no REMOTE_API_URL' });
   const com = String(comune||'').trim();
-  const payload = { comune: com, referenti: Array.isArray(refsArr)?refsArr:[], deviceId: DEVICE_ID };
-  remotePostFormOnly('ref', payload);
+  const payload = { comune: com, referenti: Array.isArray(refsArr)?refsArr:[], deviceId: DEVICE_ID, ifMatchUpdatedAt: (refRemoteAt && refRemoteAt[com]) ? refRemoteAt[com] : '' };
 
-  return confirmRemoteRefs(com, payload.referenti).then((res)=>{
-    try{
-      if(res && res.ok){
-        if(refPending && refPending[com]){ delete refPending[com]; saveRefPending(refPending); }
-      }
-    }catch(e){}
+  // pending anti-revert
+  try{ refPending[com] = Date.now(); saveRefPending(refPending); }catch(e){}
+
+  const payloadStr = JSON.stringify(payload||{});
+  const canGet = payloadStr.length <= 1600;
+
+  const finalize = (res)=>{
+    if(res && res.ok){
+      try{
+        if(res.updated_at){ refRemoteAt[com] = String(res.updated_at); saveRefRemoteAt(refRemoteAt); }
+        delete refPending[com]; saveRefPending(refPending);
+        showToast('✅ Referenti comune salvati', 'ok');
+      }catch(e){}
+    }else{
+      const err = (res && (res.error || res.message)) ? String(res.error || res.message) : 'errore';
+      const msg = (err==='conflict') ? 'conflitto: qualcun altro ha salvato prima. Aggiorna e riprova.' : err;
+      showToast('❌ Referenti non salvati: ' + msg, (err==='conflict')?'warn':'error', 3800);
+    }
+    try{ scheduleRemotePullSoon(); }catch(e){}
     return res;
-  }).catch((err)=>({ ok:false, error:String(err||'error') }));
+  };
+
+  if(canGet){
+    return remotePutRef(payload).then((res)=>{
+      try{ if(res && res.version) __remoteServerVer = String(res.version); __remoteOnline = true; __remoteLastSync = new Date(); setSyncBadge(true,'ONLINE'); }catch(e){}
+      return finalize(res);
+    }).catch((err)=> finalize({ ok:false, error:String(err||'error') }));
+  }
+
+  // fallback POST + conferma
+  remotePostFormOnly('ref', payload);
+  return confirmRemoteRefs(com, payload.referenti).then((res)=>{
+    if(res && res.ok){
+      // aggiorna updatedAt dal cloud se presente
+      try{
+        return remoteGetSnapshot().then(d=>{
+          try{
+            if(d && d.refs_meta && d.refs_meta[com]) res.updated_at = d.refs_meta[com];
+          }catch(_e){}
+          return finalize(res);
+        }).catch(()=>finalize(res));
+      }catch(e){ return finalize(res); }
+    }
+    return finalize(res);
+  }).catch((err)=> finalize({ ok:false, error:String(err||'error') }));
 }
 
 function remotePutRef(payload){
-
   if(!REMOTE_API_URL) return Promise.resolve({ ok:false, error:'no REMOTE_API_URL' });
   const k = encodeURIComponent(REMOTE_WRITE_KEY || '');
-  const url = REMOTE_API_URL + '?action=putRef&k=' + k + '&payload=' + encodeURIComponent(JSON.stringify(payload || {}));
-
-  return jsonp(url).then((res)=>{
-    try{
-      if(res && res.ok){
-        __remoteOnline = true;
-        __remoteLastSync = new Date();
-      try{ if(data.version){ __remoteServerVer = String(data.version); } }catch(e){}
-        setSyncBadge(true, 'ONLINE');
-        return res;
-      }
-    }catch(e){}
-    // fallback POST (compat)
-    try{ remotePost('ref', payload || {}); }catch(e){}
-    try{ scheduleRemotePullSoon(); }catch(e){}
-    return res || { ok:false, error:'write failed' };
-  }).catch((err)=>{
-    try{ remotePost('ref', payload || {}); }catch(e){}
-    try{ scheduleRemotePullSoon(); }catch(e){}
-    return { ok:false, error:String(err || 'error') };
-  });
+  const p = encodeURIComponent(JSON.stringify(payload || {}));
+  const url = REMOTE_API_URL + '?action=putRef&k=' + k + '&payload=' + p;
+  return jsonp(url);
 }
 
 function toRemoteStatus(id, st){
@@ -1996,7 +2060,8 @@ function fromRemoteStatus(obj){
     owners: owners,
     note: obj.note || '',
     flags: { poster: !!obj.poster, boicotta: !!obj.boicotta, promo: !!obj.promo, info: !!obj.info },
-    closed: !!obj.chiusa
+    closed: !!obj.chiusa,
+    __remoteUpdatedAt: obj.updated_at || ''
   };
 }
 
@@ -2081,6 +2146,13 @@ async function fetchRemoteAll(reason){
 
       if(data.refs && typeof data.refs === 'object'){
         const remoteObj = data.refs || {};
+        const metaObj = (data.refs_meta && typeof data.refs_meta==='object') ? data.refs_meta : null;
+        if(metaObj){
+          try{
+            for(const comk of Object.keys(metaObj)){ refRemoteAt[comk] = String(metaObj[comk]||''); }
+            saveRefRemoteAt(refRemoteAt);
+          }catch(e){}
+        }
         const now = Date.now();
         const remoteKeys = Object.keys(remoteObj);
         const oldRefs = { ...referentiComune };
@@ -2491,7 +2563,7 @@ function buildPopupHtml(row, farmaciaId){
       <button class="secondary" data-role="reset">Chiudi senza salvare</button>
     </div>
     ${
-      (st.__saveState === 'error')
+      (st.__saveState === 'error' || st.__saveState === 'conflict')
         ? `<div class="savePending err">❌ <b>Non salvato online</b>: ${esc(st.__saveErr||'errore')}<br/><small>Premi “Sincronizza ora” o riprova più tardi.</small></div>`
         : (st.__pending ? `<div class="savePending">⏳ Salvataggio online…</div>` : ``)
     }
@@ -3909,6 +3981,34 @@ body.ui-mobile .leaflet-popup-content{
 body.ui-mobile #mobileHint{ display:block; }
 #mobileHint.show{ opacity:1; }
 
+
+/* === Toast (salvataggi / conflitti) === */
+#toast{
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:18px;
+  z-index:10050;
+  background:rgba(0,0,0,.78);
+  border:1px solid rgba(0,255,156,.22);
+  color:#eafff7;
+  padding:10px 12px;
+  border-radius: 14px;
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.02em;
+  max-width: calc(100vw - 24px);
+  box-shadow: 0 0 18px rgba(0,0,0,.55);
+  backdrop-filter: blur(3px);
+  opacity:0;
+  transition: opacity .18s ease, transform .18s ease;
+  pointer-events:none;
+}
+#toast.show{ opacity:1; transform:translateX(-50%) translateY(-4px); }
+#toast[data-type=error]{ border-color: rgba(255,80,80,.35); }
+#toast[data-type=ok]{ border-color: rgba(0,255,156,.35); }
+#toast[data-type=warn]{ border-color: rgba(255,180,0,.45); }
+
 </style></head><body>
     <h1>${esc(title)}</h1>
     <div class="meta">Export: ${esc(stats.data_export)} · <span class="pill">Aderiscono: ${stats.aderisce}/${stats.totale} (${stats.aderisce_pct}%)</span></div>
@@ -4050,6 +4150,34 @@ body.ui-mobile .leaflet-popup-content{
 }
 body.ui-mobile #mobileHint{ display:block; }
 #mobileHint.show{ opacity:1; }
+
+
+/* === Toast (salvataggi / conflitti) === */
+#toast{
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:18px;
+  z-index:10050;
+  background:rgba(0,0,0,.78);
+  border:1px solid rgba(0,255,156,.22);
+  color:#eafff7;
+  padding:10px 12px;
+  border-radius: 14px;
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.02em;
+  max-width: calc(100vw - 24px);
+  box-shadow: 0 0 18px rgba(0,0,0,.55);
+  backdrop-filter: blur(3px);
+  opacity:0;
+  transition: opacity .18s ease, transform .18s ease;
+  pointer-events:none;
+}
+#toast.show{ opacity:1; transform:translateX(-50%) translateY(-4px); }
+#toast[data-type=error]{ border-color: rgba(255,80,80,.35); }
+#toast[data-type=ok]{ border-color: rgba(0,255,156,.35); }
+#toast[data-type=warn]{ border-color: rgba(255,180,0,.45); }
 
 </style>
 </head>
