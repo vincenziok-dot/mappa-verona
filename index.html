@@ -1317,7 +1317,7 @@ async function fetchFirst(paths, type){
 /* ===============================
    UI MODE (mobile/desktop) + interaction mode
 ================================ */
-const UI_MODE_KEY = "spg_ui_mode_rev2";
+const UI_MODE_KEY = "spg_ui_mode_rev3";
 const AUTO_MOBILE = window.matchMedia("(max-width: 720px)").matches || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 
@@ -1331,7 +1331,7 @@ const REMOTE_API_URL = (REMOTE_API_URL_RAW || "").split('#')[0].split('?')[0]; /
 const REMOTE_WRITE_KEY = ""; // opzionale: parola chiave anti-spam (se la imposti anche nello script)
 // Poll piu' frequente per vedere gli aggiornamenti degli altri utenti piu' rapidamente
 const REMOTE_POLL_MS = 8000;
-const CLIENT_VERSION = '3.0.1';
+const CLIENT_VERSION = '3.0.3';
 
 let uiMode = localStorage.getItem(UI_MODE_KEY) || (AUTO_MOBILE ? "mobile" : "desktop");
 let showChooser = true;
@@ -1485,7 +1485,7 @@ function applyUiMode(){
 
 function showMobileHintOnce(){
   if(uiMode !== "mobile") return;
-  const key = "spg_mobile_hint_seen_rev2";
+  const key = "spg_mobile_hint_seen_rev3";
   try{
     if(sessionStorage.getItem(key)) return;
     sessionStorage.setItem(key, "1");
@@ -1568,7 +1568,7 @@ function setInteractionMode(mode){
 /* ===============================
    STATUS STORE (localStorage)
 ================================ */
-const STATUS_STORE_KEY = "spg_farmacie_status_rev2";
+const STATUS_STORE_KEY = "spg_farmacie_status_rev3";
 function loadStatusStore(){
   try { return JSON.parse(localStorage.getItem(STATUS_STORE_KEY) || "{}"); }
   catch(e){ return {}; }
@@ -1583,7 +1583,7 @@ let statusStore = loadStatusStore();
 // (evita che un pull immediato sovrascriva una modifica appena fatta).
 const STATUS_PENDING_TTL_MS = 60 * 60 * 1000; // 1 ora
 const REF_PENDING_TTL_MS = 60 * 60 * 1000;
-const REF_PENDING_KEY = 'spg_refs_pending_rev2';
+const REF_PENDING_KEY = 'spg_refs_pending_rev3';
 const REF_REMOTE_AT_KEY = 'spg_refs_remote_at_rev3';
 function loadRefRemoteAt(){ try{ return JSON.parse(localStorage.getItem(REF_REMOTE_AT_KEY)||'{}'); }catch(e){ return {}; } }
 function saveRefRemoteAt(obj){ try{ localStorage.setItem(REF_REMOTE_AT_KEY, JSON.stringify(obj||{})); }catch(e){} }
@@ -1660,7 +1660,7 @@ function setSt(id, next){
 /* ===============================
    REFERENTI COMUNE (localStorage)
 ================================ */
-const REF_STORE_KEY = "spg_referenti_comune_rev2";
+const REF_STORE_KEY = "spg_referenti_comune_rev3";
 function loadRefStore(){
   try { return JSON.parse(localStorage.getItem(REF_STORE_KEY) || "{}"); }
   catch(e){ return {}; }
@@ -1684,6 +1684,27 @@ let __remoteServerVer = "";
 
 let __remotePollTimer = null;
 let __remotePulling = false;
+let __suspendPopupRefresh = false;
+// Su mobile: mentre l'utente sta digitando nel popup, evitiamo refresh del contenuto popup (altrimenti perde focus e scompare la tastiera)
+document.addEventListener('focusin', (ev)=>{
+  try{
+    const t = ev.target;
+    if(t && t.closest && t.closest('.leaflet-popup')) __suspendPopupRefresh = true;
+  }catch(e){}
+}, true);
+document.addEventListener('focusout', (ev)=>{
+  try{
+    const t = ev.target;
+    if(t && t.closest && t.closest('.leaflet-popup')){
+      setTimeout(()=>{
+        try{
+          const a = document.activeElement;
+          if(!a || !(a.closest && a.closest('.leaflet-popup'))) __suspendPopupRefresh = false;
+        }catch(e){ __suspendPopupRefresh = false; }
+      }, 120);
+    }
+  }catch(e){}
+}, true);
 const DEVICE_ID = (() => {
   try{
     const k = 'spg_device_id';
@@ -2082,6 +2103,7 @@ function fromRemoteStatus(obj){
 
 function refreshOpenPopupsFromCloud(){
   try{
+    if(__suspendPopupRefresh) return;
     farmMarkers.forEach(f=>{
       const m = f.marker;
       if(!m || !(m.isPopupOpen && m.isPopupOpen())) return;
@@ -2817,6 +2839,7 @@ function attachPopupHandlers(marker, row, farmaciaId){
   }
 
   if(ownersInput){
+    ownersInput.addEventListener("input", () => { markDirty(); cacheNow(); }, { signal });
     ownersInput.addEventListener("keydown", (ev) => {
       if(ev.key === "Enter"){
         ev.preventDefault();
