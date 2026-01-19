@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Campagna SpG Verona · ver3.0.1 LIVE</title>
+<title>Campagna SpG Verona · ver3.0.2 LIVE</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -1945,13 +1945,27 @@ function remoteWriteStatus(id, localSt){
         __remoteLastSync = new Date();
         setSyncBadge(true, 'ONLINE');
       }catch(e){}
-      return finalize(res);
+      if(res && res.ok){
+        return finalize(res);
+      }
+      // fallback: prova POST + conferma snapshot (utile se il deploy non espone putStatus)
+      try{ remotePostFormOnly('status', payload); }catch(e){}
+      return confirmRemoteStatus(payload.farmacia_id || fid, localSt || defaultStatus()).then((r)=>{
+        if(r && r.ok) return finalize(r);
+        return finalize(res);
+      });
     }).catch((err)=>{
-      return finalize({ ok:false, error:String(err||'error') });
+      // fallback anche su errori di rete/JSONP
+      try{ remotePostFormOnly('status', payload); }catch(e){}
+      return confirmRemoteStatus(payload.farmacia_id || fid, localSt || defaultStatus()).then((r)=>{
+        if(r && r.ok) return finalize(r);
+        return finalize({ ok:false, error:String(err||'error') });
+      });
     });
   }
 
-  // 2) fallback POST + conferma via snapshot
+
+// 2) fallback POST + conferma via snapshot
   try{ remotePostFormOnly('status', payload); }catch(e){}
   return confirmRemoteStatus(payload.farmacia_id || fid, localSt || defaultStatus()).then((res)=>{
     if(res && res.ok){
@@ -2753,6 +2767,12 @@ function attachPopupHandlers(marker, row, farmaciaId){
       const isComunale = rec ? rec.isComunale : isComunaleFromGestione(row.gestione);
       applyDraftToStore(marker, row, farmaciaId, isComunale, draft);
       clearDirty();
+
+      // ✅ salva anche sul cloud (come i referenti comune)
+      try{
+        const stNow = getSt(farmaciaId);
+        remoteWriteStatus(farmaciaId, stNow).catch(()=>{});
+      }catch(e){}
 
       // aggiorna contenuto "bound" per coerenza immediata
       marker.setPopupContent(buildPopupHtml(row, farmaciaId));
