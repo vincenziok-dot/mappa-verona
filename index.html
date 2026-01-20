@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Campagna SpG Verona · ver3.0.2 LIVE</title>
+<title>Campagna SpG Verona · ver3.1 LIVE</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -1326,12 +1326,12 @@ const AUTO_MOBILE = window.matchMedia("(max-width: 720px)").matches || /Mobi|And
    - GET via JSONP (no CORS)
    - POST via hidden form + iframe (no CORS)
 ================================ */
-const REMOTE_API_URL_RAW = "https://script.google.com/macros/s/AKfycby96Jop5hwhlJ413WTJ3OP9N3UOpwoBvDNQiXs3IVVnMJXKpIj3Kt7rziwRzpiok_4EcQ/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
+const REMOTE_API_URL_RAW = "https://script.google.com/macros/s/AKfycbypfH9BB5vo7lOLTnU4LFt91XhlcExPXR9ej8jPbZBMTAs0pwsHM_zaF2TdWSTOigrUqQ/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
 const REMOTE_API_URL = (REMOTE_API_URL_RAW || "").split('#')[0].split('?')[0]; // sicurezza: rimuove ?action=... se incollato per sbaglio
 const REMOTE_WRITE_KEY = ""; // opzionale: parola chiave anti-spam (se la imposti anche nello script)
 // Poll piu' frequente per vedere gli aggiornamenti degli altri utenti piu' rapidamente
 const REMOTE_POLL_MS = 8000;
-const CLIENT_VERSION = '3.0.4.2';
+const CLIENT_VERSION = '3.1';
 
 let uiMode = localStorage.getItem(UI_MODE_KEY) || (AUTO_MOBILE ? "mobile" : "desktop");
 let showChooser = true;
@@ -1434,8 +1434,8 @@ function setUiMode(mode){
   __initUxOnce();
 
 // LIVE: init sync UI
-document.getElementById('hudSyncBtn')?.addEventListener('click', ()=>fetchRemoteAll('manual'));
-document.getElementById('hudSyncBtnDesk')?.addEventListener('click', ()=>fetchRemoteAll('manual'));
+document.getElementById('hudSyncBtn')?.addEventListener('click', ()=>syncNow());
+document.getElementById('hudSyncBtnDesk')?.addEventListener('click', ()=>syncNow());
 document.getElementById('hudClearBtn')?.addEventListener('click', ()=>{
   if(confirm('Pulire la cache locale (status + referenti) e ricaricare?\n\nNon tocca i dati cloud.')){
     clearLocalCampaignCache();
@@ -1906,7 +1906,9 @@ async function confirmRemoteRefs(comune, arr, attempts=6, waitMs=1200){
 }
 
 // Scrittura cloud status: POST (form hidden) + conferma via GET getAll
-function remoteWriteStatus(id, localSt){
+function remoteWriteStatus(id, localSt, opts){
+  opts = opts || {};
+  const silent = !!opts.silent;
   if(!REMOTE_API_URL) return Promise.resolve({ ok:false, error:'no REMOTE_API_URL' });
   const fid = String(id||'').trim();
   const base = statusStore[fid] || {};
@@ -1943,7 +1945,7 @@ function remoteWriteStatus(id, localSt){
         cur.__lastSavedAt = Date.now();
         if(res.updated_at) cur.__remoteUpdatedAt = String(res.updated_at);
         saveStatusStore(statusStore);
-        showToast('✅ Salvato online', 'ok');
+        if(!silent) showToast('✅ Salvato online', 'ok');
       }else{
         const err = (res && (res.error || res.message)) ? String(res.error || res.message) : 'errore';
         cur.__pending = true;
@@ -1952,7 +1954,7 @@ function remoteWriteStatus(id, localSt){
         if(err === 'conflict' && res && res.currentUpdatedAt) cur.__remoteUpdatedAt = String(res.currentUpdatedAt);
         cur.__saveErr = err;
         saveStatusStore(statusStore);
-        showToast('❌ Non salvato online: ' + err, (err==='conflict')?'warn':'error', 3800);
+        if(!silent) showToast('❌ Non salvato online: ' + err, (err==='conflict')?'warn':'error', 3800);
       }
     }catch(e){}
     try{ scheduleRemotePullSoon(); }catch(e){}
@@ -2010,7 +2012,9 @@ function remoteWriteStatus(id, localSt){
   }).catch((err)=> finalize({ ok:false, error:String(err||'error') }));
 }
 
-function remoteWriteRef(comune, refsArr){
+function remoteWriteRef(comune, refsArr, opts){
+  opts = opts || {};
+  const silent = !!opts.silent;
   if(!REMOTE_API_URL) return Promise.resolve({ ok:false, error:'no REMOTE_API_URL' });
   const com = String(comune||'').trim();
   const payload = { comune: com, referenti: Array.isArray(refsArr)?refsArr:[], deviceId: DEVICE_ID, ifMatchUpdatedAt: (refRemoteAt && refRemoteAt[com]) ? refRemoteAt[com] : '' };
@@ -2026,13 +2030,13 @@ function remoteWriteRef(comune, refsArr){
       try{
         if(res.updated_at){ refRemoteAt[com] = String(res.updated_at); saveRefRemoteAt(refRemoteAt); }
         delete refPending[com]; saveRefPending(refPending);
-        showToast('✅ Referenti comune salvati', 'ok');
+        if(!silent) showToast('✅ Referenti comune salvati', 'ok');
       }catch(e){}
     }else{
       const err = (res && (res.error || res.message)) ? String(res.error || res.message) : 'errore';
       
       if(err==='conflict' && res && res.currentUpdatedAt){ try{ refRemoteAt[com]=String(res.currentUpdatedAt); saveRefRemoteAt(refRemoteAt); }catch(e){} }
-      showToast('❌ Referenti non salvati: ' + err, (err==='conflict')?'warn':'error', 3800);
+      if(!silent) showToast('❌ Referenti non salvati: ' + err, (err==='conflict')?'warn':'error', 3800);
     }
     try{ scheduleRemotePullSoon(); }catch(e){}
     return res;
@@ -2130,6 +2134,74 @@ function refreshAfterRemote(){
     if(typeof renderReferentiPanel === 'function' && refPanelVisible) renderReferentiPanel();
     refreshOpenPopupsFromCloud();
   }catch(e){}
+}
+
+
+
+// Upgrade ver3.1: invio automatico delle modifiche in sospeso (pending)
+// - utile se hai modificato offline / rete ballerina
+// - evita di dover riaprire e risalvare a mano
+async function flushPendingToCloud(reason){
+  if(!REMOTE_API_URL) return { ok:false, sent:0, conflicts:0, errors:0 };
+
+  let sent = 0, conflicts = 0, errors = 0;
+
+  // 1) Referenti comuni pending (pochi, quindi li gestiamo tutti)
+  try{
+    const keys = Object.keys(refPending || {});
+    for(const com of keys){
+      try{
+        const arr = Array.isArray(referentiComune[com]) ? referentiComune[com] : [];
+        const res = await remoteWriteRef(com, arr, { silent:true });
+        if(res && res.ok){ sent++; delete refPending[com]; }
+        else if(res && (res.error==='conflict' || res.message==='conflict')){ conflicts++; }
+        else if(res && !res.ok){ errors++; }
+      }catch(e){ errors++; }
+    }
+    saveRefPending(refPending);
+  }catch(e){}
+
+  // 2) Status farmacie pending (limite per non martellare lo sheet)
+  try{
+    const now = Date.now();
+    const ids = Object.keys(statusStore || {}).filter(id=> statusStore[id] && statusStore[id].__pending);
+    const MAX = 10;
+    let n = 0;
+    for(const id of ids){
+      if(n >= MAX) break;
+      const st = statusStore[id];
+      if(!st) continue;
+      // evita retry immediati a raffica
+      if(st.__localTs && (now - st.__localTs) < 1200) continue;
+      try{
+        const res = await remoteWriteStatus(id, st, { silent:true });
+        if(res && res.ok){ sent++; n++; }
+        else if(res && (res.error==='conflict' || res.message==='conflict')){ conflicts++; n++; }
+        else if(res && !res.ok){ errors++; n++; }
+      }catch(e){ errors++; n++; }
+    }
+  }catch(e){}
+
+  // Feedback solo in modalità manuale
+  if(reason === 'manual'){
+    if(sent && !conflicts && !errors) showToast('✅ Modifiche in sospeso inviate', 'ok', 2400);
+    else if(sent && (conflicts || errors)) showToast(`⚠️ Inviate: ${sent} · conflitti: ${conflicts} · errori: ${errors}`, 'warn', 4200);
+    else if(conflicts) showToast(`⚠️ Conflitti: ${conflicts} (sincronizza e riapri la farmacia)`, 'warn', 4200);
+    else if(errors) showToast(`❌ Errori invio: ${errors} (riprova più tardi)`, 'error', 4200);
+  }
+
+  return { ok:true, sent, conflicts, errors };
+}
+
+// Sync "buono": prima tira giù gli ultimi dati, poi prova a svuotare i pending, poi tira giù di nuovo.
+async function syncNow(){
+  try{
+    await fetchRemoteAll('manual');
+    await flushPendingToCloud('manual');
+    await fetchRemoteAll('manual2');
+  }catch(e){
+    try{ showToast('❌ Sync fallita: ' + String(e||'errore'), 'error', 3800); }catch(_e){}
+  }
 }
 
 function clearLocalCampaignCache(){
@@ -2652,7 +2724,19 @@ function applyDraftToStore(marker, row, farmaciaId, isComunale, draft){
   const next = { ...prev, ...draft };
   next.flags = draft.flags || prev.flags || { poster:false, boicotta:false, promo:false, info:false };
   next.owners = uniq(normalizeOwners(next.owners));
-// timestamp ultimo aggiornamento (utile anche per export)
+
+  // Upgrade ver3.1: evita scritture inutili (aprire/chiudere popup senza cambiare nulla)
+  // Riduce carico sullo Sheet e soprattutto riduce i conflitti reali tra device.
+  if(statusEquivalent(prev, next)){
+    applyStatusToMarker(marker, farmaciaId, row, isComunale);
+    aggiornaHUD();
+    aggiornaComuneSelezionato();
+    aggiornaMapStats();
+    applyMarkerVisibility();
+    return;
+  }
+
+  // timestamp ultimo aggiornamento (utile anche per export)
   next.updatedAt = new Date().toISOString();
   setSt(farmaciaId, next);
 
@@ -2686,6 +2770,14 @@ function handlePopupClose(marker, row, farmaciaId, isComunale){
     POPUP_DRAFT_CACHE.delete(farmaciaId);
     return;
   }
+
+  // Upgrade ver3.1: se non hai toccato nulla, NON fare autosave.
+  // Apri/chiudi non deve generare write sul cloud (e non deve bumpare updated_at).
+  if(!POPUP_DIRTY.has(farmaciaId)){
+    POPUP_DRAFT_CACHE.delete(farmaciaId);
+    return;
+  }
+
   // Autosave: prova dal DOM; se Leaflet ha già rimosso il nodo, usa la bozza cache.
   const root = marker.getPopup()?.getElement();
   const wrap = root ? root.querySelector(".popupWrap") : null;
@@ -2787,17 +2879,18 @@ function attachPopupHandlers(marker, row, farmaciaId){
   if(btnSave){
     btnSave.addEventListener("click", (ev) => {
       ev.preventDefault(); ev.stopPropagation();
+      const wasDirty = POPUP_DIRTY.has(farmaciaId);
+      if(!wasDirty){
+        marker._skipAutosave = true;
+        POPUP_DRAFT_CACHE.delete(farmaciaId);
+        marker.closePopup();
+        return;
+      }
       const draft = collectPopupDraft(wrap);
       const rec = farmMarkers.find(x => x.id === farmaciaId);
       const isComunale = rec ? rec.isComunale : isComunaleFromGestione(row.gestione);
       applyDraftToStore(marker, row, farmaciaId, isComunale, draft);
       clearDirty();
-
-      // ✅ salva anche sul cloud (come i referenti comune)
-      try{
-        const stNow = getSt(farmaciaId);
-        remoteWriteStatus(farmaciaId, stNow).catch(()=>{});
-      }catch(e){}
 
       // aggiorna contenuto "bound" per coerenza immediata
       marker.setPopupContent(buildPopupHtml(row, farmaciaId));
