@@ -1326,12 +1326,12 @@ const AUTO_MOBILE = window.matchMedia("(max-width: 720px)").matches || /Mobi|And
    - GET via JSONP (no CORS)
    - POST via hidden form + iframe (no CORS)
 ================================ */
-const REMOTE_API_URL_RAW = "https://script.google.com/macros/s/AKfycbzUqmk7p2oZlBmjmktC-QPPuWzgLGY3BKYFOp2EG8L-5TDM4vanSY39e_Pshd7-_xBAng/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
+const REMOTE_API_URL_RAW = "https://script.google.com/macros/s/AKfycby96Jop5hwhlJ413WTJ3OP9N3UOpwoBvDNQiXs3IVVnMJXKpIj3Kt7rziwRzpiok_4EcQ/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
 const REMOTE_API_URL = (REMOTE_API_URL_RAW || "").split('#')[0].split('?')[0]; // sicurezza: rimuove ?action=... se incollato per sbaglio
 const REMOTE_WRITE_KEY = ""; // opzionale: parola chiave anti-spam (se la imposti anche nello script)
 // Poll piu' frequente per vedere gli aggiornamenti degli altri utenti piu' rapidamente
 const REMOTE_POLL_MS = 8000;
-const CLIENT_VERSION = '3.0.3';
+const CLIENT_VERSION = '3.0.4.2';
 
 let uiMode = localStorage.getItem(UI_MODE_KEY) || (AUTO_MOBILE ? "mobile" : "desktop");
 let showChooser = true;
@@ -1950,8 +1950,9 @@ function remoteWriteStatus(id, localSt){
         cur.__saveState = (err === 'conflict') ? 'conflict' : 'error';
         
         if(err === 'conflict' && res && res.currentUpdatedAt) cur.__remoteUpdatedAt = String(res.currentUpdatedAt);
+        cur.__saveErr = err;
         saveStatusStore(statusStore);
-        showToast('❌ Non salvato online: ' + cur.__saveErr, (err==='conflict')?'warn':'error', 3800);
+        showToast('❌ Non salvato online: ' + err, (err==='conflict')?'warn':'error', 3800);
       }
     }catch(e){}
     try{ scheduleRemotePullSoon(); }catch(e){}
@@ -2031,7 +2032,7 @@ function remoteWriteRef(comune, refsArr){
       const err = (res && (res.error || res.message)) ? String(res.error || res.message) : 'errore';
       
       if(err==='conflict' && res && res.currentUpdatedAt){ try{ refRemoteAt[com]=String(res.currentUpdatedAt); saveRefRemoteAt(refRemoteAt); }catch(e){} }
-      showToast('❌ Referenti non salvati: ' + msg, (err==='conflict')?'warn':'error', 3800);
+      showToast('❌ Referenti non salvati: ' + err, (err==='conflict')?'warn':'error', 3800);
     }
     try{ scheduleRemotePullSoon(); }catch(e){}
     return res;
