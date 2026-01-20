@@ -1326,12 +1326,12 @@ const AUTO_MOBILE = window.matchMedia("(max-width: 720px)").matches || /Mobi|And
    - GET via JSONP (no CORS)
    - POST via hidden form + iframe (no CORS)
 ================================ */
-const REMOTE_API_URL_RAW = "https://script.google.com/macros/s/AKfycbzqJXJxIL-qXUZ1S54p8iwVYOpqKmoWIWH4QyEknLO5tp0cgrUM1fJsR4pclEuNv6Tavg/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
+const REMOTE_API_URL_RAW = "https://script.google.com/macros/s/AKfycbzUqmk7p2oZlBmjmktC-QPPuWzgLGY3BKYFOp2EG8L-5TDM4vanSY39e_Pshd7-_xBAng/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
 const REMOTE_API_URL = (REMOTE_API_URL_RAW || "").split('#')[0].split('?')[0]; // sicurezza: rimuove ?action=... se incollato per sbaglio
 const REMOTE_WRITE_KEY = ""; // opzionale: parola chiave anti-spam (se la imposti anche nello script)
 // Poll piu' frequente per vedere gli aggiornamenti degli altri utenti piu' rapidamente
 const REMOTE_POLL_MS = 8000;
-const CLIENT_VERSION = '3.0.4';
+const CLIENT_VERSION = '3.0.3';
 
 let uiMode = localStorage.getItem(UI_MODE_KEY) || (AUTO_MOBILE ? "mobile" : "desktop");
 let showChooser = true;
@@ -1643,23 +1643,18 @@ function defaultStatus(){
 function getSt(id){
   return statusStore[id] || defaultStatus();
 }
-function setSt(id, next, opts){
-  // Su farmacie: per evitare conflitti "auto" (piu' scritture ravvicinate mentre modifichi),
-  // permettiamo aggiornamenti SOLO locali. Il salvataggio cloud avviene quando l'utente
-  // preme "Salva e chiudi" nel popup.
-  const noRemote = !!(opts && opts.noRemote);
-
+function setSt(id, next){
+  // marca come "pending" per non perdere la modifica prima che il cloud la rifletta
   try{
     next.__localTs = Date.now();
-    next.__pending = (!noRemote) && !!REMOTE_API_URL;
-    next.__saveState = (!noRemote) ? (REMOTE_API_URL ? 'saving' : 'local') : 'dirty';
+    next.__pending = !!REMOTE_API_URL;
+    next.__saveState = REMOTE_API_URL ? 'saving' : 'local';
     next.__saveErr = '';
     next.__deviceId = DEVICE_ID;
   }catch(e){}
-
   statusStore[id] = next;
   saveStatusStore(statusStore);
-  try{ if(!noRemote && REMOTE_API_URL){ remoteWriteStatus(id, next); } }catch(e){}
+  try{ if(REMOTE_API_URL){ remoteWriteStatus(id, next); } }catch(e){}
 }
 
 /* ===============================
@@ -1881,10 +1876,7 @@ async function confirmRemoteStatus(id, localSt, attempts=6, waitMs=1200){
         const r = data.status && data.status[fid];
         if(r){
           const st = fromRemoteStatus(r);
-          if(statusEquivalent(st, localSt)){
-            // restituisci anche updated_at (serve per evitare conflitti alla prossima modifica)
-            return { ok:true, serverTime:data.serverTime, version:data.version, updated_at: (r.updated_at || st.__remoteUpdatedAt || '') };
-          }
+          if(statusEquivalent(st, localSt)) return { ok:true, serverTime:data.serverTime, version:data.version };
         }
       }
     }catch(e){}
@@ -1906,7 +1898,7 @@ async function confirmRemoteRefs(comune, arr, attempts=6, waitMs=1200){
       try{ if(data.version){ __remoteServerVer = String(data.version); } }catch(e){}
         setSyncBadge(true, 'ONLINE');
         const got = canonRefs((data.refs && data.refs[com]) ? data.refs[com] : []);
-        if(got === want) return { ok:true, serverTime:data.serverTime, version:data.version, updated_at: (data.refs_meta && data.refs_meta[com]) ? data.refs_meta[com] : '' };
+        if(got === want) return { ok:true, serverTime:data.serverTime, version:data.version };
       }
     }catch(e){}
   }
@@ -1920,7 +1912,6 @@ function remoteWriteStatus(id, localSt){
   const base = statusStore[fid] || {};
   const payload = toRemoteStatus(fid, localSt || defaultStatus());
   payload.deviceId = DEVICE_ID;
-  payload.clientVersion = CLIENT_VERSION;
   payload.ifMatchUpdatedAt = base.__remoteUpdatedAt || '';
 
   // marca saving subito
@@ -1957,7 +1948,8 @@ function remoteWriteStatus(id, localSt){
         const err = (res && (res.error || res.message)) ? String(res.error || res.message) : 'errore';
         cur.__pending = true;
         cur.__saveState = (err === 'conflict') ? 'conflict' : 'error';
-        cur.__saveErr = (err === 'conflict') ? 'conflitto: qualcun altro ha salvato prima. Aggiorna e riprova.' : err;
+        
+        if(err === 'conflict' && res && res.currentUpdatedAt) cur.__remoteUpdatedAt = String(res.currentUpdatedAt);
         saveStatusStore(statusStore);
         showToast('❌ Non salvato online: ' + cur.__saveErr, (err==='conflict')?'warn':'error', 3800);
       }
@@ -1977,15 +1969,6 @@ function remoteWriteStatus(id, localSt){
       }catch(e){}
       if(res && res.ok){
         return finalize(res);
-      }
-
-      // Se il server segnala conflitto, potrebbe essere un "falso negativo" (es. aggiornato_at cambiato
-      // ma i dati sono gia' identici). In quel caso confermiamo via snapshot e chiudiamo come OK.
-      if(res && (String(res.error||'') === 'conflict')){
-        return confirmRemoteStatus(payload.farmacia_id || fid, localSt || defaultStatus(), 3, 400).then((r)=>{
-          if(r && r.ok) return finalize(r);
-          return finalize(res);
-        });
       }
       // fallback: prova POST + conferma snapshot (utile se il deploy non espone putStatus)
       try{ remotePostFormOnly('status', payload); }catch(e){}
@@ -2030,7 +2013,6 @@ function remoteWriteRef(comune, refsArr){
   if(!REMOTE_API_URL) return Promise.resolve({ ok:false, error:'no REMOTE_API_URL' });
   const com = String(comune||'').trim();
   const payload = { comune: com, referenti: Array.isArray(refsArr)?refsArr:[], deviceId: DEVICE_ID, ifMatchUpdatedAt: (refRemoteAt && refRemoteAt[com]) ? refRemoteAt[com] : '' };
-  payload.clientVersion = CLIENT_VERSION;
 
   // pending anti-revert
   try{ refPending[com] = Date.now(); saveRefPending(refPending); }catch(e){}
@@ -2047,7 +2029,8 @@ function remoteWriteRef(comune, refsArr){
       }catch(e){}
     }else{
       const err = (res && (res.error || res.message)) ? String(res.error || res.message) : 'errore';
-      const msg = (err==='conflict') ? 'conflitto: qualcun altro ha salvato prima. Aggiorna e riprova.' : err;
+      
+      if(err==='conflict' && res && res.currentUpdatedAt){ try{ refRemoteAt[com]=String(res.currentUpdatedAt); saveRefRemoteAt(refRemoteAt); }catch(e){} }
       showToast('❌ Referenti non salvati: ' + msg, (err==='conflict')?'warn':'error', 3800);
     }
     try{ scheduleRemotePullSoon(); }catch(e){}
@@ -2670,8 +2653,7 @@ function applyDraftToStore(marker, row, farmaciaId, isComunale, draft){
   next.owners = uniq(normalizeOwners(next.owners));
 // timestamp ultimo aggiornamento (utile anche per export)
   next.updatedAt = new Date().toISOString();
-  // aggiorna SOLO locale: il salvataggio cloud avviene esplicitamente con "Salva e chiudi"
-  setSt(farmaciaId, next, { noRemote:true });
+  setSt(farmaciaId, next);
 
   applyStatusToMarker(marker, farmaciaId, row, isComunale);
   aggiornaHUD();
