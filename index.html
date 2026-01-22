@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Campagna SpG Verona · ver3.1 LIVE</title>
+<title>Campagna SpG Verona · ver3.2</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -1055,6 +1055,180 @@ body.ui-mobile #syncDeskRow{ display:none !important; }
 /* Mobile: avoid horizontal scroll in popups */
 body.ui-mobile .leaflet-popup-content{ overflow-x:hidden; }
 
+
+/* === UI chooser: help buttons === */
+#uiChooser .uiHelpBtns{ margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+#uiChooser .uiHelpBtn{
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid rgba(0,255,156,.35);
+  background: rgba(0,0,0,.25);
+  color:#eafff7;
+  font-weight:1000;
+  cursor:pointer;
+}
+
+/* === OFFLINE banner === */
+#offlineBanner{
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  top:64px;
+  z-index:10010;
+  background: rgba(255,92,92,.14);
+  border:1px solid rgba(255,92,92,.45);
+  color:#ffecec;
+  padding:8px 12px;
+  border-radius: 14px;
+  font-size:12px;
+  font-weight:1000;
+  letter-spacing:.02em;
+  max-width: min(540px, calc(100vw - 24px));
+  box-shadow: 0 0 18px rgba(0,0,0,.45);
+  backdrop-filter: blur(3px);
+  display:none;
+}
+body.ui-mobile #offlineBanner{ top:86px; }
+
+/* === Guide modal === */
+#guideModal{
+  position:fixed; inset:0;
+  display:none;
+  z-index:10090;
+}
+#guideModal[aria-hidden="false"]{ display:block; }
+#guideModal .gm-backdrop{
+  position:absolute; inset:0;
+  background: rgba(0,0,0,.68);
+  backdrop-filter: blur(2px);
+}
+#guideModal .gm-box{
+  position:absolute;
+  left:50%; top:50%;
+  transform: translate(-50%,-50%);
+  width: min(560px, calc(100vw - 24px));
+  max-height: min(78vh, 680px);
+  overflow:auto;
+  background: rgba(20,20,20,.92);
+  border: 1px solid rgba(0,255,156,.22);
+  border-radius: 18px;
+  box-shadow: 0 0 24px rgba(0,0,0,.65);
+  padding: 14px 14px 10px;
+  color:#eafff7;
+}
+#guideModal h3{ margin:10px 0 10px; font-size:16px; }
+#guideModal .gm-head{ margin-bottom:6px; }
+#guideModal .gm-title{ font-weight:1100; font-size:18px; letter-spacing:.01em; }
+#guideModal .gm-sub{ opacity:.85; font-weight:800; font-size:12px; margin-top:2px; }
+#guideModal .gm-x{
+  position:absolute; right:10px; top:10px;
+  width:34px; height:34px;
+  border-radius: 12px;
+  border:1px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.08);
+  color:#fff; font-size:20px; font-weight:1000;
+  cursor:pointer;
+}
+#guideModal .gm-card{
+  background: rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius: 14px;
+  padding:10px 12px;
+  margin:10px 0;
+}
+#guideModal .gm-card-title{ font-weight:1100; margin-bottom:6px; }
+#guideModal ul{ margin:0; padding-left:18px; }
+#guideModal li{ margin:6px 0; line-height:1.25; }
+#guideModal .gm-note{
+  margin-top:10px;
+  padding:10px 12px;
+  border-radius: 14px;
+  background: rgba(0,255,156,.10);
+  border:1px solid rgba(0,255,156,.22);
+  font-weight:900;
+  font-size:12px;
+}
+#guideModal .gm-nav{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:10px;
+  margin-top:10px;
+  position:sticky; bottom:0;
+  background: linear-gradient(to top, rgba(20,20,20,.98), rgba(20,20,20,.55));
+  padding:10px 0 4px;
+}
+#guideModal .gm-btn{
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid rgba(0,255,156,.35);
+  background: rgba(0,0,0,.25);
+  color:#eafff7;
+  font-weight:1100;
+  cursor:pointer;
+  min-width:62px;
+}
+#guideModal .gm-dots{ display:flex; gap:6px; justify-content:center; flex:1; }
+#guideModal .gm-dot{ width:10px; height:10px; border-radius:999px; background:rgba(255,255,255,.25); }
+#guideModal .gm-dot.on{ background:rgba(0,255,156,.9); box-shadow:0 0 10px rgba(0,255,156,.35); }
+
+/* === Onboarding fumetti === */
+#onboardOverlay{
+  position:fixed; inset:0;
+  display:none;
+  z-index:10100;
+}
+#onboardOverlay[aria-hidden="false"]{ display:block; }
+#onboardOverlay .ob-backdrop{
+  position:absolute; inset:0;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(1px);
+}
+#onboardOverlay .ob-bubble{
+  position:absolute;
+  width: min(340px, calc(100vw - 24px));
+  background: rgba(20,20,20,.94);
+  border:1px solid rgba(0,255,156,.28);
+  border-radius: 18px;
+  box-shadow: 0 0 24px rgba(0,0,0,.65);
+  padding: 12px 12px 10px;
+  color:#eafff7;
+}
+#onboardOverlay .ob-bubble:before{
+  content:"";
+  position:absolute;
+  width:14px; height:14px;
+  background: rgba(20,20,20,.94);
+  border-left:1px solid rgba(0,255,156,.28);
+  border-top:1px solid rgba(0,255,156,.28);
+  transform: rotate(45deg);
+  left: 22px;
+  top: -7px;
+}
+#onboardOverlay .ob-title{ font-weight:1100; font-size:15px; }
+#onboardOverlay .ob-text{ margin-top:8px; font-size:12px; font-weight:850; line-height:1.25; opacity:.95; }
+#onboardOverlay .ob-actions{ display:flex; justify-content:space-between; gap:8px; margin-top:10px; }
+#onboardOverlay .ob-btn{
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid rgba(0,255,156,.35);
+  background: rgba(0,0,0,.25);
+  color:#eafff7;
+  font-weight:1100;
+  cursor:pointer;
+  flex:1;
+}
+#onboardOverlay .ob-btn.secondary{
+  border-color: rgba(255,255,255,.18);
+  background: rgba(255,255,255,.08);
+}
+.ob-highlight{
+  outline: 3px solid rgba(0,255,156,.85) !important;
+  outline-offset: 4px !important;
+  border-radius: 14px !important;
+  box-shadow: 0 0 18px rgba(0,255,156,.35) !important;
+  position:relative;
+  z-index:10105 !important;
+}
+
 </style>
 </head>
 
@@ -1062,6 +1236,7 @@ body.ui-mobile .leaflet-popup-content{ overflow-x:hidden; }
 <div id="map"></div>
 <div id="banner"></div>
 <div id="mobileHint" aria-hidden="true"></div>
+<div id="offlineBanner" aria-hidden="true">📴 OFFLINE: i salvataggi restano in locale. Torna online e premi ↻ “Sincronizza”.</div>
 
 <div id="uiChooser" aria-hidden="true">
   <button class="x" id="btnUiChooserClose" title="Chiudi">×</button>
@@ -1072,7 +1247,94 @@ body.ui-mobile .leaflet-popup-content{ overflow-x:hidden; }
       <button class="uiBtn" id="btnUiMobile"><b>📱 Smartphone</b><small>Touch + pannello collassabile</small></button>
       <button class="uiBtn" id="btnUiDesktop"><b>🖥️ Desktop</b><small>HUD completo + precisione mouse</small></button>
     </div>
+    <div class="uiHelpBtns">
+      <button class="uiHelpBtn" id="btnOpenGuide" type="button">📘 Guida all’uso</button>
+      <button class="uiHelpBtn" id="btnOpenVideo" type="button">▶️ Videoguida</button>
+    </div>
   </div>
+
+<!-- Guida all'uso (modal) -->
+<div id="guideModal" aria-hidden="true">
+  <div class="gm-backdrop" data-gm="close"></div>
+  <div class="gm-box" role="dialog" aria-modal="true" aria-label="Guida all'uso">
+    <button class="gm-x" data-gm="close" title="Chiudi">×</button>
+    <div class="gm-head">
+      <div class="gm-title">Guida all’uso</div>
+      <div class="gm-sub">Campagna SpG Verona · ver3.2</div>
+    </div>
+
+    <div class="gm-pages">
+      <div class="gm-page" data-gm-page="0">
+        <h3>📱 Smartphone: due modalità (fondamentale)</h3>
+        <div class="gm-card">
+          <div class="gm-card-title">1) Comuni</div>
+          <ul>
+            <li>Tocca un comune (o usa “Cerca comune”).</li>
+            <li>Gestisci i <b>referenti</b> del comune: “Aggiungi referente” oppure rimuovi con la <b>×</b>.</li>
+            <li>In questa modalità i marker farmacia non si aprono: è voluto.</li>
+          </ul>
+        </div>
+        <div class="gm-card">
+          <div class="gm-card-title">2) Farmacie</div>
+          <ul>
+            <li>Tocca i <b>marker</b> per aprire la scheda farmacia.</li>
+            <li>Imposta <b>stato</b> (Da contattare / Trattativa / Aderisce / Non aderisce), <b>incaricati</b>, <b>note</b>, e “chiusa temporaneamente”.</li>
+            <li>Premi <b>Salva e chiudi</b> per registrare e sincronizzare.</li>
+          </ul>
+        </div>
+
+        <div class="gm-note">
+          <b>Sync / Offline:</b> se sei offline, i salvataggi restano nel browser (locale). Quando torni online, premi ↻ <b>Sincronizza</b>.
+        </div>
+      </div>
+
+      <div class="gm-page" data-gm-page="1" style="display:none">
+        <h3>🖥️ Desktop/Laptop: pannello completo</h3>
+        <div class="gm-card">
+          <div class="gm-card-title">Ricerca & navigazione</div>
+          <ul>
+            <li>“Cerca comune” per zoomare rapidamente.</li>
+            <li>“Cerca farmacia” per trovare un punto e aprire la scheda.</li>
+          </ul>
+        </div>
+        <div class="gm-card">
+          <div class="gm-card-title">Filtri & report</div>
+          <ul>
+            <li>Clicca gli <b>stati</b> in legenda per filtrare la vista (Reset per togliere filtro).</li>
+            <li>Export DB (Excel/CSV) e Stampa.</li>
+            <li>“Solo aderisce” e “Solo NON aderiscono” per elenchi rapidi.</li>
+          </ul>
+        </div>
+        <div class="gm-note">
+          Se qualcosa sembra incoerente: prova ↻ <b>Sincronizza</b>. In casi estremi puoi usare ♻ <b>Pulisci cache locale</b> (non tocca i dati cloud).
+        </div>
+      </div>
+    </div>
+
+    <div class="gm-nav">
+      <button class="gm-btn" id="gmPrev" type="button">◀</button>
+      <div class="gm-dots" aria-hidden="true">
+        <span class="gm-dot" data-gm-dot="0"></span>
+        <span class="gm-dot" data-gm-dot="1"></span>
+      </div>
+      <button class="gm-btn" id="gmNext" type="button">▶</button>
+    </div>
+  </div>
+</div>
+
+<!-- Onboarding (fumetti) -->
+<div id="onboardOverlay" aria-hidden="true">
+  <div class="ob-backdrop"></div>
+  <div class="ob-bubble" id="obBubble">
+    <div class="ob-title" id="obTitle">Benvenuto 👋</div>
+    <div class="ob-text" id="obText"></div>
+    <div class="ob-actions">
+      <button class="ob-btn secondary" id="obSkip" type="button">Non mostrare più</button>
+      <button class="ob-btn" id="obNext" type="button">Avanti</button>
+    </div>
+  </div>
+</div>
+
 </div>
 
 <button id="hudFab" title="Apri/chiudi pannello">☰</button>
@@ -1092,7 +1354,7 @@ body.ui-mobile .leaflet-popup-content{ overflow-x:hidden; }
   <div class="hudHandleRow">
     <div class="hudHandleTitle">Campagna SpG Verona <span id="syncBadge" class="syncBadge offline"><span class="syncDot"></span><span id="syncText">LOCAL</span> <small id="syncTime"></small></span></div>
     <div style="display:flex; gap:8px">
-      <button id="hudSyncBtn" class="hudIconBtn" title="Sincronizza dati condivisi">↻</button>
+      <button id="hudSyncBtn" data-action="syncNow" class="hudIconBtn" title="Sincronizza dati condivisi">↻</button>
       <button id="hudClearBtn" class="hudIconBtn" title="Pulisci cache locale (status+referenti) e ricarica">♻</button>
       <button id="hudUiBtn" class="hudIconBtn" title="Cambia interfaccia">UI</button>
       <button id="hudToggleBtn" class="hudIconBtn" title="Apri/chiudi pannello">⌃</button>
@@ -1106,7 +1368,7 @@ body.ui-mobile .leaflet-popup-content{ overflow-x:hidden; }
   <div class="hud-sub" id="syncDeskRow">
   Dati condivisi:
   <span id="syncBadgeDesk" class="syncBadge offline"><span class="syncDot"></span><span id="syncTextDesk">LOCAL</span> <small id="syncTimeDesk"></small></span>
-  <button id="hudSyncBtnDesk" class="hud-btn" style="padding:6px 8px; font-size:11px; border-radius:10px; margin-left:6px" title="Sincronizza ora">↻</button>
+  <button id="hudSyncBtnDesk" data-action="syncNow" class="hud-btn" style="padding:6px 8px; font-size:11px; border-radius:10px; margin-left:6px" title="Sincronizza ora">↻</button>
   <button id="hudClearBtnDesk" class="hud-btn" style="padding:6px 8px; font-size:11px; border-radius:10px" title="Pulisci cache locale (status+referenti) e ricarica">♻</button>
 </div>
 
@@ -1200,6 +1462,7 @@ body.ui-mobile .leaflet-popup-content{ overflow-x:hidden; }
         <button class="hud-btn" id="btnExportCSV" title="Scarica un file CSV con tutte le farmacie e i campi campagna">Export DB (CSV)</button>
         <button class="hud-btn" id="btnPrintReport" title="Apri una pagina stampabile con statistiche + liste per stato">Stampa</button>
         <button class="hud-btn" id="btnExportAderisce" title="Export rapido per coordinamento: elenco SOLO ADERISCE">Solo aderisce</button>
+        <button class="hud-btn" id="btnExportNonAderisce" title="Export rapido per coordinamento: elenco SOLO NON ADERISCONO (rifiuta)">Solo NON aderiscono</button>
       </div>
     </div>
 
@@ -1249,6 +1512,8 @@ body.ui-mobile .leaflet-popup-content{ overflow-x:hidden; }
    CONFIG
 ================================ */
 const DRIVE_MATERIALI = "https://drive.google.com/drive/folders/11JX9TPhUrjCcenzjqSddSQZjqTVma-qM?usp=drive_link";
+const VIDEO_GUIDE_URL = ""; // <-- inserisci qui il link YouTube della videoguida (opzionale)
+
 
 /* Path robusti: prova prima DATA/ (GitHub case-sensitive), poi data/ */
 const PATHS_FARMACIE = ["data/farmacie.csv", "DATA/farmacie.csv"];
@@ -1326,12 +1591,12 @@ const AUTO_MOBILE = window.matchMedia("(max-width: 720px)").matches || /Mobi|And
    - GET via JSONP (no CORS)
    - POST via hidden form + iframe (no CORS)
 ================================ */
-const REMOTE_API_URL_RAW = "https://script.google.com/macros/s/AKfycbypfH9BB5vo7lOLTnU4LFt91XhlcExPXR9ej8jPbZBMTAs0pwsHM_zaF2TdWSTOigrUqQ/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
+const REMOTE_API_URL_RAW = "https://script.google.com/macros/s/AKfycbxSkxCPUF3TvGh609nbYdtNL6X7_MK3SqS-ccgl-8z4r-6gFa4EsRYg7JQAazt1gxdCAg/exec"; // <-- incolla qui l'URL /exec della Web App (Apps Script)
 const REMOTE_API_URL = (REMOTE_API_URL_RAW || "").split('#')[0].split('?')[0]; // sicurezza: rimuove ?action=... se incollato per sbaglio
 const REMOTE_WRITE_KEY = ""; // opzionale: parola chiave anti-spam (se la imposti anche nello script)
 // Poll piu' frequente per vedere gli aggiornamenti degli altri utenti piu' rapidamente
 const REMOTE_POLL_MS = 8000;
-const CLIENT_VERSION = '3.1';
+const CLIENT_VERSION = '3.2';
 
 let uiMode = localStorage.getItem(UI_MODE_KEY) || (AUTO_MOBILE ? "mobile" : "desktop");
 let showChooser = true;
@@ -1454,6 +1719,9 @@ setTimeout(()=>fetchRemoteAll('boot'), 800);
 if(__remotePollTimer) clearInterval(__remotePollTimer);
 __remotePollTimer = setInterval(()=>fetchRemoteAll('poll'), REMOTE_POLL_MS);
 
+  // Onboarding: solo mobile, solo prima volta
+  setTimeout(()=>{ try{ maybeRunMobileOnboarding_(); }catch(e){} }, 350);
+
 }
 
 function applyUiMode(){
@@ -1518,8 +1786,15 @@ function closeUiChooser(){
 
 // Toast (desktop + mobile)
 let __toastTimer = null;
+let __toastSuppressed = false;
+let __toastBuffer = [];
 function showToast(msg, type='info', ms=2600){
   try{
+    // durante sync/flush vogliamo evitare spam: accumula e mostra un solo toast finale
+    if(__toastSuppressed){
+      __toastBuffer.push({ msg: String(msg||''), type: String(type||'info') });
+      return;
+    }
     let t = document.getElementById('toast');
     if(!t){
       t = document.createElement('div');
@@ -1533,6 +1808,16 @@ function showToast(msg, type='info', ms=2600){
     __toastTimer = setTimeout(()=>{ try{ t.classList.remove('show'); }catch(e){} }, ms);
   }catch(e){}
 }
+function runWithSuppressedToasts(fn){
+  __toastSuppressed = true;
+  __toastBuffer = [];
+  return Promise.resolve()
+    .then(fn)
+    .finally(()=>{
+      __toastSuppressed = false;
+    });
+}
+
 
 let interactionMode = "farmacie"; // "comuni" | "farmacie"
 function setInteractionMode(mode){
@@ -1645,16 +1930,30 @@ function getSt(id){
 }
 function setSt(id, next){
   // marca come "pending" per non perdere la modifica prima che il cloud la rifletta
+  const online = !!navigator.onLine;
   try{
     next.__localTs = Date.now();
-    next.__pending = !!REMOTE_API_URL;
-    next.__saveState = REMOTE_API_URL ? 'saving' : 'local';
-    next.__saveErr = '';
+    if(REMOTE_API_URL){
+      next.__pending = true;
+      if(online){
+        next.__saveState = 'saving';
+        next.__saveErr = '';
+      }else{
+        next.__saveState = 'local';
+        next.__saveErr = 'offline';
+      }
+    }else{
+      next.__pending = false;
+      next.__saveState = 'local';
+      next.__saveErr = '';
+    }
     next.__deviceId = DEVICE_ID;
   }catch(e){}
   statusStore[id] = next;
   saveStatusStore(statusStore);
-  try{ if(REMOTE_API_URL){ remoteWriteStatus(id, next); } }catch(e){}
+
+  // Solo se siamo online tentiamo il cloud write (offline = resta in locale, sync manuale al ritorno online)
+  try{ if(REMOTE_API_URL && online){ remoteWriteStatus(id, next); } }catch(e){}
 }
 
 /* ===============================
@@ -2211,6 +2510,313 @@ function clearLocalCampaignCache(){
   }catch(e){}
 }
 
+/* ===============================
+   ver3.2 — Offline UX + Sync robusto
+================================ */
+function pendingCounts_(){
+  let stN = 0;
+  try{
+    for(const id of Object.keys(statusStore || {})){
+      const st = statusStore[id];
+      if(st && st.__pending) stN++;
+    }
+  }catch(e){}
+  let refN = 0;
+  try{ refN = Object.keys(refPending || {}).length; }catch(e){ refN = 0; }
+  return { status: stN, refs: refN, total: stN + refN };
+}
+
+function confirmOfflineSave(kind){
+  const what = (kind === 'farmacia')
+    ? "stai salvando una FARMACIA"
+    : (kind === 'referente')
+      ? "stai salvando i REFERENTI di un COMUNE"
+      : "stai salvando dati";
+  return confirm(
+    "📴 Sei OFFLINE: " + what + ".\n\n" +
+    "OK = salvo SOLO in locale (nel browser). Quando torni online premi ↻ “Sincronizza”.\n" +
+    "Annulla = non salvo adesso."
+  );
+}
+
+function markStatusPendingOffline_(farmaciaId){
+  try{
+    const fid = String(farmaciaId||'').trim();
+    const cur = statusStore[fid] || defaultStatus();
+    cur.__pending = true;
+    cur.__saveState = 'local';
+    cur.__saveErr = 'offline';
+    cur.__localTs = Date.now();
+    statusStore[fid] = cur;
+    saveStatusStore(statusStore);
+  }catch(e){}
+}
+
+function markRefPendingOffline_(comune){
+  try{
+    const com = String(comune||'').trim();
+    refPending[com] = Date.now();
+    saveRefPending(refPending);
+  }catch(e){}
+}
+
+function updateOfflineBanner_(){
+  const b = document.getElementById('offlineBanner');
+  if(!b) return;
+  const off = !navigator.onLine;
+  b.style.display = off ? 'block' : 'none';
+  b.setAttribute('aria-hidden', off ? 'false' : 'true');
+}
+
+window.addEventListener('offline', ()=>{
+  updateOfflineBanner_();
+  setSyncBadge(false, 'OFFLINE');
+  showToast('📴 Sei offline: i salvataggi restano in locale.', 'warn', 4200);
+});
+window.addEventListener('online', ()=>{
+  updateOfflineBanner_();
+  const p = pendingCounts_();
+  if(p.total > 0){
+    showToast(`✅ Sei online. Hai ${p.total} modifiche locali: premi ↻ “Sincronizza”.`, 'warn', 5200);
+  }else{
+    showToast('✅ Sei online.', 'ok', 2200);
+  }
+});
+
+async function flushPendingWrites_(){
+  const out = { statusSent:0, refSent:0, errors:0 };
+  if(!REMOTE_API_URL) return out;
+  if(!navigator.onLine) return { ...out, offline:true };
+
+  // 1) status farmacie pending
+  const ids = [];
+  try{
+    for(const id of Object.keys(statusStore || {})){
+      const st = statusStore[id];
+      if(st && st.__pending && st.__saveState !== 'saving') ids.push(id);
+    }
+  }catch(e){}
+  for(const id of ids){
+    try{
+      const st = statusStore[id];
+      const res = await remoteWriteStatus(id, st);
+      if(res && res.ok) out.statusSent++;
+      else out.errors++;
+    }catch(e){ out.errors++; }
+  }
+
+  // 2) referenti comuni pending
+  const coms = [];
+  try{ coms.push(...Object.keys(refPending || {})); }catch(e){}
+  for(const com of coms){
+    try{
+      const arr = Array.isArray(referentiComune[com]) ? referentiComune[com] : [];
+      const res = await remoteWriteRef(com, arr);
+      if(res && res.ok) out.refSent++;
+      else out.errors++;
+    }catch(e){ out.errors++; }
+  }
+  return out;
+}
+
+async function syncNow(reason='manual'){
+  if(!REMOTE_API_URL){
+    showToast('ℹ️ Sync cloud non configurata (REMOTE_API_URL vuota).', 'warn', 3200);
+    return;
+  }
+  if(!navigator.onLine){
+    updateOfflineBanner_();
+    showToast('📴 Sei offline. Torna online e premi ↻ “Sincronizza”.', 'warn', 4200);
+    return;
+  }
+
+  const before = pendingCounts_();
+
+  let flushRes = { statusSent:0, refSent:0, errors:0 };
+  await runWithSuppressedToasts(async ()=>{
+    await fetchRemoteAll(reason || 'manual');
+    flushRes = await flushPendingWrites_();
+    await fetchRemoteAll('afterFlush');
+  });
+
+  const after = pendingCounts_();
+  const sent = flushRes.statusSent + flushRes.refSent;
+
+  if(sent === 0 && before.total === 0){
+    showToast('✅ Sincronizzato.', 'ok', 2400);
+    return;
+  }
+  const msg = `↻ Sync: inviati ${flushRes.statusSent} farmacie, ${flushRes.refSent} comuni. ` +
+              (flushRes.errors ? `Errori: ${flushRes.errors}.` : 'OK.') +
+              (after.total ? ` Pending rimasti: ${after.total}.` : '');
+  showToast(msg, flushRes.errors ? 'warn' : 'ok', 5200);
+}
+
+
+
+
+
+/* ===============================
+   ver3.2 — Guida + Onboarding (mobile)
+================================ */
+let __gmPage = 0;
+function openGuideModal(page=0){
+  const m = document.getElementById('guideModal');
+  if(!m) return;
+  __gmPage = (page===1)?1:0;
+  m.setAttribute('aria-hidden','false');
+  renderGuidePage_();
+}
+function closeGuideModal(){
+  const m = document.getElementById('guideModal');
+  if(!m) return;
+  m.setAttribute('aria-hidden','true');
+}
+function renderGuidePage_(){
+  const m = document.getElementById('guideModal');
+  if(!m) return;
+  m.querySelectorAll('[data-gm-page]').forEach(p=>{
+    p.style.display = (String(p.getAttribute('data-gm-page')) === String(__gmPage)) ? 'block' : 'none';
+  });
+  m.querySelectorAll('[data-gm-dot]').forEach(d=>{
+    d.classList.toggle('on', String(d.getAttribute('data-gm-dot')) === String(__gmPage));
+  });
+  const prev = document.getElementById('gmPrev');
+  const next = document.getElementById('gmNext');
+  if(prev) prev.disabled = (__gmPage===0);
+  if(next) next.disabled = (__gmPage===1);
+}
+
+function openVideoGuide(){
+  const url = (VIDEO_GUIDE_URL || '').trim();
+  if(!url){
+    alert("Videoguida non impostata.\n\nApri index_ver3.2.html e inserisci il link YouTube nella costante VIDEO_GUIDE_URL.");
+    return;
+  }
+  window.open(url, "_blank");
+}
+
+// Bind guide modal close
+document.addEventListener('click', (ev)=>{
+  const t = ev.target;
+  if(!(t instanceof HTMLElement)) return;
+  if(t.matches('[data-gm="close"]') || t.closest('[data-gm="close"]')){
+    closeGuideModal();
+  }
+});
+document.getElementById('gmPrev')?.addEventListener('click', ()=>{ __gmPage = 0; renderGuidePage_(); });
+document.getElementById('gmNext')?.addEventListener('click', ()=>{ __gmPage = 1; renderGuidePage_(); });
+
+// Onboarding (mobile)
+const ONBOARD_KEY = "spg_onboard_seen_v3_2";
+let __obStep = 0;
+const __obSteps = [
+  {
+    sel: "#btnModeComuni",
+    title: "Modalità COMUNI",
+    text: "Qui tocchi i comuni (territorio) e gestisci i <b>referenti</b>.\n<br><br><b>Nota:</b> in questa modalità i marker farmacia non si aprono."
+  },
+  {
+    sel: "#btnModeFarmacie",
+    title: "Modalità FARMACIE",
+    text: "Qui tocchi i <b>marker</b> per aprire la scheda e aggiornare <b>stato</b>, <b>incaricati</b> e <b>note</b>.\n<br><br>Quando hai finito: <b>Salva e chiudi</b>."
+  }
+];
+
+function openOnboarding_(){
+  const ov = document.getElementById('onboardOverlay');
+  if(!ov) return;
+  ov.setAttribute('aria-hidden','false');
+  __obStep = 0;
+  renderOnboarding_();
+}
+function closeOnboarding_(remember){
+  const ov = document.getElementById('onboardOverlay');
+  if(!ov) return;
+  ov.setAttribute('aria-hidden','true');
+  try{
+    document.querySelectorAll('.ob-highlight').forEach(el=>el.classList.remove('ob-highlight'));
+  }catch(e){}
+  if(remember){
+    try{ localStorage.setItem(ONBOARD_KEY, '1'); }catch(e){}
+  }
+}
+function positionBubble_(target){
+  const bubble = document.getElementById('obBubble');
+  if(!bubble || !target) return;
+  const r = target.getBoundingClientRect();
+  // calcola dimensioni dopo render
+  const bw = bubble.offsetWidth || 320;
+  const bh = bubble.offsetHeight || 160;
+
+  let top = r.bottom + 14;
+  let left = Math.min(Math.max(12, r.left), (window.innerWidth - bw - 12));
+  // se sotto non c'è spazio, mettila sopra (ma lasciamo freccia "up": meglio che non copra)
+  if(top + bh > window.innerHeight - 12){
+    top = Math.max(12, r.top - bh - 16);
+  }
+  bubble.style.top = `${Math.round(top)}px`;
+  bubble.style.left = `${Math.round(left)}px`;
+}
+
+function renderOnboarding_(){
+  const ov = document.getElementById('onboardOverlay');
+  const title = document.getElementById('obTitle');
+  const text = document.getElementById('obText');
+  const next = document.getElementById('obNext');
+  if(!ov || !title || !text || !next) return;
+
+  try{
+    document.querySelectorAll('.ob-highlight').forEach(el=>el.classList.remove('ob-highlight'));
+  }catch(e){}
+
+  const step = __obSteps[__obStep] || __obSteps[0];
+  title.textContent = step.title;
+  text.innerHTML = step.text.replace(/\n/g,'');
+  next.textContent = (__obStep >= (__obSteps.length-1)) ? "Capito!" : "Avanti";
+
+  const target = document.querySelector(step.sel);
+  if(target) target.classList.add('ob-highlight');
+  // dopo che il testo è renderizzato, posiziona
+  setTimeout(()=>{ try{ positionBubble_(target); }catch(e){} }, 0);
+}
+
+document.getElementById('obNext')?.addEventListener('click', ()=>{
+  if(__obStep >= (__obSteps.length-1)){
+    closeOnboarding_(true);
+  }else{
+    __obStep++;
+    renderOnboarding_();
+  }
+});
+document.getElementById('obSkip')?.addEventListener('click', ()=>{
+  closeOnboarding_(true);
+});
+document.querySelector('#onboardOverlay .ob-backdrop')?.addEventListener('click', ()=>{
+  // chiudi per questa sessione, senza "remember"
+  closeOnboarding_(false);
+});
+
+// mostra onboarding solo se mobile e non visto
+function maybeRunMobileOnboarding_(){
+  try{
+    if(uiMode !== 'mobile') return;
+    if(document.body.classList.contains('chooser-open')) return;
+    if(localStorage.getItem(ONBOARD_KEY) === '1') return;
+    openOnboarding_();
+  }catch(e){}
+}
+
+window.addEventListener('resize', ()=>{
+  try{
+    if(document.getElementById('onboardOverlay')?.getAttribute('aria-hidden') === 'false'){
+      renderOnboarding_();
+    }
+  }catch(e){}
+});
+
+try{ updateOfflineBanner_(); }catch(e){}
+
 async function fetchRemoteAll(reason){
   if(!REMOTE_API_URL) { setSyncBadge(false, 'LOCAL'); return; }
   if(__remotePulling) return;
@@ -2676,7 +3282,7 @@ function buildPopupHtml(row, farmaciaId){
     ${
       (st.__saveState === 'error' || st.__saveState === 'conflict')
         ? `<div class="savePending err">❌ <b>Non salvato online</b>: ${esc(st.__saveErr||'errore')}<br/><small>Premi “Sincronizza ora” o riprova più tardi.</small></div>`
-        : (st.__pending ? `<div class="savePending">⏳ Salvataggio online…</div>` : ``)
+        : (st.__pending ? `<div class="savePending">${(navigator.onLine? "⏳ Salvataggio online…" : "📴 Salvato in locale (offline). Torna online e premi “Sincronizza”.")}</div>` : ``)
     }
   </div>`;
 }
@@ -2886,6 +3492,13 @@ function attachPopupHandlers(marker, row, farmaciaId){
         marker.closePopup();
         return;
       }
+
+      // Offline UX: avviso esplicito solo su “Salva e chiudi”
+      if(REMOTE_API_URL && !navigator.onLine){
+        if(!confirmOfflineSave('farmacia')) return;
+        showToast('📴 Salvato in locale (offline). Premi ↻ quando torni online.', 'warn', 4200);
+      }
+
       const draft = collectPopupDraft(wrap);
       const rec = farmMarkers.find(x => x.id === farmaciaId);
       const isComunale = rec ? rec.isComunale : isComunaleFromGestione(row.gestione);
@@ -3493,6 +4106,12 @@ document.getElementById("btnAddRef").addEventListener("click", () => {
   if(!selectedComuneNome){ alert("Seleziona prima un comune."); return; }
   const n = prompt("Inserisci il nome del referente (visibile nella lista)");
   if(!n) return;
+
+  // Offline UX: avviso + salva in locale
+  if(REMOTE_API_URL && !navigator.onLine){
+    if(!confirmOfflineSave('referente')) return;
+  }
+
   if(!referentiComune[selectedComuneNome]) referentiComune[selectedComuneNome] = [];
   if(!referentiComune[selectedComuneNome].includes(n)) referentiComune[selectedComuneNome].push(n);
 
@@ -3501,7 +4120,12 @@ document.getElementById("btnAddRef").addEventListener("click", () => {
     if(REMOTE_API_URL){
       refPending[selectedComuneNome] = Date.now();
       saveRefPending(refPending);
-      remoteWriteRef(selectedComuneNome, referentiComune[selectedComuneNome]||[]).then(()=>{ scheduleRemotePullSoon(); }).catch(()=>{});
+
+      if(navigator.onLine){
+        remoteWriteRef(selectedComuneNome, referentiComune[selectedComuneNome]||[]).then(()=>{ scheduleRemotePullSoon(); }).catch(()=>{});
+      }else{
+        showToast('📴 Salvato in locale (offline). Premi ↻ quando torni online.', 'warn', 4200);
+      }
     }
   }catch(e){}
   aggiornaStiliComuni();
@@ -3536,8 +4160,13 @@ refList.addEventListener("click", (ev) => {
       if(REMOTE_API_URL){
         refPending[selectedComuneNome] = Date.now();
         saveRefPending(refPending);
-        remoteWriteRef(selectedComuneNome, referentiComune[selectedComuneNome]||[]).then(()=>{ scheduleRemotePullSoon(); }).catch(()=>{});
-        scheduleRemotePullSoon();
+
+        if(navigator.onLine){
+          remoteWriteRef(selectedComuneNome, referentiComune[selectedComuneNome]||[]).then(()=>{ scheduleRemotePullSoon(); }).catch(()=>{});
+          scheduleRemotePullSoon();
+        }else{
+          showToast('📴 Modifica salvata in locale (offline). Premi ↻ quando torni online.', 'warn', 4200);
+        }
       }
     }catch(e){}
 
@@ -4160,6 +4789,111 @@ body.ui-mobile #mobileHint{ display:block; }
   w.document.open(); w.document.write(html); w.document.close();
 }
 
+
+function exportSoloNonAderisce(){
+  if(!farmMarkers.length){ alert("Nessuna farmacia caricata."); return; }
+
+  const scope = getExportScope();
+  const stats = computeExportStats(scope);
+  const rows = buildExportRows(scope);
+  const rifiutaRows = rows.filter(r => (r.stato_campagna || "contattare") === "rifiuta");
+
+  if(!rifiutaRows.length){
+    alert("Nessuna farmacia in stato “Non aderisce” (rifiuta) nell’ambito selezionato.");
+    return;
+  }
+
+  // Se non c'è XLSX => CSV
+  if(!window.XLSX){
+    const cols = getExportColumns();
+    const csv = rowsToCSV(rifiutaRows, cols);
+    const baseName = scope ? `export_${normKey(scope).replace(/\s+/g,'_')}` : "export_provincia_verona";
+    downloadBlob(`${baseName}_solo_non_aderiscono.csv`, "text/csv;charset=utf-8", csv);
+    return;
+  }
+
+  const wb = XLSX.utils.book_new();
+  const statsAOA = [
+    ["Campo","Valore"],
+    ["Ambito", scope ? scope : "Provincia di Verona"],
+    ["Data export", new Date().toISOString()],
+    ["Totale farmacie (ambito)", stats.total],
+    ["Non aderiscono (rifiuta)", stats.rifiuta],
+    ["Aderisce", stats.aderisce],
+    ["Trattativa", stats.trattativa],
+    ["Da contattare", stats.contattare],
+    ["Chiusa temporaneamente", stats.chiusa],
+  ];
+  const wsStats = XLSX.utils.aoa_to_sheet(statsAOA);
+  XLSX.utils.book_append_sheet(wb, wsStats, "Stats");
+
+  const wsRows = XLSX.utils.json_to_sheet(rifiutaRows, { header: getExportColumns().map(c=>c.key) });
+  XLSX.utils.book_append_sheet(wb, wsRows, "Solo_NON_aderiscono");
+
+  const baseName = scope ? `export_${normKey(scope).replace(/\s+/g,'_')}` : "export_provincia_verona";
+  XLSX.writeFile(wb, `${baseName}_solo_non_aderiscono.xlsx`);
+}
+
+function printSoloNonAderisce(){
+  if(!farmMarkers.length){ alert("Nessuna farmacia caricata."); return; }
+
+  const scope = getExportScope();
+  const stats = computeExportStats(scope);
+  const rows = buildExportRows(scope).filter(r => (r.stato_campagna || "contattare") === "rifiuta");
+
+  if(!rows.length){
+    alert("Nessuna farmacia in stato “Non aderisce” (rifiuta) nell’ambito selezionato.");
+    return;
+  }
+
+  const cols = [
+    { key:"descrizione_farmacia", label:"Farmacia" },
+    { key:"gestione", label:"Gestione" },
+    { key:"indirizzo_full", label:"Indirizzo" },
+    { key:"cap", label:"CAP" },
+    { key:"comune", label:"Comune" },
+    { key:"telefono", label:"Telefono" },
+    { key:"email", label:"Email" },
+    { key:"maps_url", label:"Maps" },
+    { key:"incaricati", label:"Incaricati" },
+    { key:"note", label:"Note" },
+  ];
+
+  const header = cols.map(c => `<th>${esc(c.label)}</th>`).join("");
+  const body = rows.map(r => `<tr>${cols.map(c => {
+    let v = r[c.key] ?? "";
+    if(c.key==="maps_url" && v) 
+      return `<td><a href="${esc(v)}" target="_blank">Apri</a></td>`;
+    return `<td>${esc(String(v))}</td>`;
+  }).join("")}</tr>`).join("");
+
+  const title = `Solo NON aderiscono (rifiuta) — ${esc(scope ? scope : "Provincia di Verona")}`;
+  const html = `
+  <html><head><meta charset="utf-8"/>
+    <title>${title}</title>
+    <style>
+      body{ font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; padding:18px; }
+      h1{ font-size:18px; margin:0 0 6px; }
+      .sub{ color:#444; font-size:12px; margin-bottom:12px; }
+      table{ width:100%; border-collapse:collapse; font-size:11px; }
+      th,td{ border:1px solid #bbb; padding:6px; vertical-align:top; }
+      th{ background:#f2f2f2; }
+      a{ color:#0645ad; }
+    </style>
+  </head><body>
+    <h1>${title}</h1>
+    <div class="sub">
+      Totale ambito: ${stats.total} · Non aderiscono: ${stats.rifiuta} · Aderisce: ${stats.aderisce} · Trattativa: ${stats.trattativa} · Da contattare: ${stats.contattare} · Chiusa: ${stats.chiusa}
+    </div>
+    <table><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table>
+    <script>window.onload = () => setTimeout(()=>window.print(), 50);<\/script>
+  </body></html>`;
+
+  const w = window.open("", "_blank");
+  if(!w){ alert("Popup bloccato: consenti popup per stampare."); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+}
+
 function printReport(){
   if(!farmMarkers.length){ alert("Nessuna farmacia caricata."); return; }
 
@@ -4371,6 +5105,11 @@ document.getElementById("btnExportAderisce")?.addEventListener("click", () => {
   if(ok) exportSoloAderisce(); else printSoloAderisce();
 });
 
+document.getElementById("btnExportNonAderisce")?.addEventListener("click", () => {
+  const ok = confirm("SOLO NON ADERISCONO (rifiuta)\n\nOK = scarica file (Excel se disponibile, altrimenti CSV)\nAnnulla = stampa elenco");
+  if(ok) exportSoloNonAderisce(); else printSoloNonAderisce();
+});
+
 /* ===============================
    UI: wiring (rev2.1.6)
 ================================ */
@@ -4385,6 +5124,8 @@ document.getElementById("btnExportAderisce")?.addEventListener("click", () => {
   const btnUiClose = document.getElementById("btnUiChooserClose");
   const btnModeComuni = document.getElementById("btnModeComuni");
   const btnModeFarmacie = document.getElementById("btnModeFarmacie");
+  const btnOpenGuide = document.getElementById("btnOpenGuide");
+  const btnOpenVideo = document.getElementById("btnOpenVideo");
 
   // MapStats (tap to expand on mobile when collapsed)
   const __ms = document.getElementById("mapStats");
@@ -4427,12 +5168,18 @@ document.getElementById("btnExportAderisce")?.addEventListener("click", () => {
   if(btnUiDesktop) btnUiDesktop.addEventListener("click", (e)=>{ e.preventDefault(); closeUiChooser(); setUiMode("desktop"); showChooser=false; });
   if(btnUiClose) btnUiClose.addEventListener("click", (e)=>{ e.preventDefault(); closeUiChooser(); showChooser=false; applyUiMode(); });
 
+  // Help buttons (UI chooser)
+  if(btnOpenGuide) btnOpenGuide.addEventListener("click", (e)=>{ e.preventDefault(); closeUiChooser(); openGuideModal(0); });
+  if(btnOpenVideo) btnOpenVideo.addEventListener("click", (e)=>{ e.preventDefault(); closeUiChooser(); openVideoGuide(); });
+
   // Modalità selezione
   if(btnModeComuni) btnModeComuni.addEventListener("click", (e)=>{ e.preventDefault(); setInteractionMode("comuni"); });
   if(btnModeFarmacie) btnModeFarmacie.addEventListener("click", (e)=>{ e.preventDefault(); setInteractionMode("farmacie"); });
 
   // Applica UI mode iniziale (IMPORTANTE: dopo che farmMarkers è definito)
   applyUiMode();
+  // Onboarding: se mobile e la UI chooser non è aperta, mostra i fumetti (una sola volta)
+  setTimeout(()=>{ try{ maybeRunMobileOnboarding_(); }catch(e){} }, 500);
 
   // Se è la prima visita, mostra scelta UI (ma la mappa può già caricarsi dietro)
   if(showChooser){
